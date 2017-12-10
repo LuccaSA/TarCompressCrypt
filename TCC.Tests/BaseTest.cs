@@ -33,7 +33,6 @@ namespace TCC.Tests
 			FileInfo dst = new DirectoryInfo(decompOption.DestinationDir).EnumerateFiles().FirstOrDefault();
 
 			Assert.True(TestHelper.FilesAreEqual(src, dst));
-
 		}
 
 	}

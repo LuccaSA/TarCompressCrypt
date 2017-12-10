@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Management;
 using System.Text;
 using System.Threading;
 
@@ -8,7 +9,8 @@ namespace TCC
 	public static class CommandHelper
 	{
 
-		public static CommandResult Run(this string command, string workingDirectory, int timeoutMinutes = 30)
+		public static CommandResult Run(this string command, string workingDirectory, CancellationToken cancellationToken,
+			int timeoutMinutes = 30)
 		{
 			var timeoutLimit = TimeSpan.FromMinutes(timeoutMinutes);
 
@@ -66,14 +68,19 @@ namespace TCC
 
 					process.Start();
 
+					cancellationToken.Register(() =>
+					{
+						KillProcessAndChildren(process.Id);
+					});
+
 					process.BeginOutputReadLine();
 					process.BeginErrorReadLine();
 
 					int timeout = (int)timeoutLimit.TotalMilliseconds;
 
 					if (process.WaitForExit(timeout) &&
-					    outputWaitHandle.WaitOne(timeout) &&
-					    errorWaitHandle.WaitOne(timeout))
+						outputWaitHandle.WaitOne(timeout) &&
+						errorWaitHandle.WaitOne(timeout))
 					{
 						return new CommandResult
 						{
@@ -99,5 +106,26 @@ namespace TCC
 			}
 		}
 
+
+		private static void KillProcessAndChildren(int pid)
+		{
+			using (var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid))
+			{
+				var moc = searcher.Get();
+				foreach (ManagementObject mo in moc)
+				{
+					KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
+				}
+				try
+				{
+					var proc = Process.GetProcessById(pid);
+					proc.Kill();
+				}
+				catch (Exception e)
+				{
+					// Process already exited.
+				}
+			}
+		}
 	}
 }

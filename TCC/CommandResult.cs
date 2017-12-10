@@ -1,4 +1,6 @@
-﻿namespace TCC
+﻿using System;
+
+namespace TCC
 {
 	public class CommandResult
 	{
@@ -6,7 +8,7 @@
 		public bool IsSuccess { get; set; }
 		public string Output { get; set; }
 		public string Errors { get; set; }
-
+		public bool HasError => !String.IsNullOrEmpty(Errors);
 		public string Command { get; set; }
 		public Block Block { get; set; }
 	}

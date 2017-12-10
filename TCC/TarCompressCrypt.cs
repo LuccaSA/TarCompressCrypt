@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TCC
@@ -14,39 +16,52 @@ namespace TCC
 		private const string OpenSsl = @"C:\Program Files\Git\usr\bin\openssl.exe";
 		private const string Pipe = @" | ";
 
-		public static int Compress(CompressOption compressOption)
+		public static int Compress(CompressOption compressOption, Subject<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			List<Block> blocks = PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.Individual, !string.IsNullOrEmpty(compressOption.Password));
 
 			ParallelOptions po = ParallelOptions(compressOption.Threads);
 
-			var results = new ConcurrentBag<CommandResult>();
-
-			Parallel.ForEach(blocks, po, b =>
+			var pr = Parallel.ForEach(blocks, po, (b, state) =>
 			{
-				var result = Encrypt(b, compressOption.Password);
+				if (cancellationToken.IsCancellationRequested)
+				{
+					return;
+				}
+				var result = Encrypt(b, compressOption.Password, cancellationToken);
 				result.Block = b;
-				results.Add(result);
+				obervableLog?.OnNext(result);
+				if (result.HasError && compressOption.FailFast)
+				{
+					state.Break();
+				}
 			});
 
-			return 0;
+			return pr.IsCompleted ? 0 : 1;
 		}
 
-		public static int Decompress(DecompressOption decompressOption)
+		public static int Decompress(DecompressOption decompressOption, Subject<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			List<Block> blocks = PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, !string.IsNullOrEmpty(decompressOption.Password));
 
 			ParallelOptions po = ParallelOptions(decompressOption.Threads);
 
-			var results = new ConcurrentBag<CommandResult>();
-
-			Parallel.ForEach(blocks, po, b =>
+			var pr = Parallel.ForEach(blocks, po, (b, state) =>
 			{
-				var result = Decrypt(b, decompressOption.Password);
-				results.Add(result);
+				if (cancellationToken.IsCancellationRequested)
+				{
+					return;
+				}
+				var result = Decrypt(b, decompressOption.Password, cancellationToken);
+				result.Block = b;
+				obervableLog?.OnNext(result);
+				if (result.HasError && decompressOption.FailFast)
+				{
+					state.Break();
+				}
 			});
 
-			return 0;
+			return pr.IsCompleted ? 0 : 1;
 		}
 
 		private static ParallelOptions ParallelOptions(string threads)
@@ -79,24 +94,37 @@ namespace TCC
 			{
 				var srcDir = new DirectoryInfo(sourceDir);
 				var found = srcDir.EnumerateFiles("*" + extension).ToList();
+				var dstDir = new DirectoryInfo(destinationDir);
+				if (found.Count != 0)
+				{
+					if (dstDir.Exists == false)
+					{
+						dstDir.Create();
+					}
+				}
 
 				foreach (FileInfo fi in found)
 				{
 					blocks.Add(new Block
 					{
-						OperationFolder = destinationDir,
+						OperationFolder = dstDir.FullName,
 						Source = fi.FullName,
-						Destination = destinationDir
+						Destination = dstDir.FullName
 					});
 				}
 			}
-			else if (File.Exists(sourceDir))
+			else if (File.Exists(sourceDir) && Path.HasExtension(extension))
 			{
+				var dstDir = new DirectoryInfo(destinationDir);
+				if (dstDir.Exists == false)
+				{
+					dstDir.Create();
+				}
 				blocks.Add(new Block
 				{
-					OperationFolder = destinationDir,
+					OperationFolder = dstDir.FullName,
 					Source = sourceDir,
-					Destination = destinationDir
+					Destination = dstDir.FullName
 				});
 			}
 			return blocks;
@@ -115,6 +143,14 @@ namespace TCC
 
 				List<FileInfo> files = srcDir.EnumerateFiles().ToList();
 				List<DirectoryInfo> directories = srcDir.EnumerateDirectories().ToList();
+
+				if (files.Count != 0 || directories.Count != 0)
+				{
+					if (dstDir.Exists == false)
+					{
+						dstDir.Create();
+					}
+				}
 
 				// for each directory in sourceDir we create an archive
 				foreach (DirectoryInfo di in directories)
@@ -142,28 +178,28 @@ namespace TCC
 			{
 				throw new NotImplementedException();
 			}
-			 
+
 			return blocks;
 		}
 
-		private static CommandResult Encrypt(Block block, string password)
+		private static CommandResult Encrypt(Block block, string password, CancellationToken cancellationToken)
 		{
 			// openssl aes-256-cbc -d -k "test" -in crypt5.lz4 | lz4 -dc --no-sparse - | tar xf -
 			var cmd = ExeTar.Escape() + " -c " + block.Source.Escape();
 			cmd += Pipe + ExeLz4.Escape() + " -1 - ";
 			cmd += Pipe + OpenSsl.Escape() + " aes-256-cbc -k " + password + " -out " + block.Destination.Escape();
 
-			var result = cmd.Run(block.OperationFolder);
+			var result = cmd.Run(block.OperationFolder, cancellationToken);
 			return result;
 		}
 
-		private static CommandResult Decrypt(Block block, string password)// string password, string outDirectory)
+		private static CommandResult Decrypt(Block block, string password, CancellationToken cancellationToken)// string password, string outDirectory)
 		{
 			// openssl aes-256-cbc -d -k "test" -in crypt3.lz4 | lz4 -dc --no-sparse - | tar xf -
 			var cmd = OpenSsl.Escape() + " aes-256-cbc -d -k " + password + " -in " + block.Source;
 			cmd += Pipe + ExeLz4.Escape() + " -dc --no-sparse - ";
 			cmd += Pipe + ExeTar.Escape() + " xf - ";
-			var result = cmd.Run(block.OperationFolder);
+			var result = cmd.Run(block.OperationFolder, cancellationToken);
 
 			return result;
 		}

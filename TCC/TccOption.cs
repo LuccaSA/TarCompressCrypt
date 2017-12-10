@@ -18,7 +18,7 @@ namespace TCC
 
 	public class TccOption
 	{
-		[Option(Required = true, HelpText = "Input files / folders to be processed.")]
+		[Value(0, Required = true, HelpText = "Input files / folders to be processed.")]
 		public string SourceDirOrFile { get; set; }
 
 		[Option('o', "output", Required = true, HelpText = "Output directory")]
@@ -26,19 +26,19 @@ namespace TCC
 
 		public PasswordMode PasswordMode { get; set; }
 
-		[Option('p', "pass", Required = true, HelpText = "EncryptionPassword")]
+		[Option('p', "pass", Required = false, SetName = "passwd", HelpText = "EncryptionPassword")]
 		public string Password { get; set; }
 
-		[Option('e', "passFile", Required = true, HelpText = "Encryption Password in file")]
+		[Option('e', "passFile", Required = false, SetName = "passwd", HelpText = "Encryption Password in file")]
 		public string PasswordFile { get; set; }
 
-		[Option('k', "publicKey", Required = true, HelpText = "Public encryption key")]
+		[Option('k', "publicKey", Required = false, SetName = "passwd", HelpText = "Public encryption key")]
 		public string PublicKey { get; set; }
 
-		[Option('t', "thread", Required = true, HelpText = "Number of threads")]
+		[Option('t', "thread", Required = false, HelpText = "Number of threads")]
 		public string Threads { get; set; }
 
-		[Option('f', "failfast", Required = true, HelpText = "Fail fast toggle")]
+		[Option('f', "failfast", Required = false, HelpText = "Fail fast toggle")]
 		public bool FailFast { get; set; }
 
 		// source dirextory or source file
