@@ -1,0 +1,54 @@
+image: Visual Studio 2017
+
+version: 2.0.{build}
+
+environment:
+  global:
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  SONAR_TOKEN:
+    secure: hj9MoxlJ6qAtxLJ+T1E6r6+juurOeo6p10XO70I6LFE3fMrNij0fg/Td0IfxMU64
+  GITHUB_ACCESS_TOKEN:
+    secure: qwyB8ousbkAKLk4a7n6ix8Cpr0YU+pvi8YAlU+LcQZJGYqs4rJ+8VTWsBuUolRSa
+
+branches:
+  only:
+    - master
+
+# Do not build feature branch with open Pull Requests
+skip_branch_with_pr: true
+
+configuration: Release
+platform: Any CPU
+ 
+install:
+  - ps: wget "https://raw.githubusercontent.com/rducom/ALM/master/build/ComputeVersion.ps1" -outfile "ComputeVersion.ps1"
+  - ps: . .\ComputeVersion.ps1
+  - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
+  - ps: Update-AppveyorBuild -Version $version.Semver
+  - choco install "msbuild-sonarqube-runner" -y
+  - choco install opencover.portable
+  - choco install codecov
+  - nuget install xunit.runner.console -Version 2.3.1 -outputdirectory ./packages
+
+before_build:
+- nuget restore TCC.sln
+- cmd: >-
+    IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
+    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\MSBuild.SonarQube.Runner.exe begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml"
+    ) ELSE (
+    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\MSBuild.SonarQube.Runner.exe begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TCC" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
+    )
+
+build_script:
+- ps: msbuild "TCC.sln" /m /verbosity:minimal /property:Configuration=Debug /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+
+after_build:
+- echo Rebuild in debug and Starting test coverage with OpenCover
+- C:\ProgramData\chocolatey\bin\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"packages\xunit.runner.console.2.3.1\tools\net452\xunit.console.exe" -targetargs:"C:\projects\tarcompresscrypt\TCC.Tests\bin\Debug\TCC.Tests.dll" -filter:"+[TCC*]* -[*Tests*]*"  -searchdirs:"TCC.Tests\bin\Debug" -output:coverage-opencover.xml
+- cmd: >-
+    "C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\MSBuild.SonarQube.Runner.exe" end /d:"sonar.login=%SONAR_TOKEN%"
+
+test_script:
+- echo Sending to codecov
+- codecov -f coverage-opencover.xml

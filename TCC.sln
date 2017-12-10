@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCC", "TCC\TCC.csproj", "{B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCC.Tests", "TCC.Tests\TCC.Tests.csproj", "{56370F43-8052-4B59-A2F7-87565D64AD90}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCC.Lib", "TCC.Lib\TCC.Lib.csproj", "{44787282-9778-4C11-9C97-90C9F0CD820F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{56370F43-8052-4B59-A2F7-87565D64AD90}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56370F43-8052-4B59-A2F7-87565D64AD90}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{56370F43-8052-4B59-A2F7-87565D64AD90}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44787282-9778-4C11-9C97-90C9F0CD820F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44787282-9778-4C11-9C97-90C9F0CD820F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44787282-9778-4C11-9C97-90C9F0CD820F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44787282-9778-4C11-9C97-90C9F0CD820F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
