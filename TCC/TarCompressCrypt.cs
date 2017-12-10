@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace TCC
 {
-	public class TarCompressCrypt
+	public static class TarCompressCrypt
 	{
 		private const string ExeTar = @"C:\Program Files\Git\usr\bin\tar.exe";
 		private const string ExeLz4 = @"C:\Program Files (x86)\lz4_v1_8_0_win64\lz4.exe";
@@ -20,31 +19,23 @@ namespace TCC
 		{
 			List<Block> blocks = PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.Individual, !string.IsNullOrEmpty(compressOption.Password));
 
-			ParallelOptions po = ParallelOptions(compressOption.Threads);
-
-			var pr = Parallel.ForEach(blocks, po, (b, state) =>
-			{
-				if (cancellationToken.IsCancellationRequested)
-				{
-					return;
-				}
-				var result = Encrypt(b, compressOption.Password, cancellationToken);
-				result.Block = b;
-				obervableLog?.OnNext(result);
-				if (result.HasError && compressOption.FailFast)
-				{
-					state.Break();
-				}
-			});
-
-			return pr.IsCompleted ? 0 : 1;
+			return ProcessingLoop(blocks, compressOption, Encrypt, obervableLog, cancellationToken);
 		}
 
 		public static int Decompress(DecompressOption decompressOption, Subject<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			List<Block> blocks = PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, !string.IsNullOrEmpty(decompressOption.Password));
 
-			ParallelOptions po = ParallelOptions(decompressOption.Threads);
+			return ProcessingLoop(blocks, decompressOption, Decrypt, obervableLog, cancellationToken);
+		}
+
+		private static int ProcessingLoop(List<Block> blocks,
+			TccOption option,
+			Func<Block, string, CancellationToken, CommandResult> processor,
+			Subject<CommandResult> obervableLog = null,
+			CancellationToken cancellationToken = default(CancellationToken))
+		{
+			ParallelOptions po = ParallelOptions(option.Threads);
 
 			var pr = Parallel.ForEach(blocks, po, (b, state) =>
 			{
@@ -52,10 +43,11 @@ namespace TCC
 				{
 					return;
 				}
-				var result = Decrypt(b, decompressOption.Password, cancellationToken);
+				var result = processor(b, option.Password, cancellationToken);
 				result.Block = b;
+				result.BatchTotal = blocks.Count;
 				obervableLog?.OnNext(result);
-				if (result.HasError && decompressOption.FailFast)
+				if (result.HasError && option.FailFast)
 				{
 					state.Break();
 				}
@@ -109,7 +101,8 @@ namespace TCC
 					{
 						OperationFolder = dstDir.FullName,
 						Source = fi.FullName,
-						Destination = dstDir.FullName
+						Destination = dstDir.FullName,
+						ArchiveName = fi.FullName
 					});
 				}
 			}
@@ -124,7 +117,8 @@ namespace TCC
 				{
 					OperationFolder = dstDir.FullName,
 					Source = sourceDir,
-					Destination = dstDir.FullName
+					Destination = dstDir.FullName,
+					ArchiveName = new FileInfo(sourceDir).FullName
 				});
 			}
 			return blocks;
@@ -155,22 +149,26 @@ namespace TCC
 				// for each directory in sourceDir we create an archive
 				foreach (DirectoryInfo di in directories)
 				{
+					string name = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(di.Name) + extension);
 					blocks.Add(new Block
 					{
 						OperationFolder = srcDir.FullName,
 						Source = di.Name,
-						Destination = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(di.Name) + extension)
+						Destination = name,
+						ArchiveName = name
 					});
 				}
 
 				// for each file in sourceDir we create an archive
 				foreach (FileInfo fi in files)
 				{
+					string name = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension);
 					blocks.Add(new Block
 					{
 						OperationFolder = srcDir.FullName,
 						Source = fi.Name,
-						Destination = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension)
+						Destination = name,
+						ArchiveName = name
 					});
 				}
 			}

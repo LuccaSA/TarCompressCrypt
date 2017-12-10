@@ -8,7 +8,7 @@ using CommandLine;
 namespace TCC
 {
 	class Program
-	{ 
+	{
 		[DllImport("kernel32.dll", SetLastError = true)]
 		private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
 		private delegate bool ConsoleEventDelegate(int eventType);
@@ -20,10 +20,12 @@ namespace TCC
 				config.EnableDashDash = true;
 				config.HelpWriter = Console.Out;
 			});
-
+			int counter = 0;
 			var subject = new Subject<CommandResult>();
 			subject.Subscribe(r =>
 			{
+				Interlocked.Increment(ref counter);
+				Console.WriteLine(counter + "/" + r.BatchTotal + " : " + r.Block.ArchiveName);
 				if (r.HasError)
 				{
 					Console.Error.WriteLine("Error : " + r.Errors);
@@ -37,7 +39,7 @@ namespace TCC
 			var cts = new CancellationTokenSource();
 			bool ConsoleEventCallback(int eventType)
 			{
-				Console.Error.WriteLine("Process termination requested");
+				Console.Error.WriteLine("!!! Process termination requested");
 				cts.Cancel();
 				return false;
 			}
