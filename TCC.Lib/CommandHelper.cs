@@ -8,7 +8,6 @@ namespace TCC
 {
 	public static class CommandHelper
 	{
-
 		public static CommandResult Run(this string command, string workingDirectory, CancellationToken cancellationToken,
 			int timeoutMinutes = 30)
 		{
@@ -105,8 +104,7 @@ namespace TCC
 				}
 			}
 		}
-
-
+         
 		private static void KillProcessAndChildren(int pid)
 		{
 			using (var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid))

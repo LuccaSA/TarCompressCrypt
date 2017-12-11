@@ -6,6 +6,7 @@ namespace TCC
 {
     public class ExternalDependecies
     {
+        private static object _lock = new object();
         private const string ExeTar = @"C:\Program Files\Git\usr\bin\tar.exe";
         private const string ExeLz4 = @"lz4.exe";
         private const string ExeOpenSsl = @"C:\Program Files\Git\usr\bin\openssl.exe";
@@ -25,14 +26,21 @@ namespace TCC
             string exePath = Path.Combine(root, ExeLz4);
             if (!File.Exists(exePath))
             {
-                using (var client = new WebClient())
+                lock (_lock)
                 {
-                    client.DownloadFile(@"https://github.com/lz4/lz4/releases/download/v1.8.0/lz4_v1_8_0_win64.zip", "lz4_v1_8_0_win64.zip");
-                }
-                ZipFile.ExtractToDirectory("lz4_v1_8_0_win64.zip", root);
-                if (!File.Exists(exePath))
-                {
-                    throw new FileNotFoundException("lz4 not found in " + exePath);
+                    if (File.Exists(exePath))
+                    {
+                        return exePath;
+                    }
+                    using (var client = new WebClient())
+                    {
+                        client.DownloadFile(@"https://github.com/lz4/lz4/releases/download/v1.8.0/lz4_v1_8_0_win64.zip", "lz4_v1_8_0_win64.zip");
+                    }
+                    ZipFile.ExtractToDirectory("lz4_v1_8_0_win64.zip", root);
+                    if (!File.Exists(exePath))
+                    {
+                        throw new FileNotFoundException("lz4 not found in " + exePath);
+                    }
                 }
             }
             return exePath;
