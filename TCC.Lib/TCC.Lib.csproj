@@ -70,6 +70,7 @@
     <Compile Include="CommandHelper.cs" />
     <Compile Include="CommandResult.cs" />
     <Compile Include="ExternalDependecies.cs" />
+    <Compile Include="Mode.cs" />
     <Compile Include="PasswordMode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StringExtensions.cs" />

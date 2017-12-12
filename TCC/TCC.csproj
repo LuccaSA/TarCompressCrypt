@@ -68,7 +68,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandLineHelper.cs" />
-    <Compile Include="Mode.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

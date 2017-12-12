@@ -10,12 +10,7 @@ namespace TCC
 {
     public static class TarCompressCrypt
     {
-
         private const string Pipe = @" | ";
-
-
-
-
 
         public static int Compress(CompressOption compressOption, Subject<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -33,7 +28,7 @@ namespace TCC
 
         private static int ProcessingLoop(List<Block> blocks,
             TccOption option,
-            Func<Block, string, CancellationToken, CommandResult> processor,
+            Func<Block, TccOption, CancellationToken, CommandResult> processor,
             Subject<CommandResult> obervableLog = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -45,7 +40,7 @@ namespace TCC
                 {
                     return;
                 }
-                var result = processor(b, option.Password, cancellationToken);
+                var result = processor(b, option, cancellationToken);
                 result.Block = b;
                 result.BatchTotal = blocks.Count;
                 obervableLog?.OnNext(result);
@@ -103,7 +98,7 @@ namespace TCC
                     {
                         OperationFolder = dstDir.FullName,
                         Source = fi.FullName,
-                        Destination = dstDir.FullName,
+                        DestinationFolder = dstDir.FullName,
                         ArchiveName = fi.FullName
                     });
                 }
@@ -119,7 +114,7 @@ namespace TCC
                 {
                     OperationFolder = dstDir.FullName,
                     Source = sourceDir,
-                    Destination = dstDir.FullName,
+                    DestinationFolder = dstDir.FullName,
                     ArchiveName = new FileInfo(sourceDir).FullName
                 });
             }
@@ -142,7 +137,7 @@ namespace TCC
 
                 if (files.Count != 0 || directories.Count != 0)
                 {
-                    if (dstDir.Exists == false)
+                    if (!dstDir.Exists)
                     {
                         dstDir.Create();
                     }
@@ -151,26 +146,26 @@ namespace TCC
                 // for each directory in sourceDir we create an archive
                 foreach (DirectoryInfo di in directories)
                 {
-                    string name = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(di.Name) + extension);
                     blocks.Add(new Block
                     {
                         OperationFolder = srcDir.FullName,
                         Source = di.Name,
-                        Destination = name,
-                        ArchiveName = name
+                        DestinationArchive = Path.Combine(dstDir.FullName, di.Name + extension),
+                        DestinationFolder = dstDir.FullName,
+                        ArchiveName = di.Name
                     });
                 }
 
                 // for each file in sourceDir we create an archive
                 foreach (FileInfo fi in files)
                 {
-                    string name = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension);
                     blocks.Add(new Block
                     {
                         OperationFolder = srcDir.FullName,
                         Source = fi.Name,
-                        Destination = name,
-                        ArchiveName = name
+                        DestinationArchive = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension),
+                        DestinationFolder = dstDir.FullName,
+                        ArchiveName = Path.GetFileNameWithoutExtension(fi.Name)
                     });
                 }
             }
@@ -182,28 +177,167 @@ namespace TCC
             return blocks;
         }
 
-        private static CommandResult Encrypt(Block block, string password, CancellationToken cancellationToken)
+        private static CommandResult Encrypt(Block block, TccOption option, CancellationToken cancellationToken)
         {
             var ext = new ExternalDependecies();
-            // openssl aes-256-cbc -d -k "test" -in crypt5.lz4 | lz4 -dc --no-sparse - | tar xf -
-            var cmd = ext.Tar().Escape() + " -c " + block.Source.Escape();
-            cmd += Pipe + ext.Lz4().Escape() + " -1 - ";
-            cmd += Pipe + ext.OpenSsl().Escape() + " aes-256-cbc -k " + password + " -out " + block.Destination.Escape();
+            string key, keyCrypted;
 
+            PrepareEncryptionKey(block, option, out key, out keyCrypted, cancellationToken);
+
+            string cmd = CompressCommand(block, option, ext);
             var result = cmd.Run(block.OperationFolder, cancellationToken);
+
+            CleanupKey(block, option, key, keyCrypted, result, Mode.Compress);
+
             return result;
         }
 
-        private static CommandResult Decrypt(Block block, string password, CancellationToken cancellationToken)// string password, string outDirectory)
+        private static CommandResult Decrypt(Block block, TccOption option, CancellationToken cancellationToken)
         {
             var ext = new ExternalDependecies();
-            // openssl aes-256-cbc -d -k "test" -in crypt3.lz4 | lz4 -dc --no-sparse - | tar xf -
-            var cmd = ext.OpenSsl().Escape() + " aes-256-cbc -d -k " + password + " -in " + block.Source;
-            cmd += Pipe + ext.Lz4().Escape() + " -dc --no-sparse - ";
-            cmd += Pipe + ext.Tar().Escape() + " xf - ";
+            string key, keyCrypted;
+
+            PrepareDecryptionKey(block, option, out key, out keyCrypted, cancellationToken);
+
+            string cmd = DecompressCommand(block, option, ext);
             var result = cmd.Run(block.OperationFolder, cancellationToken);
+
+            CleanupKey(block, option, key, keyCrypted, result, Mode.Compress);
 
             return result;
         }
+
+        private static void CleanupKey(Block block, TccOption option, string key, string keyCrypted, CommandResult result, Mode mode)
+        {
+            if (option.PasswordMode == PasswordMode.PublicKey)
+            {
+                // delete uncrypted pass
+                if (!String.IsNullOrEmpty(key))
+                {
+                    File.Delete(Path.Combine(block.DestinationFolder, key));
+                }
+                // if error in compression, also delete encrypted passfile
+                if (mode == Mode.Compress && result.HasError && !String.IsNullOrEmpty(keyCrypted))
+                {
+                    File.Delete(Path.Combine(block.DestinationFolder, keyCrypted));
+                }
+            }
+        }
+
+        private static void PrepareEncryptionKey(Block block, TccOption option, out string key, out string keyCrypted, CancellationToken cancellationToken)
+        {
+            key = null;
+            keyCrypted = null;
+            if (option.PasswordMode == PasswordMode.PublicKey)
+            {
+                key = block.ArchiveName + ".key";
+                keyCrypted = block.ArchiveName + ".key.encrypted";
+                // generate random passfile
+                var keyResult = GenerateRandomKey(key).Run(block.DestinationFolder, cancellationToken);
+                // crypt passfile
+                string publicKeyPath = Path.Combine(Environment.CurrentDirectory, option.PublicPrivateKeyFile);
+                var keyCryptedResult = EncryptRandomKey(key, keyCrypted, publicKeyPath).Run(block.DestinationFolder, cancellationToken);
+                option.PasswordFile = key;
+            }
+        }
+
+        private static void PrepareDecryptionKey(Block block, TccOption option, out string key, out string keyCrypted, CancellationToken cancellationToken)
+        {
+            key = null;
+            keyCrypted = null;
+            if (option.PasswordMode == PasswordMode.PublicKey)
+            {
+                key = block.ArchiveName + ".key";
+                keyCrypted = block.ArchiveName + ".key.encrypted";
+                // crypt passfile
+                string publicKeyPath = Path.Combine(Environment.CurrentDirectory, option.PublicPrivateKeyFile);
+                var keyDecryptedResult = DecryptRandomKey(key, keyCrypted, publicKeyPath).Run(block.DestinationFolder, cancellationToken);
+                option.PasswordFile = key;
+            }
+        }
+
+        private static string CompressCommand(Block block, TccOption option, ExternalDependecies ext)
+        {
+            string cmd;
+            switch (option.PasswordMode)
+            {
+                case PasswordMode.None:
+                    // tar -c C:\SourceFolder | lz4.exe -1 - compressed.tar.lz4
+                    cmd = $"{ext.Tar().Escape()} -c {block.Source.Escape()}";
+                    cmd += $"{Pipe}{ext.Lz4().Escape()} -1 -v - {block.DestinationArchive.Escape()}";
+                    break;
+                case PasswordMode.InlinePassword:
+                case PasswordMode.PasswordFile:
+                case PasswordMode.PublicKey:
+                    string passwdCommand;
+                    if (option.PasswordMode == PasswordMode.InlinePassword)
+                    {
+                        passwdCommand = "-k " + option.Password;
+                    }
+                    else
+                    {
+                        passwdCommand = "-kfile " + option.PasswordFile;
+                    }
+                    // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
+                    cmd = $"{ext.Tar().Escape()} -c {block.Source.Escape()}";
+                    cmd += $"{Pipe}{ext.Lz4().Escape()} -1 -v - ";
+                    cmd += $"{Pipe}{ext.OpenSsl().Escape()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive.Escape()}";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(option));
+            }
+            return cmd;
+        }
+
+        private static string DecompressCommand(Block block, TccOption option, ExternalDependecies ext)
+        {
+            string cmd;
+            switch (option.PasswordMode)
+            {
+                case PasswordMode.None:
+                    //lz4 archive.tar.lz4 - dc--no - sparse - | tar xf -
+                    cmd = $"{Pipe}{ext.Lz4().Escape()} -dc --no-sparse - ";
+                    cmd += $"{Pipe}{ext.Tar().Escape()} xf - ";
+                    break;
+                case PasswordMode.InlinePassword:
+                case PasswordMode.PasswordFile:
+                case PasswordMode.PublicKey:
+
+                    string passwdCommand;
+                    if (option.PasswordMode == PasswordMode.InlinePassword)
+                    {
+                        passwdCommand = "-k " + option.Password;
+                    }
+                    else
+                    {
+                        passwdCommand = "-kfile " + option.PasswordFile;
+                    }
+                    //openssl aes-256-cbc -d -k "test" -in crypted.tar.lz4.aes | lz4 -dc --no-sparse - | tar xf -
+                    cmd = $"{ext.OpenSsl().Escape()} aes-256-cbc -d {passwdCommand} -in {block.Source}";
+                    cmd += $"{Pipe}{ext.Lz4().Escape()} -dc --no-sparse - ";
+                    cmd += $"{Pipe}{ext.Tar().Escape()} xf - ";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(option));
+            }
+            return cmd;
+        }
+
+        private static string EncryptRandomKey(string keyPath, string keyCryptedPath, string publicKey)
+        {
+            return $"openssl rsautl -encrypt -inkey {publicKey} -pubin -in {keyPath} -out {keyCryptedPath}";
+        }
+
+        private static string DecryptRandomKey(string keyPath, string keyCryptedPath, string privateKey)
+        {
+            return $"openssl rsautl -decrypt -inkey {privateKey} -pubin -in {keyCryptedPath} -out {keyPath}";
+        }
+
+        private static string GenerateRandomKey(string filename)
+        {
+            // 512 byte == 4096 bit
+            return $"openssl rand -base64 512 > {filename}";
+        }
+
     }
 }
