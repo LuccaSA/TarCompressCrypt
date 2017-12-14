@@ -70,7 +70,7 @@ namespace TCC.Tests
                 SourceDirOrFile = src,
                 DestinationDir = Target,
                 Threads = "all",
-                PasswordMode = PasswordMode.PasswordFile,
+                PasswordMode = PasswordMode.InlinePassword,
                 Password = "1234"
             };
         }
@@ -97,7 +97,7 @@ namespace TCC.Tests
                 SourceDirOrFile = src,
                 DestinationDir = Target,
                 Threads = "all",
-                PasswordMode = PasswordMode.PasswordFile,
+                PasswordMode = PasswordMode.InlinePassword,
                 Password = "1234"
             };
         }

@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,14 +12,14 @@ namespace TCC
     {
         private const string Pipe = @" | ";
 
-        public static int Compress(CompressOption compressOption, Subject<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
+        public static int Compress(CompressOption compressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             List<Block> blocks = PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.Individual, !string.IsNullOrEmpty(compressOption.Password));
 
             return ProcessingLoop(blocks, compressOption, Encrypt, obervableLog, cancellationToken);
         }
 
-        public static int Decompress(DecompressOption decompressOption, Subject<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
+        public static int Decompress(DecompressOption decompressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             List<Block> blocks = PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, !string.IsNullOrEmpty(decompressOption.Password));
 
@@ -29,7 +29,7 @@ namespace TCC
         private static int ProcessingLoop(List<Block> blocks,
             TccOption option,
             Func<Block, TccOption, CancellationToken, CommandResult> processor,
-            Subject<CommandResult> obervableLog = null,
+            BlockingCollection<CommandResult> obervableLog = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             ParallelOptions po = ParallelOptions(option.Threads);
@@ -43,12 +43,14 @@ namespace TCC
                 var result = processor(b, option, cancellationToken);
                 result.Block = b;
                 result.BatchTotal = blocks.Count;
-                obervableLog?.OnNext(result);
+                obervableLog?.Add(result, cancellationToken);
                 if (result.HasError && option.FailFast)
                 {
                     state.Break();
                 }
             });
+
+            obervableLog?.CompleteAdding();
 
             return pr.IsCompleted ? 0 : 1;
         }
@@ -180,9 +182,8 @@ namespace TCC
         private static CommandResult Encrypt(Block block, TccOption option, CancellationToken cancellationToken)
         {
             var ext = new ExternalDependecies();
-            string key, keyCrypted;
 
-            PrepareEncryptionKey(block, option, out key, out keyCrypted, cancellationToken);
+            PrepareEncryptionKey(block, option, out var key, out var keyCrypted, cancellationToken);
 
             string cmd = CompressCommand(block, option, ext);
             var result = cmd.Run(block.OperationFolder, cancellationToken);
@@ -195,9 +196,8 @@ namespace TCC
         private static CommandResult Decrypt(Block block, TccOption option, CancellationToken cancellationToken)
         {
             var ext = new ExternalDependecies();
-            string key, keyCrypted;
 
-            PrepareDecryptionKey(block, option, out key, out keyCrypted, cancellationToken);
+            PrepareDecryptionKey(block, option, out var key, out var keyCrypted, cancellationToken);
 
             string cmd = DecompressCommand(block, option, ext);
             var result = cmd.Run(block.OperationFolder, cancellationToken);
@@ -269,15 +269,7 @@ namespace TCC
                 case PasswordMode.InlinePassword:
                 case PasswordMode.PasswordFile:
                 case PasswordMode.PublicKey:
-                    string passwdCommand;
-                    if (option.PasswordMode == PasswordMode.InlinePassword)
-                    {
-                        passwdCommand = "-k " + option.Password;
-                    }
-                    else
-                    {
-                        passwdCommand = "-kfile " + option.PasswordFile;
-                    }
+                    string passwdCommand = PasswordCommand(option);
                     // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
                     cmd = $"{ext.Tar().Escape()} -c {block.Source.Escape()}";
                     cmd += $"{Pipe}{ext.Lz4().Escape()} -1 -v - ";
@@ -288,6 +280,7 @@ namespace TCC
             }
             return cmd;
         }
+
 
         private static string DecompressCommand(Block block, TccOption option, ExternalDependecies ext)
         {
@@ -302,16 +295,7 @@ namespace TCC
                 case PasswordMode.InlinePassword:
                 case PasswordMode.PasswordFile:
                 case PasswordMode.PublicKey:
-
-                    string passwdCommand;
-                    if (option.PasswordMode == PasswordMode.InlinePassword)
-                    {
-                        passwdCommand = "-k " + option.Password;
-                    }
-                    else
-                    {
-                        passwdCommand = "-kfile " + option.PasswordFile;
-                    }
+                    string passwdCommand = PasswordCommand(option);
                     //openssl aes-256-cbc -d -k "test" -in crypted.tar.lz4.aes | lz4 -dc --no-sparse - | tar xf -
                     cmd = $"{ext.OpenSsl().Escape()} aes-256-cbc -d {passwdCommand} -in {block.Source}";
                     cmd += $"{Pipe}{ext.Lz4().Escape()} -dc --no-sparse - ";
@@ -323,13 +307,44 @@ namespace TCC
             return cmd;
         }
 
+        private static string PasswordCommand(TccOption option)
+        {
+            string passwdCommand;
+            if (option.PasswordMode == PasswordMode.InlinePassword)
+            {
+                if (String.IsNullOrWhiteSpace(option.Password))
+                {
+                    throw new CommandLineException(CommandLineError.PasswordMissing);
+                }
+                passwdCommand = "-k " + option.Password;
+            }
+            else
+            {
+                if (String.IsNullOrWhiteSpace(option.PasswordFile))
+                {
+                    throw new CommandLineException(CommandLineError.PasswordFileMissing);
+                }
+                passwdCommand = "-kfile " + option.PasswordFile;
+            }
+
+            return passwdCommand;
+        }
+
         private static string EncryptRandomKey(string keyPath, string keyCryptedPath, string publicKey)
         {
+            if (String.IsNullOrWhiteSpace(publicKey))
+            {
+                throw new CommandLineException(CommandLineError.PasswordPublicKeyMissing);
+            }
             return $"openssl rsautl -encrypt -inkey {publicKey} -pubin -in {keyPath} -out {keyCryptedPath}";
         }
 
         private static string DecryptRandomKey(string keyPath, string keyCryptedPath, string privateKey)
         {
+            if (String.IsNullOrWhiteSpace(privateKey))
+            {
+                throw new CommandLineException(CommandLineError.PasswordPrivateKeyMissing);
+            }
             return $"openssl rsautl -decrypt -inkey {privateKey} -pubin -in {keyCryptedPath} -out {keyPath}";
         }
 
@@ -339,5 +354,23 @@ namespace TCC
             return $"openssl rand -base64 512 > {filename}";
         }
 
+    }
+
+    public class CommandLineException : Exception
+    {
+        public CommandLineException(CommandLineError error)
+        {
+            Error = error;
+        }
+
+        public CommandLineError Error { get; set; }
+    }
+
+    public enum CommandLineError
+    {
+        PasswordMissing,
+        PasswordFileMissing,
+        PasswordPublicKeyMissing,
+        PasswordPrivateKeyMissing
     }
 }

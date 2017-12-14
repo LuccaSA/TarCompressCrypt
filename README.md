@@ -18,6 +18,8 @@ The bottleneck will be your storage :
 
 (on 16 vcore Ryzen 1700 no oc & 960 pro SSD)
 
+Why LZ4 ? : https://quixdb.github.io/squash-benchmark/
+
 ### Current status : 
 - early alpha : DOT NOT USE IN PRODUCTION  
 
