@@ -14,19 +14,19 @@ namespace TCC
 
         public static int Compress(CompressOption compressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            List<Block> blocks = PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.Individual, !string.IsNullOrEmpty(compressOption.Password));
+            List<Block> blocks = PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.Individual, compressOption.PasswordMode != PasswordMode.None);
 
             return ProcessingLoop(blocks, compressOption, Encrypt, obervableLog, cancellationToken);
         }
 
         public static int Decompress(DecompressOption decompressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            List<Block> blocks = PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, !string.IsNullOrEmpty(decompressOption.Password));
+            List<Block> blocks = PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, decompressOption.PasswordMode != PasswordMode.None);
 
             return ProcessingLoop(blocks, decompressOption, Decrypt, obervableLog, cancellationToken);
         }
 
-        private static int ProcessingLoop(List<Block> blocks,
+        private static int ProcessingLoop(IReadOnlyCollection<Block> blocks,
             TccOption option,
             Func<Block, TccOption, CancellationToken, CommandResult> processor,
             BlockingCollection<CommandResult> obervableLog = null,
@@ -40,13 +40,30 @@ namespace TCC
                 {
                     return;
                 }
-                var result = processor(b, option, cancellationToken);
-                result.Block = b;
-                result.BatchTotal = blocks.Count;
-                obervableLog?.Add(result, cancellationToken);
-                if (result.HasError && option.FailFast)
+                CommandResult result = null;
+                try
                 {
-                    state.Break();
+                    result = processor(b, option, cancellationToken);
+                    result.Block = b;
+                    result.BatchTotal = blocks.Count;
+                    obervableLog?.Add(result, cancellationToken);
+
+                    if (result.HasError && option.FailFast)
+                    {
+                        state.Break();
+                    }
+                }
+                catch (Exception e)
+                {
+                    if (option.FailFast)
+                    {
+                        if (result != null)
+                        {
+                            result.Errors += e.Message;
+                        }
+                        state.Break();
+                        throw;
+                    }
                 }
             });
 
@@ -235,9 +252,8 @@ namespace TCC
                 // generate random passfile
                 var keyResult = GenerateRandomKey(key).Run(block.DestinationFolder, cancellationToken);
                 // crypt passfile
-                string publicKeyPath = Path.Combine(Environment.CurrentDirectory, option.PublicPrivateKeyFile);
-                var keyCryptedResult = EncryptRandomKey(key, keyCrypted, publicKeyPath).Run(block.DestinationFolder, cancellationToken);
-                option.PasswordFile = key;
+                var keyCryptedResult = EncryptRandomKey(key, keyCrypted, option.PublicPrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
+                option.PasswordFile = Path.Combine(block.DestinationFolder, key);
             }
         }
 
@@ -249,9 +265,18 @@ namespace TCC
             {
                 key = block.ArchiveName + ".key";
                 keyCrypted = block.ArchiveName + ".key.encrypted";
+
+                var file = new FileInfo(block.ArchiveName);
+                var dir = file.Directory.FullName;
+                var name = file.Name.Substring(0, file.Name.IndexOf(".tar"));
+                keyCrypted = Path.Combine(dir, name + ".key.encrypted");
+                key = Path.Combine(dir, name + ".key");
+
                 // crypt passfile
                 string publicKeyPath = Path.Combine(Environment.CurrentDirectory, option.PublicPrivateKeyFile);
-                var keyDecryptedResult = DecryptRandomKey(key, keyCrypted, publicKeyPath).Run(block.DestinationFolder, cancellationToken);
+
+
+                var keyDecryptedResult = DecryptRandomKey(key, keyCrypted, option.PublicPrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
                 option.PasswordFile = key;
             }
         }
@@ -345,13 +370,13 @@ namespace TCC
             {
                 throw new CommandLineException(CommandLineError.PasswordPrivateKeyMissing);
             }
-            return $"openssl rsautl -decrypt -inkey {privateKey} -pubin -in {keyCryptedPath} -out {keyPath}";
+            return $"openssl rsautl -decrypt -inkey {privateKey} -in {keyCryptedPath} -out {keyPath}";
         }
 
         private static string GenerateRandomKey(string filename)
         {
             // 512 byte == 4096 bit
-            return $"openssl rand -base64 512 > {filename}";
+            return $"openssl rand -base64 256 > {filename}";
         }
 
     }

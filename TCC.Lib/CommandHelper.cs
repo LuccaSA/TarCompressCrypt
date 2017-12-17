@@ -97,7 +97,7 @@ namespace TCC
         };
 
         public static CommandResult Run(this string command, string workingDirectory, CancellationToken cancellationToken,
-            int timeoutMinutes = 30)
+            int timeoutMinutes = 480)
         {
             var timeoutLimit = TimeSpan.FromMinutes(timeoutMinutes);
 

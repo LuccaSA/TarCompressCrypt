@@ -1,36 +1,21 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace TCC
 {
     class Program
     {
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
-        private delegate bool ConsoleEventDelegate(int eventType);
 
         static void Main(string[] args)
         {
+            var cts = new CancellationTokenSource();
+
             int counter = 0;
 
-            var cts = new CancellationTokenSource();
-            bool ConsoleEventCallback(int eventType)
-            {
-                Console.Error.WriteLine("Process termination requested");
-                cts.Cancel();
-                return false;
-            }
-            SetConsoleCtrlHandler(ConsoleEventCallback, true);
+            cts.HookTermination();
 
-            Console.CancelKeyPress += (o, e) =>
-            {
-                Console.Error.WriteLine("Closing process");
-                cts.Cancel();
-            };
-
-            var option = args.ParseCommandLine(out Mode mode);
+            var option = args.ProcessCommandLine(out Mode mode);
 
             if (option == null)
             {
@@ -67,6 +52,7 @@ namespace TCC
                     }
                 }
             });
+
             var resetEvent = new ManualResetEvent(false);
 
             int returnCode = 1;
@@ -84,10 +70,8 @@ namespace TCC
             });
 
             resetEvent.WaitOne();
-
             Environment.Exit(returnCode);
         }
 
     }
-
 }

@@ -11,30 +11,75 @@ namespace TCC.Tests
 {
     public class BaseTest
     {
-        [Fact]
-        public void CompressDecompress()
+        [Theory]
+        //[InlineData(PasswordMode.None)]
+        [InlineData(PasswordMode.InlinePassword)]
+        //[InlineData(PasswordMode.PasswordFile)]
+        [InlineData(PasswordMode.PublicKey)]
+        public void CompressDecompress(PasswordMode mode)
         {
-            var data = TestData.CreateFiles(1, 1);
+            string toCompressFolder = TestHelper.NewFolder();
+            string compressedFolder = TestHelper.NewFolder();
+            string decompressedFolder = TestHelper.NewFolder();
+            string keysFolder = TestHelper.NewFolder();
 
-            var resultCompress = TarCompressCrypt.Compress(data.GetTccCompressOption());
+            var data = TestData.CreateFiles(1, 1, toCompressFolder);
+            var compressOption = data.GetTccCompressOption(mode, compressedFolder);
+
+            switch (mode)
+            {
+                case PasswordMode.None:
+                    break;
+                case PasswordMode.InlinePassword:
+                    compressOption.Password = "1234";
+                    break;
+                case PasswordMode.PasswordFile:
+                    break;
+                case PasswordMode.PublicKey:
+                    {
+                        var p1 = TestHelper.CreateKeyPairCommand("keypair.pem", KeySize.Key4096).Run(keysFolder, CancellationToken.None);
+                        var p2 = TestHelper.CreatePublicKeyCommand("keypair.pem", "public.pem").Run(keysFolder, CancellationToken.None);
+                        var p3 = TestHelper.CreatePrivateKeyCommand("keypair.pem", "private.pem").Run(keysFolder, CancellationToken.None);
+
+                        compressOption.PublicPrivateKeyFile = Path.Combine(keysFolder, "public.pem");
+                    }
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            }
+
+            var resultCompress = TarCompressCrypt.Compress(compressOption);
 
             Assert.Equal(0, resultCompress);
 
-            var dir = new DirectoryInfo(data.Target);
-            var decomp = new TestData() { Directories = new List<DirectoryInfo>() { dir } };
-            var decompOption = decomp.GetTccDecompressOption();
+            var decomp = new TestData { Directories = new List<DirectoryInfo> { new DirectoryInfo(compressedFolder) } };
+
+            var decompOption = decomp.GetTccDecompressOption(mode, decompressedFolder);
+
+            switch (mode)
+            {
+                case PasswordMode.None:
+                    break;
+                case PasswordMode.InlinePassword:
+                    decompOption.Password = "1234";
+                    break;
+                case PasswordMode.PasswordFile:
+                    break;
+                case PasswordMode.PublicKey:
+                    decompOption.PublicPrivateKeyFile = Path.Combine(keysFolder, "private.pem");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            }
 
             var resultDecompress = TarCompressCrypt.Decompress(decompOption);
             Assert.Equal(0, resultDecompress);
+             
+            Console.WriteLine("TEST : src=" + toCompressFolder);
+            Console.WriteLine("TEST : dst=" + decompressedFolder);
 
-            var srcDir = data.Directories.FirstOrDefault();
-            var dstDir = new DirectoryInfo(decompOption.DestinationDir);
-
-            Console.WriteLine("TEST : src=" + srcDir.FullName);
-            Console.WriteLine("TEST : dst=" + dstDir.FullName);
-
-            FileInfo src = data.Directories.FirstOrDefault().EnumerateFiles().FirstOrDefault();
-            FileInfo dst = new DirectoryInfo(decompOption.DestinationDir).EnumerateFiles().FirstOrDefault();
+            FileInfo src = new DirectoryInfo(toCompressFolder).EnumerateFiles().FirstOrDefault();
+            FileInfo dst = new DirectoryInfo(decompressedFolder).EnumerateFiles().FirstOrDefault();
 
             Assert.True(TestHelper.FilesAreEqual(src, dst));
         }
@@ -47,7 +92,7 @@ namespace TCC.Tests
         public List<DirectoryInfo> Directories { get; set; }
         public string Target { get; set; }
 
-        public CompressOption GetTccCompressOption()
+        public CompressOption GetTccCompressOption(PasswordMode passwordMode, string targetFolder)
         {
             string src;
             if (Files != null)
@@ -62,20 +107,23 @@ namespace TCC.Tests
             {
                 throw new MissingMemberException();
             }
-            Target = TestHelper.NewFolder();
+            Target = targetFolder;
 
-            return new CompressOption
+            var compressOption = new CompressOption
             {
                 Individual = true,
                 SourceDirOrFile = src,
                 DestinationDir = Target,
                 Threads = "all",
-                PasswordMode = PasswordMode.InlinePassword,
+                PasswordMode = passwordMode,
                 Password = "1234"
             };
+
+
+            return compressOption;
         }
 
-        public DecompressOption GetTccDecompressOption()
+        public DecompressOption GetTccDecompressOption(PasswordMode passwordMode, string decompressedFolder)
         {
             string src;
             if (Files != null)
@@ -90,39 +138,56 @@ namespace TCC.Tests
             {
                 throw new MissingMemberException();
             }
-            Target = TestHelper.NewFolder();
+            Target = decompressedFolder;
 
-            return new DecompressOption
+            var decompressOption = new DecompressOption
             {
                 SourceDirOrFile = src,
                 DestinationDir = Target,
                 Threads = "all",
-                PasswordMode = PasswordMode.InlinePassword,
-                Password = "1234"
+                PasswordMode = passwordMode
             };
+
+
+            return decompressOption;
         }
 
-        public static TestData CreateFiles(int nbFiles, int sizeMb)
+        public static TestData CreateFiles(int nbFiles, int sizeMb, string folder)
         {
-            var tempFolder = TestHelper.NewFolder();
             foreach (var i in Enumerable.Range(0, nbFiles))
             {
-                var filePath = TestHelper.NewFileName(tempFolder);
+                var filePath = TestHelper.NewFileName(folder);
                 TestHelper.FillRandomFile(filePath, sizeMb);
                 Console.Out.WriteLine("File created : " + filePath);
             }
             Thread.Sleep(150); // for filesystem latency
             return new TestData
             {
-                Directories = new List<DirectoryInfo> { new DirectoryInfo(tempFolder) }
+                Directories = new List<DirectoryInfo> { new DirectoryInfo(folder) }
             };
         }
 
 
     }
 
+    public enum KeySize
+    {
+        Key4096 = 4096,
+        Key8192 = 8192
+    }
+
     public class TestHelper
     {
+        public static string CreateKeyPairCommand(string keyPairFile, KeySize keySize)
+            => $"openssl genpkey -algorithm RSA -out {keyPairFile} -pkeyopt rsa_keygen_bits:{(int)keySize}";
+
+        public static string CreatePublicKeyCommand(string keyPairFile, string publicKeyFile)
+            => $"openssl rsa -pubout -outform PEM -in {keyPairFile} -out {publicKeyFile}";
+
+        public static string CreatePrivateKeyCommand(string keyPairFile, string privateKeyFile)
+            => $"openssl rsa -outform PEM -in {keyPairFile} -out {privateKeyFile}";
+
+
         const int BYTES_TO_READ = sizeof(Int64);
 
         public static bool FilesAreEqual(FileInfo first, FileInfo second)

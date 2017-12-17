@@ -5,7 +5,31 @@ namespace TCC
 {
     public static class CommandLineHelper
     {
-        public static TccOption ParseCommandLine(this string[] args, out Mode mode)
+        public static TccOption ProcessCommandLine(this string[] args, out Mode mode)
+        {
+            var option = args.ParseCommandLine(out Mode compressMode);
+            mode = compressMode;
+            if (option != null && mode != Mode.Unknown)
+            {
+                return option;
+            }
+            switch (mode)
+            {
+                case Mode.Unknown:
+                    PrintHelp();
+                    break;
+                case Mode.Compress:
+                    PrintCompressHelp();
+                    break;
+                case Mode.Decompress:
+                    PrintDecompressHelp();
+                    break;
+            }
+            Environment.Exit(1);
+            return option;
+        }
+
+        private static TccOption ParseCommandLine(this string[] args, out Mode mode)
         {
             if (args.Length == 0)
             {
