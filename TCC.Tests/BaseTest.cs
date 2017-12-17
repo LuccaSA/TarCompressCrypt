@@ -14,7 +14,7 @@ namespace TCC.Tests
         [Theory]
         [InlineData(PasswordMode.None)]
         [InlineData(PasswordMode.InlinePassword)]
-        //[InlineData(PasswordMode.PasswordFile)]
+        [InlineData(PasswordMode.PasswordFile)]
         [InlineData(PasswordMode.PublicKey)]
         public void CompressDecompress(PasswordMode mode)
         {
@@ -34,13 +34,15 @@ namespace TCC.Tests
                     compressOption.Password = "1234";
                     break;
                 case PasswordMode.PasswordFile:
+                    string passfile = Path.Combine(keysFolder, "password.txt");
+                    TestHelper.FillFile(passfile, "123456");
+                    compressOption.PasswordFile = passfile;
                     break;
                 case PasswordMode.PublicKey:
                     {
                         var p1 = TestHelper.CreateKeyPairCommand("keypair.pem", KeySize.Key4096).Run(keysFolder, CancellationToken.None);
                         var p2 = TestHelper.CreatePublicKeyCommand("keypair.pem", "public.pem").Run(keysFolder, CancellationToken.None);
                         var p3 = TestHelper.CreatePrivateKeyCommand("keypair.pem", "private.pem").Run(keysFolder, CancellationToken.None);
-
                         compressOption.PublicPrivateKeyFile = Path.Combine(keysFolder, "public.pem");
                     }
                     break;
@@ -64,6 +66,8 @@ namespace TCC.Tests
                     decompOption.Password = "1234";
                     break;
                 case PasswordMode.PasswordFile:
+                    string passfile = Path.Combine(keysFolder, "password.txt");
+                    decompOption.PasswordFile = passfile;
                     break;
                 case PasswordMode.PublicKey:
                     decompOption.PublicPrivateKeyFile = Path.Combine(keysFolder, "private.pem");
@@ -74,7 +78,7 @@ namespace TCC.Tests
 
             var resultDecompress = TarCompressCrypt.Decompress(decompOption);
             Assert.Equal(0, resultDecompress);
-             
+
             Console.WriteLine("TEST : src=" + toCompressFolder);
             Console.WriteLine("TEST : dst=" + decompressedFolder);
 
@@ -251,6 +255,17 @@ namespace TCC.Tests
                 {
                     rng.NextBytes(data);
                     stream.Write(data, 0, data.Length);
+                }
+            }
+        }
+
+        public static void FillFile(string fileName, string content)
+        {
+            using (FileStream stream = File.OpenWrite(fileName))
+            {
+                using (var writer = new StreamWriter(stream))
+                {
+                    writer.WriteLine(content);
                 }
             }
         }

@@ -211,7 +211,7 @@ namespace TCC
         }
 
         private static CommandResult Decrypt(Block block, TccOption option, CancellationToken cancellationToken)
-        {
+        { 
             var ext = new ExternalDependecies();
 
             PrepareDecryptionKey(block, option, out var key, out var keyCrypted, cancellationToken);
