@@ -12,7 +12,7 @@ namespace TCC.Tests
     public class BaseTest
     {
         [Theory]
-        //[InlineData(PasswordMode.None)]
+        [InlineData(PasswordMode.None)]
         [InlineData(PasswordMode.InlinePassword)]
         //[InlineData(PasswordMode.PasswordFile)]
         [InlineData(PasswordMode.PublicKey)]

@@ -313,8 +313,8 @@ namespace TCC
             switch (option.PasswordMode)
             {
                 case PasswordMode.None:
-                    //lz4 archive.tar.lz4 - dc--no - sparse - | tar xf -
-                    cmd = $"{Pipe}{ext.Lz4().Escape()} -dc --no-sparse - ";
+                    //lz4 archive.tar.lz4 -dc --no-sparse | tar xf -
+                    cmd = $"{ext.Lz4().Escape()} {block.Source.Escape()} -dc --no-sparse ";
                     cmd += $"{Pipe}{ext.Tar().Escape()} xf - ";
                     break;
                 case PasswordMode.InlinePassword:
