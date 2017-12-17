@@ -26,15 +26,15 @@ namespace TCC
             return ProcessingLoop(blocks, decompressOption, Decrypt, obervableLog, cancellationToken);
         }
 
-        private static int ProcessingLoop(IReadOnlyCollection<Block> blocks,
+        private static int ProcessingLoop(IList<Block> blocks,
             TccOption option,
             Func<Block, TccOption, CancellationToken, CommandResult> processor,
             BlockingCollection<CommandResult> obervableLog = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            ParallelOptions po = ParallelOptions(option.Threads);
+            ParallelOptions po = ParallelOptions(option.Threads); 
 
-            var pr = Parallel.ForEach(blocks, po, (b, state) =>
+            var pr = Parallel.ForEach(Partitioner.Create(blocks, true), po, (b, state) =>
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
