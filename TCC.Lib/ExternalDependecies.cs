@@ -6,6 +6,7 @@ namespace TCC
 {
     public class ExternalDependecies
     {
+		
         private static object _lock = new object();
         private const string ExeTar = @"C:\Program Files\Git\usr\bin\tar.exe";
         private const string ExeLz4 = @"lz4.exe";
@@ -13,6 +14,8 @@ namespace TCC
 
         public string Tar()
         {
+			//https://github.com/git-for-windows/git-sdk-64/tree/master/mingw64/bin
+			
             if (!File.Exists(ExeTar))
             {
                 throw new FileNotFoundException("tar not found in " + ExeTar);

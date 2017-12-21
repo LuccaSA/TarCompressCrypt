@@ -14,14 +14,14 @@ namespace TCC
 
         public static int Compress(CompressOption compressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            List<Block> blocks = PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.Individual, compressOption.PasswordMode != PasswordMode.None);
+            List<Block> blocks = BlockHelper.PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.BlockMode, compressOption.PasswordMode != PasswordMode.None);
 
             return ProcessingLoop(blocks, compressOption, Encrypt, obervableLog, cancellationToken);
         }
 
         public static int Decompress(DecompressOption decompressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            List<Block> blocks = PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, decompressOption.PasswordMode != PasswordMode.None);
+            List<Block> blocks = BlockHelper.PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, decompressOption.PasswordMode != PasswordMode.None);
 
             return ProcessingLoop(blocks, decompressOption, Decrypt, obervableLog, cancellationToken);
         }
@@ -92,108 +92,6 @@ namespace TCC
                 MaxDegreeOfParallelism = nbThread
             };
             return po;
-        }
-
-        private static List<Block> PreprareDecompressBlocks(string sourceDir, string destinationDir, bool crypt)
-        {
-            var blocks = new List<Block>();
-            string extension = crypt ? ".tar.lz4.aes" : ".tar.lz4";
-            if (Directory.Exists(sourceDir))
-            {
-                var srcDir = new DirectoryInfo(sourceDir);
-                var found = srcDir.EnumerateFiles("*" + extension).ToList();
-                var dstDir = new DirectoryInfo(destinationDir);
-                if (found.Count != 0)
-                {
-                    if (dstDir.Exists == false)
-                    {
-                        dstDir.Create();
-                    }
-                }
-
-                foreach (FileInfo fi in found)
-                {
-                    blocks.Add(new Block
-                    {
-                        OperationFolder = dstDir.FullName,
-                        Source = fi.FullName,
-                        DestinationFolder = dstDir.FullName,
-                        ArchiveName = fi.FullName
-                    });
-                }
-            }
-            else if (File.Exists(sourceDir) && Path.HasExtension(extension))
-            {
-                var dstDir = new DirectoryInfo(destinationDir);
-                if (dstDir.Exists == false)
-                {
-                    dstDir.Create();
-                }
-                blocks.Add(new Block
-                {
-                    OperationFolder = dstDir.FullName,
-                    Source = sourceDir,
-                    DestinationFolder = dstDir.FullName,
-                    ArchiveName = new FileInfo(sourceDir).FullName
-                });
-            }
-            return blocks;
-        }
-
-        private static List<Block> PreprareCompressBlocks(string sourceDir, string destinationDir, bool individual, bool crypt)
-        {
-            var blocks = new List<Block>();
-
-            string extension = crypt ? ".tar.lz4.aes" : ".tar.lz4";
-
-            if (individual)
-            {
-                var srcDir = new DirectoryInfo(sourceDir);
-                var dstDir = new DirectoryInfo(destinationDir);
-
-                List<FileInfo> files = srcDir.EnumerateFiles().ToList();
-                List<DirectoryInfo> directories = srcDir.EnumerateDirectories().ToList();
-
-                if (files.Count != 0 || directories.Count != 0)
-                {
-                    if (!dstDir.Exists)
-                    {
-                        dstDir.Create();
-                    }
-                }
-
-                // for each directory in sourceDir we create an archive
-                foreach (DirectoryInfo di in directories)
-                {
-                    blocks.Add(new Block
-                    {
-                        OperationFolder = srcDir.FullName,
-                        Source = di.Name,
-                        DestinationArchive = Path.Combine(dstDir.FullName, di.Name + extension),
-                        DestinationFolder = dstDir.FullName,
-                        ArchiveName = di.Name
-                    });
-                }
-
-                // for each file in sourceDir we create an archive
-                foreach (FileInfo fi in files)
-                {
-                    blocks.Add(new Block
-                    {
-                        OperationFolder = srcDir.FullName,
-                        Source = fi.Name,
-                        DestinationArchive = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension),
-                        DestinationFolder = dstDir.FullName,
-                        ArchiveName = Path.GetFileNameWithoutExtension(fi.Name)
-                    });
-                }
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-
-            return blocks;
         }
 
         private static CommandResult Encrypt(Block block, TccOption option, CancellationToken cancellationToken)
@@ -378,6 +276,8 @@ namespace TCC
             // 512 byte == 4096 bit
             return $"openssl rand -base64 256 > {filename}";
         }
+		
+		//"C:\Program Files\Git\usr\bin\find.exe" C:\Sites\lucca\ -mmin -5760 -type f
 
     }
 

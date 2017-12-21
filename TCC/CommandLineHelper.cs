@@ -44,7 +44,6 @@ namespace TCC
             {
                 mode = Mode.Compress;
                 var compressOption = new CompressOption();
-                compressOption.Individual = args.Any(i => string.Equals("-i", i, StringComparison.InvariantCultureIgnoreCase));
                 option = compressOption;
             }
             else if (string.Equals("decompress", args[0], StringComparison.InvariantCultureIgnoreCase) ||
@@ -70,7 +69,22 @@ namespace TCC
                 switch (args[i])
                 {
                     case "-i":
-                        break;
+                        {
+                            if (option is CompressOption co)
+                            {
+                                if (!args.TryGetNext(i, out string data))
+                                    return null;
+                                if (!Enum.TryParse(data, out BlockMode blockMode))
+                                    return null;
+                                co.BlockMode = blockMode;
+                                i++;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("BlockMode invalid in decompress mode");
+                            }
+                            break;
+                        }
                     case "-o":
                         {
                             if (!args.TryGetNext(i, out string data))

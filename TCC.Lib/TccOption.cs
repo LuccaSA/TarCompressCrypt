@@ -2,7 +2,7 @@
 {
     public class CompressOption : TccOption
     {
-        public bool Individual { get; set; }
+        public BlockMode BlockMode { get; set; }
     }
 
     public class DecompressOption : TccOption
