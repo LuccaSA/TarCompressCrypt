@@ -5,11 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib;
 using Xunit;
 
 namespace TCC.Tests
 {
-    public class BaseTest
+    public class CompressTest
     {
         [Theory]
         [InlineData(PasswordMode.None)]

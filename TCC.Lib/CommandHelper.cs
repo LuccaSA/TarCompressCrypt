@@ -5,7 +5,7 @@ using System.Management;
 using System.Text;
 using System.Threading;
 
-namespace TCC
+namespace TCC.Lib
 {
     public static class CommandHelper
     {

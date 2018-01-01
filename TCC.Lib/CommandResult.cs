@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using TCC.Lib.Blocks;
 
-namespace TCC
+namespace TCC.Lib
 {
     public class CommandResult
     {

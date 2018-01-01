@@ -2,7 +2,7 @@
 using System.IO.Compression;
 using System.Net;
 
-namespace TCC
+namespace TCC.Lib
 {
     public class ExternalDependecies
     {

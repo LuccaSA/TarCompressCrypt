@@ -52,15 +52,22 @@ namespace TCC.Tests
             return filepath;
         }
 
-        public static string NewFolderName()
+        public static string NewFile(string folder, int sizeInMb = 1)
         {
-            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-            return folderPath;
+            var filepath = NewFileName(folder);
+            FillRandomFile(filepath, sizeInMb);
+            return filepath;
         }
 
-        public static string NewFolder()
+        public static string NewFolderName(string parentFolder = null)
         {
-            string name = NewFolderName();
+            var folderPath = Path.Combine(parentFolder ?? Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            return folderPath;
+        }
+         
+        public static string NewFolder(string parentFolder = null)
+        {
+            string name = NewFolderName(parentFolder);
             Directory.CreateDirectory(name);
             return name;
         }

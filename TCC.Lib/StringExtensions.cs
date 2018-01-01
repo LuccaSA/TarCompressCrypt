@@ -1,4 +1,4 @@
-﻿namespace TCC
+﻿namespace TCC.Lib
 {
 	public static class StringExtensions
 	{

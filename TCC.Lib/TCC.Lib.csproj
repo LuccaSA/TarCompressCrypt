@@ -51,7 +51,9 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Block.cs" />
+    <Compile Include="Blocks\Block.cs" />
+    <Compile Include="Blocks\BlockHelper.cs" />
+    <Compile Include="Blocks\BlockMode.cs" />
     <Compile Include="CommandHelper.cs" />
     <Compile Include="CommandResult.cs" />
     <Compile Include="ExternalDependecies.cs" />

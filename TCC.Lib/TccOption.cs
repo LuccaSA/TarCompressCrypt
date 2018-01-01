@@ -1,4 +1,6 @@
-﻿namespace TCC
+﻿using TCC.Lib.Blocks;
+
+namespace TCC.Lib
 {
     public class CompressOption : TccOption
     {

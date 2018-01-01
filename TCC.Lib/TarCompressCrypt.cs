@@ -5,8 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib.Blocks;
 
-namespace TCC
+namespace TCC.Lib
 {
     public static class TarCompressCrypt
     {
@@ -14,14 +15,14 @@ namespace TCC
 
         public static int Compress(CompressOption compressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            List<Block> blocks = BlockHelper.PreprareCompressBlocks(compressOption.SourceDirOrFile, compressOption.DestinationDir, compressOption.BlockMode, compressOption.PasswordMode != PasswordMode.None);
+            List<Block> blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
             return ProcessingLoop(blocks, compressOption, Encrypt, obervableLog, cancellationToken);
         }
 
         public static int Decompress(DecompressOption decompressOption, BlockingCollection<CommandResult> obervableLog = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            List<Block> blocks = BlockHelper.PreprareDecompressBlocks(decompressOption.SourceDirOrFile, decompressOption.DestinationDir, decompressOption.PasswordMode != PasswordMode.None);
+            List<Block> blocks = BlockHelper.PreprareDecompressBlocks(decompressOption).ToList();
 
             return ProcessingLoop(blocks, decompressOption, Decrypt, obervableLog, cancellationToken);
         }
