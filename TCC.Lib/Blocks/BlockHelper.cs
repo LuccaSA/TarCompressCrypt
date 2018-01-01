@@ -49,10 +49,8 @@ namespace TCC.Lib.Blocks
 
             if (Directory.Exists(decompressOption.SourceDirOrFile))
             {
-                var srcDir = new DirectoryInfo(decompressOption.SourceDirOrFile);
-                var found = srcDir.EnumerateFiles("*" + extension).ToList();
-
-                foreach (FileInfo fi in found)
+                var srcDir = new DirectoryInfo(decompressOption.SourceDirOrFile); 
+                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + extension))
                 {
                     yielded = true;
                     yield return new Block
