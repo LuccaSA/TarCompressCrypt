@@ -7,5 +7,6 @@
         public string DestinationArchive { get; set; }
         public string DestinationFolder { get; set; }
         public string ArchiveName { get; set; }
+        public string BlockPasswordFile { get; set; }
     }
 }

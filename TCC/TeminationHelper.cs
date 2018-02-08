@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -8,8 +9,10 @@ namespace TCC
     {
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
+
         private delegate bool ConsoleEventDelegate(int eventType);
 
+        [ExcludeFromCodeCoverage]
         public static void HookTermination(this CancellationTokenSource cts)
         {
             bool ConsoleEventCallback(int eventType)
@@ -26,6 +29,5 @@ namespace TCC
                 cts.Cancel();
             };
         }
-
     }
 }

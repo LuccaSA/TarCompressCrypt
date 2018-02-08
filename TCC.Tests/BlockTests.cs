@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TCC.Lib;
 using TCC.Lib.Blocks;
+using TCC.Lib.Helpers;
+using TCC.Lib.Options;
 using Xunit;
 
 namespace TCC.Tests
 {
-    public class CompressBlockTests : IDisposable
+    public sealed class CompressBlockTests : IDisposable
     {
         private readonly string _root;
         private readonly string _target;
@@ -105,12 +103,12 @@ namespace TCC.Tests
 
         public void Dispose()
         {
-            File.Delete(_fi11);
-            File.Delete(_fi12);
-            File.Delete(_fi13);
-            File.Delete(_fi1);
-            File.Delete(_fi2);
-            File.Delete(_fi3);
+            _fi11.TryDeleteFileWithRetry();
+            _fi12.TryDeleteFileWithRetry();
+            _fi13.TryDeleteFileWithRetry();
+            _fi1.TryDeleteFileWithRetry();
+            _fi2.TryDeleteFileWithRetry();
+            _fi3.TryDeleteFileWithRetry();
 
             Directory.Delete(_fo1);
             Directory.Delete(_fo2);

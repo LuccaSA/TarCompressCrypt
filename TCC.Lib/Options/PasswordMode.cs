@@ -1,4 +1,4 @@
-﻿namespace TCC.Lib
+﻿namespace TCC.Lib.Options
 {
 	public enum PasswordMode
 	{

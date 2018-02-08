@@ -1,78 +1,74 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using System.Threading.Tasks;
 using TCC.Lib;
+using TCC.Lib.Blocks;
+using TCC.Lib.Command;
+using TCC.Lib.Dependencies;
+using TCC.Lib.Options;
+using TCC.Parser;
 
 namespace TCC
 {
-    class Program
+    static class Program
     {
-
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var cts = new CancellationTokenSource();
 
-            int counter = 0;
-
             cts.HookTermination();
 
-            var option = args.ProcessCommandLine(out Mode mode);
+            var parsed = args.ParseCommandLine();
 
-            if (option == null)
+            if (parsed.ReturnCode == 1)
             {
-                switch (mode)
-                {
-                    case Mode.Unknown:
-                        CommandLineHelper.PrintHelp();
-                        break;
-                    case Mode.Compress:
-                        CommandLineHelper.PrintCompressHelp();
-                        break;
-                    case Mode.Decompress:
-                        CommandLineHelper.PrintDecompressHelp();
-                        break;
-                }
                 Environment.Exit(1);
             }
 
-            var blockingCollection = new BlockingCollection<CommandResult>();
-            ThreadPool.QueueUserWorkItem(_ =>
-            {
-                foreach (var r in blockingCollection.GetConsumingEnumerable())
-                {
-                    Interlocked.Increment(ref counter);
-                    Console.WriteLine(counter + "/" + r.BatchTotal + " : " + r.Block.ArchiveName);
-                    if (r.HasError)
-                    {
-                        Console.Error.WriteLine("Error : " + r.Errors);
-                    }
+            var blockingCollection = new BlockingCollection<(CommandResult Cmd, Block Block, int Total)>();
+            int counter = 0;
+            ThreadPool.QueueUserWorkItem(_ => OnProgress(ref counter, blockingCollection));
 
-                    if (!String.IsNullOrEmpty(r.Output))
-                    {
-                        Console.Out.WriteLine("Info : " + r.Errors);
-                    }
-                }
-            });
+            var e = new ExternalDependecies();
+            await e.EnsureAllDependenciesPresent();
 
-            var resetEvent = new ManualResetEvent(false);
+            OperationSummary op = await RunTcc(cts, parsed.Option, parsed.Mode, blockingCollection);
 
-            int returnCode = 1;
-            ThreadPool.QueueUserWorkItem(_ =>
-            {
-                if (mode == Mode.Compress)
-                {
-                    returnCode = TarCompressCrypt.Compress(option as CompressOption, blockingCollection, cts.Token);
-                }
-                else if (mode == Mode.Decompress)
-                {
-                    returnCode = TarCompressCrypt.Decompress(option as DecompressOption, blockingCollection, cts.Token);
-                }
-                resetEvent.Set();
-            });
-
-            resetEvent.WaitOne();
-            Environment.Exit(returnCode);
+            Environment.Exit(op.IsSuccess ? 0 : 1);
         }
 
+        [ExcludeFromCodeCoverage]
+        private static void OnProgress(ref int counter, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> blockingCollection)
+        {
+            foreach (var r in blockingCollection.GetConsumingEnumerable())
+            {
+                Interlocked.Increment(ref counter);
+                Console.WriteLine(counter + "/" + r.Total + " : " + r.Block.ArchiveName);
+                if (r.Cmd.HasError)
+                {
+                    Console.Error.WriteLine("Error : " + r.Cmd.Errors);
+                }
+
+                if (!String.IsNullOrEmpty(r.Cmd.Output))
+                {
+                    Console.Out.WriteLine("Info : " + r.Cmd.Errors);
+                }
+            }
+        }
+
+        private static Task<OperationSummary> RunTcc(CancellationTokenSource cts, TccOption option, Mode mode, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> blockingCollection)
+        {
+            switch (mode)
+            {
+                case Mode.Compress:
+                    return TarCompressCrypt.Compress(option as CompressOption, blockingCollection, cts.Token);
+                case Mode.Decompress:
+                    return TarCompressCrypt.Decompress(option as DecompressOption, blockingCollection, cts.Token);
+                default:
+                    throw new NotImplementedException();
+            }
+        }
     }
 }

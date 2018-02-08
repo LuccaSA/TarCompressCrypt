@@ -1,13 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2003
+VisualStudioVersion = 15.0.27130.2026
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCC", "TCC\TCC.csproj", "{BE8A0ECB-C84B-4F80-906D-61002DD4FB7F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TCC", "TCC\TCC.csproj", "{BE8A0ECB-C84B-4F80-906D-61002DD4FB7F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCC.Tests", "TCC.Tests\TCC.Tests.csproj", "{56370F43-8052-4B59-A2F7-87565D64AD90}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TCC.Tests", "TCC.Tests\TCC.Tests.csproj", "{56370F43-8052-4B59-A2F7-87565D64AD90}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCC.Lib", "TCC.Lib\TCC.Lib.csproj", "{44787282-9778-4C11-9C97-90C9F0CD820F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TCC.Lib", "TCC.Lib\TCC.Lib.csproj", "{44787282-9778-4C11-9C97-90C9F0CD820F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{11A7F905-20F5-489A-BDBA-E3BE9D211FC8}"
+	ProjectSection(SolutionItems) = preProject
+		appveyor.yml = appveyor.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
