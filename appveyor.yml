@@ -64,7 +64,6 @@ artifacts:
   - path: '**\*-x64.zip'
 
 deploy:
-  release: TCC-v$(appveyor_build_version)
   provider: GitHub
   auth_token:
     secure: 33HkOpRzd2oV5gqorwoeU80F3KynRJwjCRIMRTESBBiJYYUW4sG+9jCGCsEyo+VS
