@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using TCC.Lib.Options;
 
 namespace TCC.Lib.Blocks
 {
@@ -10,7 +11,7 @@ namespace TCC.Lib.Blocks
         public static List<Block> PreprareCompressBlocks(CompressOption compressOption)
         {
             List<Block> blocks;
-            string extension = compressOption.PasswordMode != PasswordMode.None ? ".tar.lz4.aes" : ".tar.lz4";
+            string extension = compressOption.PasswordOption.PasswordMode != PasswordMode.None ? ".tar.lz4.aes" : ".tar.lz4";
             var srcDir = new DirectoryInfo(compressOption.SourceDirOrFile);
             var dstDir = new DirectoryInfo(compressOption.DestinationDir);
 
@@ -45,7 +46,7 @@ namespace TCC.Lib.Blocks
             bool yielded = false;
             var dstDir = new DirectoryInfo(decompressOption.DestinationDir);
 
-            string extension = decompressOption.PasswordMode != PasswordMode.None ? ".tar.lz4.aes" : ".tar.lz4";
+            string extension = decompressOption.PasswordOption.PasswordMode != PasswordMode.None ? ".tar.lz4.aes" : ".tar.lz4";
 
             if (Directory.Exists(decompressOption.SourceDirOrFile))
             {

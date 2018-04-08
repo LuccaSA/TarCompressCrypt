@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using TCC.Lib;
 using TCC.Lib.Blocks;
+using TCC.Lib.Options;
 
 namespace TCC.Tests
 {
@@ -14,7 +14,7 @@ namespace TCC.Tests
         public List<DirectoryInfo> Directories { get; set; }
         public string Target { get; set; }
 
-        public CompressOption GetTccCompressOption(PasswordMode passwordMode, string targetFolder)
+        public CompressOption GetTccCompressOption(string targetFolder)
         {
             string src;
             if (Files != null)
@@ -36,16 +36,13 @@ namespace TCC.Tests
                 BlockMode = BlockMode.Individual,
                 SourceDirOrFile = src,
                 DestinationDir = Target,
-                Threads = "all",
-                PasswordMode = passwordMode,
-                Password = "1234"
+                Threads = Environment.ProcessorCount
             };
-
 
             return compressOption;
         }
 
-        public DecompressOption GetTccDecompressOption(PasswordMode passwordMode, string decompressedFolder)
+        public DecompressOption GetTccDecompressOption(string decompressedFolder)
         {
             string src;
             if (Files != null)
@@ -66,10 +63,8 @@ namespace TCC.Tests
             {
                 SourceDirOrFile = src,
                 DestinationDir = Target,
-                Threads = "all",
-                PasswordMode = passwordMode
+                Threads = Environment.ProcessorCount
             };
-
 
             return decompressOption;
         }

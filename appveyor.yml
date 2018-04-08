@@ -7,9 +7,9 @@ environment:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
     DOTNET_CLI_TELEMETRY_OPTOUT: 1
   SONAR_TOKEN:
-    secure: hj9MoxlJ6qAtxLJ+T1E6r6+juurOeo6p10XO70I6LFE3fMrNij0fg/Td0IfxMU64
+    secure: CL0ZiE9bx11SspBai6Hef/TZHeVVeqfJ29bkjHgcSGoKF+XtPqQnlHd6JcwscPdL
   GITHUB_ACCESS_TOKEN:
-    secure: qwyB8ousbkAKLk4a7n6ix8Cpr0YU+pvi8YAlU+LcQZJGYqs4rJ+8VTWsBuUolRSa
+    secure: 33HkOpRzd2oV5gqorwoeU80F3KynRJwjCRIMRTESBBiJYYUW4sG+9jCGCsEyo+VS
 
 branches:
   only:
@@ -29,15 +29,14 @@ install:
   - choco install "msbuild-sonarqube-runner" -y
   - choco install opencover.portable
   - choco install codecov
-  - nuget install xunit.runner.console -Version 2.3.1 -outputdirectory ./packages
 
 before_build:
 - nuget restore TCC.sln
 - cmd: >-
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
-    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\MSBuild.SonarQube.Runner.exe begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="TCC.Tests/**/*"
+    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="TCC.Tests/**/*"
     ) ELSE (
-    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\MSBuild.SonarQube.Runner.exe begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TCC" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
+    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
     )
 
 build_script:
@@ -45,10 +44,31 @@ build_script:
 
 after_build:
 - echo Rebuild in debug and Starting test coverage with OpenCover
-- C:\ProgramData\chocolatey\bin\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"packages\xunit.runner.console.2.3.1\tools\net452\xunit.console.exe" -targetargs:"C:\projects\tarcompresscrypt\TCC.Tests\bin\Debug\TCC.Tests.dll" -filter:"+[TCC*]* -[*Tests*]*"  -searchdirs:"TCC.Tests\bin\Debug" -output:coverage-opencover.xml
+- C:\ProgramData\chocolatey\bin\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"C:\Program Files\dotnet\dotnet.exe" -targetargs:"test /p:DebugType=full -c Debug TCC.Tests\TCC.Tests.csproj" -excludebyattribute:*.ExcludeFromCodeCoverage* -filter:"+[TCC*]* -[*Tests*]*" -output:coverage-opencover.xml
 - cmd: >-
-    "C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\MSBuild.SonarQube.Runner.exe" end /d:"sonar.login=%SONAR_TOKEN%"
+    "C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe" end /d:"sonar.login=%SONAR_TOKEN%"
 
 test_script:
 - echo Sending to codecov
 - codecov -f coverage-opencover.xml
+
+after_test:
+- dotnet publish -c Release -r win10-x64 TCC\TCC.csproj
+- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win10-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.0\win10-x64\publish\*" -mx7
+- dotnet publish -c Release -r win-x64 TCC\TCC.csproj
+- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.0\win-x64\publish\*" -mx7
+- dotnet publish -c Release -r linux-x64 TCC\TCC.csproj
+- 7z a TCC-%APPVEYOR_BUILD_VERSION%-linux-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.0\linux-x64\publish\*" -mx7
+
+artifacts:
+  - path: '**\*-x64.zip'
+
+deploy:
+  release: TCC-v$(appveyor_build_version)
+  provider: GitHub
+  auth_token:
+    secure: 33HkOpRzd2oV5gqorwoeU80F3KynRJwjCRIMRTESBBiJYYUW4sG+9jCGCsEyo+VS
+  artifact: /.*-x64\.zip/
+  on:
+    branch: master                 # release from master branch only
+    appveyor_repo_tag: true        # deploy on tag push only

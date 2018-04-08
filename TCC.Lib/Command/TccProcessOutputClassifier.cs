@@ -1,19 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Management;
-using System.Text;
-using System.Threading;
+﻿using System.Collections.Generic;
 
-namespace TCC.Lib
+namespace TCC.Lib.Command
 {
-    public static class CommandHelper
+    public class TccProcessOutputClassifier : IProcessOutputClassifier
     {
+        public static TccProcessOutputClassifier Instance { get; } = new TccProcessOutputClassifier();
+
         /// <summary>
         /// Filter "good" stderror as infos
         /// </summary>
         /// <returns></returns>
-	    public static bool IsInfo(string line)
+        public bool IsInfo(string line)
         {
             if (line.StartsWith("Compressed"))
             {
@@ -22,7 +19,7 @@ namespace TCC.Lib
             return false;
         }
 
-        public static bool IsIgnorable(string line)
+        public bool IsIgnorable(string line)
         {
             if (string.IsNullOrWhiteSpace(line))
             {
@@ -40,7 +37,7 @@ namespace TCC.Lib
             return false;
         }
 
-        private static HashSet<string> _opensslInfos = new HashSet<string>()
+        private static readonly HashSet<string> _opensslInfos = new HashSet<string>()
         {
             "options are",
             "-in <file>     input file",
@@ -96,125 +93,5 @@ namespace TCC.Lib
             "-seed-ecb                  -seed-ofb                  "
         };
 
-        public static CommandResult Run(this string command, string workingDirectory, CancellationToken cancellationToken,
-            int timeoutMinutes = 480)
-        {
-            var timeoutLimit = TimeSpan.FromMinutes(timeoutMinutes);
-
-            var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = " /c \"" + command + "\"",
-                    WorkingDirectory = workingDirectory,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-
-            var output = new StringBuilder();
-            var error = new StringBuilder();
-
-            var result = new CommandResult
-            {
-                Command = command
-            };
-
-            using (AutoResetEvent outputWaitHandle = new AutoResetEvent(false))
-            {
-                using (AutoResetEvent errorWaitHandle = new AutoResetEvent(false))
-                {
-                    process.OutputDataReceived += (sender, e) =>
-                    {
-                        if (e.Data == null)
-                        {
-                            outputWaitHandle.Set();
-                        }
-                        else
-                        {
-                            output.AppendLine(e.Data);
-                        }
-                    };
-
-                    process.ErrorDataReceived += (sender, e) =>
-                    {
-                        if (e.Data == null)
-                        {
-                            errorWaitHandle.Set();
-                        }
-                        else
-                        {
-                            if (IsIgnorable(e.Data))
-                            {
-                                return;
-                            }
-                            if (IsInfo(e.Data))
-                            {
-                                result.Infos.Add(e.Data);
-                            }
-                            else
-                            {
-                                error.AppendLine(e.Data);
-                            }
-                        }
-                    };
-
-                    process.Start();
-
-                    cancellationToken.Register(() =>
-                    {
-                        KillProcessAndChildren(process.Id);
-                    });
-
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
-
-                    int timeout = (int)timeoutLimit.TotalMilliseconds;
-
-                    if (process.WaitForExit(timeout) &&
-                        outputWaitHandle.WaitOne(timeout) &&
-                        errorWaitHandle.WaitOne(timeout))
-                    {
-                        result.ExitCode = process.ExitCode;
-                        result.IsSuccess = true;
-                        result.Output = output.ToString();
-                        result.Errors = error.ToString();
-                        return result;
-                    }
-                    else
-                    {
-                        result.ExitCode = process.ExitCode;
-                        result.IsSuccess = false;
-                        result.Output = output.ToString();
-                        result.Errors = error.ToString();
-                        return result;
-                    }
-                }
-            }
-        }
-
-        private static void KillProcessAndChildren(int pid)
-        {
-            using (var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid))
-            {
-                var moc = searcher.Get();
-                foreach (ManagementObject mo in moc)
-                {
-                    KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
-                }
-                try
-                {
-                    var proc = Process.GetProcessById(pid);
-                    proc.Kill();
-                }
-                catch (Exception e)
-                {
-                    // Process already exited.
-                }
-            }
-        }
     }
 }

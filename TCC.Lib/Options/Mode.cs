@@ -1,10 +1,11 @@
-﻿namespace TCC.Lib
+﻿namespace TCC.Lib.Options
 {
     public enum Mode
     {
         Unknown,
         Compress,
-        Decompress
+        Decompress,
+        Benchmark
     }
 
 }
