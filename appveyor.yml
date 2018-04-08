@@ -34,9 +34,9 @@ before_build:
 - nuget restore TCC.sln
 - cmd: >-
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
-    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="TCC.Tests/**/*"
+    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
     ) ELSE (
-    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
+    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:sonar.coverage.exclusions="**/TCC.Tests/**/*" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
     )
 
 build_script:
