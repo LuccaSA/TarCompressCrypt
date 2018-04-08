@@ -5,7 +5,7 @@
 [![Quality Gate](https://sonarcloud.io/api/badges/gate?key=TCC)](https://sonarcloud.io/dashboard?id=TCC)
 
 
-TarCompressCrypt is a command line tool far really fast compression + encryption / decompression + decryption
+TarCompressCrypt is a command line tool for blazing fast compression + encryption / decompression + decryption
 - package multiple files / folders with tar
 - use lz4 for blazing fast compression operations
 - use openssl for aes256 encryption (native aes-ni instructions support)
@@ -21,15 +21,18 @@ The bottleneck will be your storage :
 Why LZ4 ? : https://quixdb.github.io/squash-benchmark/
 
 ### Current status : 
-- early alpha : DOT NOT USE IN PRODUCTION  
+- alpha : DOT NOT USE IN PRODUCTION  
 
 ### Roadmap :
-- documenatation
-- operation logs
-- differential backup
-- password file / asymetric key support
-- external storage provider support
-- exe packaging + distribution
+- [ ] documenatation
+- [ ] operation logs
+- [ ] differential backup
+- [x] password file / asymetric key support
+- [ ] external storage provider support
+- [x] exe packaging + distribution
+- [ ] brotli support
+- [ ] benchmark mode
 
 ### Plateform support : 
-- Windows only ATM
+- [x] Windows
+- [ ] Linux
