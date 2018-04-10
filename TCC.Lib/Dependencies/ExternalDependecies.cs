@@ -45,12 +45,14 @@ namespace TCC.Lib.Dependencies
 
         public string Lz4() => GetPath(_lz4);
         public string Brotli() => GetPath(_brotli);
+        public string Zstd() => GetPath(_zStd);
 
         public async Task EnsureAllDependenciesPresent()
         {
             var progress = new Progress<int>();
             await EnsureDependency(_lz4, progress);
             await EnsureDependency(_brotli, progress);
+            await EnsureDependency(_zStd, progress);
         }
 
         public string Root => Path.GetDirectoryName(typeof(ExternalDependecies).Assembly.CodeBase.Replace("file:///", ""));
@@ -131,6 +133,15 @@ namespace TCC.Lib.Dependencies
             ZipFilename = "brotli-v1.0.4-win_x86_64.zip",
             ExtractFolder = "brotli",
             ExeName = "brotli.exe"
+        };
+
+        private readonly ExternalDep _zStd = new ExternalDep()
+        {
+            Name = "Zstandard",
+            URL = @"https://github.com/facebook/zstd/releases/download/v1.3.4/zstd-v1.3.4-win64.zip",
+            ZipFilename = "zstd-v1.3.4-win64.zip",
+            ExtractFolder = "zstd",
+            ExeName = "zstd.exe"
         };
 
     }

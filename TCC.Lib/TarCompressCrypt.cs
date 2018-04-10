@@ -188,9 +188,10 @@ namespace TCC.Lib
                             cmd += $" | {ext.Brotli().Escape()} - -o {block.DestinationArchive.Escape()}";
                             break;
                         case CompressionAlgo.Zstd:
+                            cmd += $" | {ext.Zstd().Escape()} - -o {block.DestinationArchive.Escape()}";
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException();
+                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
                     }
                     break;
                 case PasswordMode.InlinePassword:
@@ -207,8 +208,11 @@ namespace TCC.Lib
                         case CompressionAlgo.Brotli:
                             cmd += $" | {ext.Brotli().Escape()} - ";
                             break;
+                        case CompressionAlgo.Zstd:
+                            cmd += $" | {ext.Zstd().Escape()} - ";
+                            break;
                         default:
-                            throw new ArgumentOutOfRangeException();
+                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
                     }
                    
                     cmd += $" | {ext.OpenSsl().Escape()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive.Escape()}";
@@ -235,8 +239,11 @@ namespace TCC.Lib
                         case CompressionAlgo.Brotli:
                             cmd = $"{ext.Brotli().Escape()} {block.Source.Escape()} -d -c ";
                             break;
+                        case CompressionAlgo.Zstd:
+                            cmd = $"{ext.Zstd().Escape()} {block.Source.Escape()} -d -c ";
+                            break;
                         default:
-                            throw new ArgumentOutOfRangeException();
+                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
                     }
                     cmd += $" | {ext.Tar().Escape()} xf - ";
                     break;
@@ -254,8 +261,11 @@ namespace TCC.Lib
                         case CompressionAlgo.Brotli:
                             cmd += $" | {ext.Brotli().Escape()} - -d ";
                             break;
+                        case CompressionAlgo.Zstd:
+                            cmd += $" | {ext.Zstd().Escape()} - -d ";
+                            break;
                         default:
-                            throw new ArgumentOutOfRangeException();
+                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
                     }
                     cmd += $" | {ext.Tar().Escape()} xf - ";
                     break;

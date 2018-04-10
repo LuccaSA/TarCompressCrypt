@@ -23,6 +23,10 @@ namespace TCC.Tests
         [InlineData(PasswordMode.InlinePassword, CompressionAlgo.Brotli)]
         [InlineData(PasswordMode.PasswordFile, CompressionAlgo.Brotli)]
         [InlineData(PasswordMode.PublicKey, CompressionAlgo.Brotli)]
+        [InlineData(PasswordMode.None, CompressionAlgo.Zstd)]
+        [InlineData(PasswordMode.InlinePassword, CompressionAlgo.Zstd)]
+        [InlineData(PasswordMode.PasswordFile, CompressionAlgo.Zstd)]
+        [InlineData(PasswordMode.PublicKey, CompressionAlgo.Zstd)]
         public async Task CompressDecompress(PasswordMode mode, CompressionAlgo algo)
         {
             var e = new ExternalDependecies();
