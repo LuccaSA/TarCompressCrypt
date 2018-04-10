@@ -43,7 +43,7 @@ namespace TCC.Tests
             return compressOption;
         }
 
-        public DecompressOption GetTccDecompressOption(string decompressedFolder, CompressionAlgo algo)
+        public DecompressOption GetTccDecompressOption(string decompressedFolder)
         {
             string src;
             if (Files != null)
@@ -62,7 +62,6 @@ namespace TCC.Tests
 
             var decompressOption = new DecompressOption
             {
-                Algo = algo,
                 SourceDirOrFile = src,
                 DestinationDir = Target,
                 Threads = Environment.ProcessorCount

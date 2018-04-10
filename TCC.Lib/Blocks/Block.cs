@@ -1,4 +1,6 @@
-﻿namespace TCC.Lib.Blocks
+﻿using TCC.Lib.Options;
+
+namespace TCC.Lib.Blocks
 {
     public class Block
     {
@@ -8,5 +10,6 @@
         public string DestinationFolder { get; set; }
         public string ArchiveName { get; set; }
         public string BlockPasswordFile { get; set; }
+        public CompressionAlgo Algo { get; set; }
     }
 }

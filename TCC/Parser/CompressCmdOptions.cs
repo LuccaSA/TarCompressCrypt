@@ -15,5 +15,8 @@ namespace TCC.Parser
 
         [Option('a', "algorithm", HelpText = "Algorithm : lz4 (default), brotli, zstd", Default = CompressionAlgo.Lz4)]
         public CompressionAlgo Algorithm { get; set; }
+
+        [Option('r', "ratio", HelpText = "Compression ratio. Valid values are : lz4 [1,9], brotli [1,11], zstd [1,19] ")]
+        public int Ratio { get; set; }
     }
 }

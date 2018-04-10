@@ -76,7 +76,7 @@ namespace TCC.Tests
 
             var decomp = new TestData { Directories = new List<DirectoryInfo> { new DirectoryInfo(compressedFolder) } };
 
-            var decompOption = decomp.GetTccDecompressOption(decompressedFolder, algo);
+            var decompOption = decomp.GetTccDecompressOption(decompressedFolder);
 
             switch (mode)
             {

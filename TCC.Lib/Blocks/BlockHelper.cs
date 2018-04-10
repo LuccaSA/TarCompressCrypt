@@ -11,7 +11,7 @@ namespace TCC.Lib.Blocks
         public static List<Block> PreprareCompressBlocks(CompressOption compressOption)
         {
             List<Block> blocks;
-            string extension = compressOption.PasswordOption.PasswordMode != PasswordMode.None ? ".tar.lz4.aes" : ".tar.lz4";
+            string extension = ExtensionFromAlgo(compressOption.Algo, compressOption.PasswordOption.PasswordMode != PasswordMode.None);
             var srcDir = new DirectoryInfo(compressOption.SourceDirOrFile);
             var dstDir = new DirectoryInfo(compressOption.DestinationDir);
 
@@ -46,38 +46,90 @@ namespace TCC.Lib.Blocks
             bool yielded = false;
             var dstDir = new DirectoryInfo(decompressOption.DestinationDir);
 
-            string extension = decompressOption.PasswordOption.PasswordMode != PasswordMode.None ? ".tar.lz4.aes" : ".tar.lz4";
+            bool crypted = decompressOption.PasswordOption.PasswordMode != PasswordMode.None;
 
             if (Directory.Exists(decompressOption.SourceDirOrFile))
             {
-                var srcDir = new DirectoryInfo(decompressOption.SourceDirOrFile); 
-                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + extension))
+                var srcDir = new DirectoryInfo(decompressOption.SourceDirOrFile);
+
+                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + ExtensionFromAlgo(CompressionAlgo.Lz4, crypted)))
                 {
                     yielded = true;
-                    yield return new Block
-                    {
-                        OperationFolder = dstDir.FullName,
-                        Source = fi.FullName,
-                        DestinationFolder = dstDir.FullName,
-                        ArchiveName = fi.FullName
-                    };
+                    yield return GenerateDecompressBlock(fi, dstDir, CompressionAlgo.Lz4);
+                }
+                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + ExtensionFromAlgo(CompressionAlgo.Brotli, crypted)))
+                {
+                    yielded = true;
+                    yield return GenerateDecompressBlock(fi, dstDir, CompressionAlgo.Brotli);
+                }
+                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + ExtensionFromAlgo(CompressionAlgo.Zstd, crypted)))
+                {
+                    yielded = true;
+                    yield return GenerateDecompressBlock(fi, dstDir, CompressionAlgo.Zstd);
                 }
             }
-            else if (File.Exists(decompressOption.SourceDirOrFile) && Path.HasExtension(extension))
+            else if (File.Exists(decompressOption.SourceDirOrFile))
             {
+                var file = new FileInfo(decompressOption.SourceDirOrFile);
                 yielded = true;
-                yield return new Block
-                {
-                    OperationFolder = dstDir.FullName,
-                    Source = decompressOption.SourceDirOrFile,
-                    DestinationFolder = dstDir.FullName,
-                    ArchiveName = new FileInfo(decompressOption.SourceDirOrFile).FullName
-                };
+                yield return GenerateDecompressBlock(file, dstDir, AlgoFromExtension(file.Extension));
             }
 
             if (yielded && !dstDir.Exists)
                 dstDir.Create();
         }
+
+        private static Block GenerateDecompressBlock(FileInfo sourceFile, DirectoryInfo targetDirectory, CompressionAlgo algo)
+        {
+            return new Block
+            {
+                OperationFolder = targetDirectory.FullName,
+                Source = sourceFile.FullName,
+                DestinationFolder = targetDirectory.FullName,
+                ArchiveName = sourceFile.FullName,
+                Algo = algo
+            };
+        }
+
+        private static string ExtensionFromAlgo(CompressionAlgo algo, bool crypted)
+        {
+            switch (algo)
+            {
+                case CompressionAlgo.Lz4 when crypted:
+                    return ".tarlz4aes";
+                case CompressionAlgo.Lz4:
+                    return ".tarlz4";
+                case CompressionAlgo.Brotli when crypted:
+                    return ".tarbraes";
+                case CompressionAlgo.Brotli:
+                    return ".tarbr";
+                case CompressionAlgo.Zstd when crypted:
+                    return ".tarzstdaes";
+                case CompressionAlgo.Zstd:
+                    return ".tarzstd";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(algo), algo, null);
+            }
+        }
+
+        private static CompressionAlgo AlgoFromExtension(string extension)
+        {
+            switch (extension)
+            {
+                case ".tarlz4":
+                case ".tarlz4aes":
+                    return CompressionAlgo.Lz4;
+                case ".tarbr":
+                case ".tarbr.aes":
+                    return CompressionAlgo.Brotli;
+                case ".tarzstd":
+                case ".tarzstd.aes":
+                    return CompressionAlgo.Zstd;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(extension), extension, null);
+            }
+        }
+
 
         private static IEnumerable<Block> PrepareCompressBlockIndividual(string extension, DirectoryInfo srcDir, DirectoryInfo dstDir)
         {
