@@ -25,7 +25,7 @@ namespace TCC.Parser
                         mode = Mode.Compress;
                         option = new CompressOption
                         {
-                            Algo = CompressionAlgo.Lz4,
+                            Algo = opts.Algorithm,
                             DestinationDir = opts.Output,
                             FailFast = opts.FailFast,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),

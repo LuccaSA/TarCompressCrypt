@@ -191,7 +191,7 @@ namespace TCC.Lib
                             cmd += $" | {ext.Zstd().Escape()} - -o {block.DestinationArchive.Escape()}";
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
+                            throw new ArgumentOutOfRangeException(nameof(option.Algo), "Unknown PasswordMode");
                     }
                     break;
                 case PasswordMode.InlinePassword:
@@ -212,9 +212,9 @@ namespace TCC.Lib
                             cmd += $" | {ext.Zstd().Escape()} - ";
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
+                            throw new ArgumentOutOfRangeException(nameof(option.Algo), "Unknown PasswordMode");
                     }
-                   
+
                     cmd += $" | {ext.OpenSsl().Escape()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive.Escape()}";
                     break;
                 default:
@@ -243,7 +243,7 @@ namespace TCC.Lib
                             cmd = $"{ext.Zstd().Escape()} {block.Source.Escape()} -d -c ";
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
+                            throw new ArgumentOutOfRangeException(nameof(option.Algo), "Unknown PasswordMode");
                     }
                     cmd += $" | {ext.Tar().Escape()} xf - ";
                     break;
@@ -265,7 +265,7 @@ namespace TCC.Lib
                             cmd += $" | {ext.Zstd().Escape()} - -d ";
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException("Unknown PasswordMode");
+                            throw new ArgumentOutOfRangeException(nameof(option.Algo), "Unknown PasswordMode");
                     }
                     cmd += $" | {ext.Tar().Escape()} xf - ";
                     break;
