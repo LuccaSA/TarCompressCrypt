@@ -14,7 +14,7 @@ namespace TCC.Tests
         public List<DirectoryInfo> Directories { get; set; }
         public string Target { get; set; }
 
-        public CompressOption GetTccCompressOption(string targetFolder)
+        public CompressOption GetTccCompressOption(string targetFolder, CompressionAlgo algo)
         {
             string src;
             if (Files != null)
@@ -33,6 +33,7 @@ namespace TCC.Tests
 
             var compressOption = new CompressOption
             {
+                Algo = algo,
                 BlockMode = BlockMode.Individual,
                 SourceDirOrFile = src,
                 DestinationDir = Target,
@@ -42,7 +43,7 @@ namespace TCC.Tests
             return compressOption;
         }
 
-        public DecompressOption GetTccDecompressOption(string decompressedFolder)
+        public DecompressOption GetTccDecompressOption(string decompressedFolder, CompressionAlgo algo)
         {
             string src;
             if (Files != null)
@@ -61,6 +62,7 @@ namespace TCC.Tests
 
             var decompressOption = new DecompressOption
             {
+                Algo = algo,
                 SourceDirOrFile = src,
                 DestinationDir = Target,
                 Threads = Environment.ProcessorCount

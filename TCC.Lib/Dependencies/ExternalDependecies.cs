@@ -44,11 +44,13 @@ namespace TCC.Lib.Dependencies
         }
 
         public string Lz4() => GetPath(_lz4);
+        public string Brotli() => GetPath(_brotli);
 
         public async Task EnsureAllDependenciesPresent()
         {
-            var pLz4 = new Progress<int>();
-            await EnsureDependency(_lz4, pLz4);
+            var progress = new Progress<int>();
+            await EnsureDependency(_lz4, progress);
+            await EnsureDependency(_brotli, progress);
         }
 
         public string Root => Path.GetDirectoryName(typeof(ExternalDependecies).Assembly.CodeBase.Replace("file:///", ""));
@@ -121,6 +123,15 @@ namespace TCC.Lib.Dependencies
             ExtractFolder = "lz4",
             ExeName = "lz4.exe"
         };
-         
+
+        private readonly ExternalDep _brotli = new ExternalDep()
+        {
+            Name = "Brotli",
+            URL = @"https://github.com/google/brotli/releases/download/v1.0.4/brotli-v1.0.4-win_x86_64.zip",
+            ZipFilename = "brotli-v1.0.4-win_x86_64.zip",
+            ExtractFolder = "brotli",
+            ExeName = "brotli.exe"
+        };
+
     }
 }

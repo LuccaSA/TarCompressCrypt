@@ -15,11 +15,15 @@ namespace TCC.Tests
     public class CompressTest
     {
         [Theory]
-        [InlineData(PasswordMode.None)]
-        [InlineData(PasswordMode.InlinePassword)]
-        [InlineData(PasswordMode.PasswordFile)]
-        [InlineData(PasswordMode.PublicKey)]
-        public async Task CompressDecompress(PasswordMode mode)
+        [InlineData(PasswordMode.None, CompressionAlgo.Lz4)]
+        [InlineData(PasswordMode.InlinePassword, CompressionAlgo.Lz4)]
+        [InlineData(PasswordMode.PasswordFile, CompressionAlgo.Lz4)]
+        [InlineData(PasswordMode.PublicKey, CompressionAlgo.Lz4)]
+        [InlineData(PasswordMode.None, CompressionAlgo.Brotli)]
+        [InlineData(PasswordMode.InlinePassword, CompressionAlgo.Brotli)]
+        [InlineData(PasswordMode.PasswordFile, CompressionAlgo.Brotli)]
+        [InlineData(PasswordMode.PublicKey, CompressionAlgo.Brotli)]
+        public async Task CompressDecompress(PasswordMode mode, CompressionAlgo algo)
         {
             var e = new ExternalDependecies();
             await e.EnsureAllDependenciesPresent();
@@ -30,7 +34,7 @@ namespace TCC.Tests
             string keysFolder = TestHelper.NewFolder();
 
             var data = TestData.CreateFiles(1, 1, toCompressFolder);
-            var compressOption = data.GetTccCompressOption(compressedFolder);
+            var compressOption = data.GetTccCompressOption(compressedFolder, algo);
 
             switch (mode)
             {
@@ -68,7 +72,7 @@ namespace TCC.Tests
 
             var decomp = new TestData { Directories = new List<DirectoryInfo> { new DirectoryInfo(compressedFolder) } };
 
-            var decompOption = decomp.GetTccDecompressOption(decompressedFolder);
+            var decompOption = decomp.GetTccDecompressOption(decompressedFolder, algo);
 
             switch (mode)
             {

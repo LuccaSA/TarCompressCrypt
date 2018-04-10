@@ -178,7 +178,20 @@ namespace TCC.Lib
                 case PasswordMode.None:
                     // tar -c C:\SourceFolder | lz4.exe -1 - compressed.tar.lz4
                     cmd = $"{ext.Tar().Escape()} -c {block.Source.Escape()}";
-                    cmd += $" | {ext.Lz4().Escape()} -1 -v - {block.DestinationArchive.Escape()}";
+
+                    switch (option.Algo)
+                    {
+                        case CompressionAlgo.Lz4:
+                            cmd += $" | {ext.Lz4().Escape()} -1 -v - {block.DestinationArchive.Escape()}";
+                            break;
+                        case CompressionAlgo.Brotli:
+                            cmd += $" | {ext.Brotli().Escape()} - -o {block.DestinationArchive.Escape()}";
+                            break;
+                        case CompressionAlgo.Zstd:
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
                     break;
                 case PasswordMode.InlinePassword:
                 case PasswordMode.PasswordFile:
@@ -186,7 +199,18 @@ namespace TCC.Lib
                     string passwdCommand = PasswordCommand(option, block);
                     // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
                     cmd = $"{ext.Tar().Escape()} -c {block.Source.Escape()}";
-                    cmd += $" | {ext.Lz4().Escape()} -1 -v - ";
+                    switch (option.Algo)
+                    {
+                        case CompressionAlgo.Lz4:
+                            cmd += $" | {ext.Lz4().Escape()} -1 -v - ";
+                            break;
+                        case CompressionAlgo.Brotli:
+                            cmd += $" | {ext.Brotli().Escape()} - ";
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                   
                     cmd += $" | {ext.OpenSsl().Escape()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive.Escape()}";
                     break;
                 default:
@@ -198,12 +222,22 @@ namespace TCC.Lib
 
         private static string DecompressCommand(Block block, TccOption option, ExternalDependecies ext)
         {
-            string cmd;
+            string cmd = null;
             switch (option.PasswordOption.PasswordMode)
             {
                 case PasswordMode.None:
                     //lz4 archive.tar.lz4 -dc --no-sparse | tar xf -
-                    cmd = $"{ext.Lz4().Escape()} {block.Source.Escape()} -dc --no-sparse ";
+                    switch (option.Algo)
+                    {
+                        case CompressionAlgo.Lz4:
+                            cmd = $"{ext.Lz4().Escape()} {block.Source.Escape()} -dc --no-sparse ";
+                            break;
+                        case CompressionAlgo.Brotli:
+                            cmd = $"{ext.Brotli().Escape()} {block.Source.Escape()} -d -c ";
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
                     cmd += $" | {ext.Tar().Escape()} xf - ";
                     break;
                 case PasswordMode.InlinePassword:
@@ -212,7 +246,17 @@ namespace TCC.Lib
                     string passwdCommand = PasswordCommand(option, block);
                     //openssl aes-256-cbc -d -k "test" -in crypted.tar.lz4.aes | lz4 -dc --no-sparse - | tar xf -
                     cmd = $"{ext.OpenSsl().Escape()} aes-256-cbc -d {passwdCommand} -in {block.Source}";
-                    cmd += $" | {ext.Lz4().Escape()} -dc --no-sparse - ";
+                    switch (option.Algo)
+                    {
+                        case CompressionAlgo.Lz4:
+                            cmd += $" | {ext.Lz4().Escape()} -dc --no-sparse - ";
+                            break;
+                        case CompressionAlgo.Brotli:
+                            cmd += $" | {ext.Brotli().Escape()} - -d ";
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
                     cmd += $" | {ext.Tar().Escape()} xf - ";
                     break;
                 default:
