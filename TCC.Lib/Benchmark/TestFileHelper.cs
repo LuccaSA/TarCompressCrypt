@@ -1,9 +1,9 @@
 ﻿using System;
 using System.IO;
 
-namespace TCC.Tests
+namespace TCC.Lib.Benchmark
 {
-    public class TestHelper
+    public static class TestFileHelper
     {
         public static string CreateKeyPairCommand(string keyPairFile, KeySize keySize)
             => $"openssl genpkey -algorithm RSA -out {keyPairFile} -pkeyopt rsa_keygen_bits:{(int)keySize}";
@@ -13,7 +13,6 @@ namespace TCC.Tests
 
         public static string CreatePrivateKeyCommand(string keyPairFile, string privateKeyFile)
             => $"openssl rsa -outform PEM -in {keyPairFile} -out {privateKeyFile}";
-
 
         const int BYTES_TO_READ = sizeof(Int64);
 
@@ -64,7 +63,7 @@ namespace TCC.Tests
             var folderPath = Path.Combine(parentFolder ?? Path.GetTempPath(), Guid.NewGuid().ToString("N"));
             return folderPath;
         }
-         
+
         public static string NewFolder(string parentFolder = null)
         {
             string name = NewFolderName(parentFolder);

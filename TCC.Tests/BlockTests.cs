@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
@@ -24,20 +25,20 @@ namespace TCC.Tests
 
         public CompressBlockTests()
         {
-            _root = TestHelper.NewFolder();
-            _target = TestHelper.NewFolder();
+            _root = TestFileHelper.NewFolder();
+            _target = TestFileHelper.NewFolder();
 
-            _fo1 = TestHelper.NewFolder(_root);
-            _fo2 = TestHelper.NewFolder(_root);
-            _fo3 = TestHelper.NewFolder(_root);
+            _fo1 = TestFileHelper.NewFolder(_root);
+            _fo2 = TestFileHelper.NewFolder(_root);
+            _fo3 = TestFileHelper.NewFolder(_root);
 
-            _fi11 = TestHelper.NewFile(_fo1);
-            _fi12 = TestHelper.NewFile(_fo1);
-            _fi13 = TestHelper.NewFile(_fo1);
+            _fi11 = TestFileHelper.NewFile(_fo1);
+            _fi12 = TestFileHelper.NewFile(_fo1);
+            _fi13 = TestFileHelper.NewFile(_fo1);
 
-            _fi1 = TestHelper.NewFile(_root);
-            _fi2 = TestHelper.NewFile(_root);
-            _fi3 = TestHelper.NewFile(_root);
+            _fi1 = TestFileHelper.NewFile(_root);
+            _fi2 = TestFileHelper.NewFile(_root);
+            _fi3 = TestFileHelper.NewFile(_root);
         }
 
         [Fact]
@@ -51,9 +52,9 @@ namespace TCC.Tests
             };
 
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
-
+            var fi = new FileInfo(_root);
             Assert.Single(blocks);
-            Assert.Equal(_root, blocks.First().Source);
+            Assert.Equal(fi.Name, blocks.First().Source);
         }
 
         [Fact]

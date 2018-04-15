@@ -120,10 +120,10 @@ namespace TCC.Lib.Blocks
                 case ".tarlz4aes":
                     return CompressionAlgo.Lz4;
                 case ".tarbr":
-                case ".tarbr.aes":
+                case ".tarbraes":
                     return CompressionAlgo.Brotli;
                 case ".tarzstd":
-                case ".tarzstd.aes":
+                case ".tarzstdaes":
                     return CompressionAlgo.Zstd;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(extension), extension, null);
@@ -162,21 +162,21 @@ namespace TCC.Lib.Blocks
 
         private static IEnumerable<Block> PrepareCompressBlockExplicit(string extension, string sourceDir, DirectoryInfo dstDir)
         {
-            string fullPath;
+            string path;
             string operationFolder;
             string name;
 
             if (File.Exists(sourceDir))
             {
                 var fi = new FileInfo(sourceDir);
-                fullPath = fi.FullName;
+                path = fi.Name;
                 operationFolder = fi.Directory.FullName;
                 name = Path.GetFileNameWithoutExtension(fi.Name);
             }
             else if (Directory.Exists(sourceDir))
             {
                 var di = new DirectoryInfo(sourceDir);
-                fullPath = di.FullName;
+                path = di.Name;
                 operationFolder = di.Parent.FullName;
                 name = di.Name;
             }
@@ -188,7 +188,7 @@ namespace TCC.Lib.Blocks
             yield return new Block
             {
                 OperationFolder = operationFolder,
-                Source = fullPath,
+                Source = path,
                 DestinationArchive = Path.Combine(dstDir.FullName, name + extension),
                 DestinationFolder = dstDir.FullName,
                 ArchiveName = name

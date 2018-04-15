@@ -57,7 +57,7 @@ namespace TCC.Lib
 
             obervableLog?.CompleteAdding();
 
-            return new OperationSummary(blocks, commandResults, parallelized.IsSucess);
+            return new OperationSummary(blocks, commandResults);
         }
 
         private static async Task<CommandResult> Encrypt(Block block, TccOption option, CancellationToken cancellationToken)
@@ -173,6 +173,23 @@ namespace TCC.Lib
         private static string CompressCommand(Block block, CompressOption option, ExternalDependecies ext)
         {
             string cmd;
+            string ratio;
+
+            switch (option.Algo)
+            {
+                case CompressionAlgo.Lz4:
+                    ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
+                    break;
+                case CompressionAlgo.Brotli:
+                    ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
+                    break;
+                case CompressionAlgo.Zstd:
+                    ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
+            }
+
             switch (option.PasswordOption.PasswordMode)
             {
                 case PasswordMode.None:
@@ -182,13 +199,13 @@ namespace TCC.Lib
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd += $" | {ext.Lz4().Escape()} -1 -v - {block.DestinationArchive.Escape()}";
+                            cmd += $" | {ext.Lz4().Escape()} {ratio} -v - {block.DestinationArchive.Escape()}";
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd += $" | {ext.Brotli().Escape()} - -o {block.DestinationArchive.Escape()}";
+                            cmd += $" | {ext.Brotli().Escape()} {ratio} - -o {block.DestinationArchive.Escape()}";
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd += $" | {ext.Zstd().Escape()} - -o {block.DestinationArchive.Escape()}";
+                            cmd += $" | {ext.Zstd().Escape()} {ratio} - -o {block.DestinationArchive.Escape()}";
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
@@ -203,13 +220,13 @@ namespace TCC.Lib
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd += $" | {ext.Lz4().Escape()} -1 -v - ";
+                            cmd += $" | {ext.Lz4().Escape()} {ratio} -v - ";
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd += $" | {ext.Brotli().Escape()} - ";
+                            cmd += $" | {ext.Brotli().Escape()} {ratio} - ";
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd += $" | {ext.Zstd().Escape()} - ";
+                            cmd += $" | {ext.Zstd().Escape()} {ratio} - ";
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");

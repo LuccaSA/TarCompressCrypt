@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Options;
 
@@ -74,7 +75,7 @@ namespace TCC.Tests
         {
             foreach (var i in Enumerable.Range(0, nbFiles))
             {
-                var filePath = TestHelper.NewFile(folder, sizeMb);
+                var filePath = TestFileHelper.NewFile(folder, sizeMb);
                 Console.Out.WriteLine("File created : " + filePath);
             }
             Thread.Sleep(150); // for filesystem latency

@@ -1,4 +1,4 @@
-﻿namespace TCC.Tests
+﻿namespace TCC.Lib.Benchmark
 {
     public enum KeySize
     {

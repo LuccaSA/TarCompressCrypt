@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib;
+using TCC.Lib.Benchmark;
 using TCC.Lib.Command;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Options;
@@ -32,43 +33,14 @@ namespace TCC.Tests
             var e = new ExternalDependecies();
             await e.EnsureAllDependenciesPresent();
 
-            string toCompressFolder = TestHelper.NewFolder();
-            string compressedFolder = TestHelper.NewFolder();
-            string decompressedFolder = TestHelper.NewFolder();
-            string keysFolder = TestHelper.NewFolder();
+            string toCompressFolder = TestFileHelper.NewFolder();
+            string compressedFolder = TestFileHelper.NewFolder();
+            string decompressedFolder = TestFileHelper.NewFolder();
+            string keysFolder = TestFileHelper.NewFolder();
 
             var data = TestData.CreateFiles(1, 1, toCompressFolder);
-            var compressOption = data.GetTccCompressOption(compressedFolder, algo);
 
-            switch (mode)
-            {
-                case PasswordMode.None:
-                    break;
-                case PasswordMode.InlinePassword:
-                    compressOption.PasswordOption = new InlinePasswordOption() { Password = "1234" };
-                    break;
-                case PasswordMode.PasswordFile:
-                    string passfile = Path.Combine(keysFolder, "password.txt");
-                    TestHelper.FillFile(passfile, "123456");
-
-                    compressOption.PasswordOption = new PasswordFileOption() { PasswordFile = passfile };
-                    break;
-                case PasswordMode.PublicKey:
-                    {
-                        await TestHelper.CreateKeyPairCommand("keypair.pem", KeySize.Key4096).Run(keysFolder, CancellationToken.None);
-                        await TestHelper.CreatePublicKeyCommand("keypair.pem", "public.pem").Run(keysFolder, CancellationToken.None);
-                        await TestHelper.CreatePrivateKeyCommand("keypair.pem", "private.pem").Run(keysFolder, CancellationToken.None);
-                        compressOption.PasswordOption = new PublicKeyPasswordOption()
-                        {
-                            PublicKeyFile = Path.Combine(keysFolder, "public.pem")
-                        };
-                    }
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
-            }
-
-            var resultCompress = await TarCompressCrypt.Compress(compressOption);
+            OperationSummary resultCompress = await Compress(mode, algo, compressedFolder, keysFolder, data);
 
             Assert.True(resultCompress.IsSuccess);
             Assert.NotEmpty(resultCompress.Blocks);
@@ -76,30 +48,7 @@ namespace TCC.Tests
 
             var decomp = new TestData { Directories = new List<DirectoryInfo> { new DirectoryInfo(compressedFolder) } };
 
-            var decompOption = decomp.GetTccDecompressOption(decompressedFolder);
-
-            switch (mode)
-            {
-                case PasswordMode.None:
-                    break;
-                case PasswordMode.InlinePassword:
-                    decompOption.PasswordOption = new InlinePasswordOption() { Password = "1234" };
-                    break;
-                case PasswordMode.PasswordFile:
-                    string passfile = Path.Combine(keysFolder, "password.txt");
-                    decompOption.PasswordOption = new PasswordFileOption() { PasswordFile = passfile };
-                    break;
-                case PasswordMode.PublicKey:
-                    decompOption.PasswordOption = new PrivateKeyPasswordOption()
-                    {
-                        PrivateKeyFile = Path.Combine(keysFolder, "private.pem")
-                    };
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
-            }
-
-            var resultDecompress = await TarCompressCrypt.Decompress(decompOption);
+            OperationSummary resultDecompress = await Decompress(mode, decompressedFolder, keysFolder, decomp);
             Assert.True(resultDecompress.IsSuccess);
             Assert.NotEmpty(resultDecompress.Blocks);
             Assert.NotEmpty(resultDecompress.CommandResults);
@@ -110,8 +59,30 @@ namespace TCC.Tests
             FileInfo src = new DirectoryInfo(toCompressFolder).EnumerateFiles().FirstOrDefault();
             FileInfo dst = new DirectoryInfo(decompressedFolder).EnumerateFiles().FirstOrDefault();
 
-            Assert.True(TestHelper.FilesAreEqual(src, dst));
+            Assert.True(TestFileHelper.FilesAreEqual(src, dst));
         }
+
+        private static async Task<OperationSummary> Decompress(PasswordMode passwordMode, string decompressedFolder, string keysFolder, TestData decomp)
+        {
+            var decompOption = decomp.GetTccDecompressOption(decompressedFolder);
+
+            decompOption.PasswordOption = BenchmarkOptionHelper.GenerateDecompressPasswordOption(passwordMode, keysFolder);
+
+            var resultDecompress = await TarCompressCrypt.Decompress(decompOption);
+            return resultDecompress;
+        }
+
+        private static async Task<OperationSummary> Compress(PasswordMode passwordMode, CompressionAlgo algo,
+            string compressedFolder, string keysFolder, TestData data)
+        {
+            CompressOption compressOption = data.GetTccCompressOption(compressedFolder, algo);
+
+            compressOption.PasswordOption = await BenchmarkOptionHelper.GenerateCompressPassswordOption(passwordMode, keysFolder);
+
+            var resultCompress = await TarCompressCrypt.Compress(compressOption);
+            return resultCompress;
+        }
+
 
     }
 }

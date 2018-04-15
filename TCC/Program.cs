@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib;
+using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
 using TCC.Lib.Dependencies;
@@ -20,7 +22,7 @@ namespace TCC
 
             cts.HookTermination();
 
-            var parsed = args.ParseCommandLine();
+            TccCommand parsed = args.ParseCommandLine();
 
             if (parsed.ReturnCode == 1)
             {
@@ -34,7 +36,7 @@ namespace TCC
             var e = new ExternalDependecies();
             await e.EnsureAllDependenciesPresent();
 
-            OperationSummary op = await RunTcc(cts, parsed.Option, parsed.Mode, blockingCollection);
+            OperationSummary op = await RunTcc(cts, parsed, blockingCollection);
 
             Environment.Exit(op.IsSuccess ? 0 : 1);
         }
@@ -58,17 +60,20 @@ namespace TCC
             }
         }
 
-        private static Task<OperationSummary> RunTcc(CancellationTokenSource cts, TccOption option, Mode mode, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> blockingCollection)
+        private static Task<OperationSummary> RunTcc(CancellationTokenSource cts, TccCommand command, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> blockingCollection)
         {
-            switch (mode)
+            switch (command.Mode)
             {
                 case Mode.Compress:
-                    return TarCompressCrypt.Compress(option as CompressOption, blockingCollection, cts.Token);
+                    return TarCompressCrypt.Compress(command.Option as CompressOption, blockingCollection, cts.Token);
                 case Mode.Decompress:
-                    return TarCompressCrypt.Decompress(option as DecompressOption, blockingCollection, cts.Token);
+                    return TarCompressCrypt.Decompress(command.Option as DecompressOption, blockingCollection, cts.Token);
+                case Mode.Benchmark:
+                    return BenchmarkHelper.RunBenchmark(command.BenchmarkOption, cts.Token);
                 default:
                     throw new NotImplementedException();
             }
         }
+
     }
 }
