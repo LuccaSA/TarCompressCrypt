@@ -34,9 +34,9 @@ before_build:
 - nuget restore TCC.sln
 - cmd: >-
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
-    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
+    C:\ProgramData\chocolatey\lib\sonarscanner-msbuild-net46\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
     ) ELSE (
-    C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:sonar.coverage.exclusions="**/TCC.Tests/**/*" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
+    C:\ProgramData\chocolatey\lib\sonarscanner-msbuild-net46\tools\SonarScanner.MSBuild.exe begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:sonar.coverage.exclusions="**/TCC.Tests/**/*" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
     )
 
 build_script:
@@ -46,7 +46,7 @@ after_build:
 - echo Rebuild in debug and Starting test coverage with OpenCover
 - C:\ProgramData\chocolatey\bin\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"C:\Program Files\dotnet\dotnet.exe" -targetargs:"test /p:DebugType=full -c Debug TCC.Tests\TCC.Tests.csproj" -excludebyattribute:*.ExcludeFromCodeCoverage* -filter:"+[TCC*]* -[*Tests*]*" -output:coverage-opencover.xml
 - cmd: >-
-    "C:\ProgramData\chocolatey\lib\msbuild-sonarqube-runner\tools\SonarScanner.MSBuild.exe" end /d:"sonar.login=%SONAR_TOKEN%"
+    "C:\ProgramData\chocolatey\lib\sonarscanner-msbuild-net46\tools\SonarScanner.MSBuild.exe" end /d:"sonar.login=%SONAR_TOKEN%"
 
 test_script:
 - echo Sending to codecov
@@ -54,11 +54,11 @@ test_script:
 
 after_test:
 - dotnet publish -c Release -r win10-x64 TCC\TCC.csproj
-- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win10-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.0\win10-x64\publish\*" -mx7
+- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win10-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.1\win10-x64\publish\*" -mx7
 - dotnet publish -c Release -r win-x64 TCC\TCC.csproj
-- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.0\win-x64\publish\*" -mx7
+- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.1\win-x64\publish\*" -mx7
 - dotnet publish -c Release -r linux-x64 TCC\TCC.csproj
-- 7z a TCC-%APPVEYOR_BUILD_VERSION%-linux-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.0\linux-x64\publish\*" -mx7
+- 7z a TCC-%APPVEYOR_BUILD_VERSION%-linux-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.1\linux-x64\publish\*" -mx7
 
 artifacts:
   - path: '**\*-x64.zip'
