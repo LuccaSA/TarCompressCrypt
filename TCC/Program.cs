@@ -1,13 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
-using TCC.Lib.Blocks;
-using TCC.Lib.Command;
 using TCC.Lib.Dependencies;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 using TCC.Parser;
 
@@ -17,62 +15,50 @@ namespace TCC
     {
         static async Task Main(string[] args)
         {
-            var cts = new CancellationTokenSource();
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddTcc();
 
-            cts.HookTermination();
+            IServiceProvider provider = serviceCollection.BuildServiceProvider();
+
+            provider.GetRequiredService<CancellationTokenSource>().HookTermination();
+            await provider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
 
             TccCommand parsed = args.ParseCommandLine();
-
             if (parsed.ReturnCode == 1)
             {
                 Environment.Exit(1);
             }
 
-            var blockingCollection = new BlockingCollection<(CommandResult Cmd, Block Block, int Total)>();
-            int counter = 0;
-            ThreadPool.QueueUserWorkItem(_ => OnProgress(ref counter, blockingCollection));
-
-            var e = new ExternalDependecies();
-            await e.EnsureAllDependenciesPresent();
-
-            OperationSummary op = await RunTcc(cts, parsed, blockingCollection);
+            OperationSummary op = await RunTcc(provider, parsed);
 
             Environment.Exit(op.IsSuccess ? 0 : 1);
         }
 
-        [ExcludeFromCodeCoverage]
-        private static void OnProgress(ref int counter, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> blockingCollection)
-        {
-            foreach (var r in blockingCollection.GetConsumingEnumerable())
-            {
-                Interlocked.Increment(ref counter);
-                Console.WriteLine(counter + "/" + r.Total + " : " + r.Block.ArchiveName);
-                if (r.Cmd.HasError)
-                {
-                    Console.Error.WriteLine("Error : " + r.Cmd.Errors);
-                }
+   
 
-                if (!String.IsNullOrEmpty(r.Cmd.Output))
-                {
-                    Console.Out.WriteLine("Info : " + r.Cmd.Errors);
-                }
-            }
-        }
-
-        private static Task<OperationSummary> RunTcc(CancellationTokenSource cts, TccCommand command, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> blockingCollection)
+        private static Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {
             switch (command.Mode)
             {
                 case Mode.Compress:
-                    return TarCompressCrypt.Compress(command.Option as CompressOption, blockingCollection, cts.Token);
+                    return provider
+                        .GetRequiredService<TarCompressCrypt>()
+                        .Compress(command.Option as CompressOption);
+
                 case Mode.Decompress:
-                    return TarCompressCrypt.Decompress(command.Option as DecompressOption, blockingCollection, cts.Token);
+                    return provider
+                        .GetRequiredService<TarCompressCrypt>()
+                        .Decompress(command.Option as DecompressOption);
+
                 case Mode.Benchmark:
-                    return BenchmarkHelper.RunBenchmark(command.BenchmarkOption, cts.Token);
+                    return provider
+                        .GetRequiredService<BenchmarkHelper>()
+                        .RunBenchmark(command.BenchmarkOption);
                 default:
                     throw new NotImplementedException();
             }
         }
-
     }
+
+   
 }

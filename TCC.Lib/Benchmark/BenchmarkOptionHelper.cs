@@ -47,7 +47,7 @@ namespace TCC.Lib.Benchmark
                     return new PasswordFileOption { PasswordFile = passfile };
                 case PasswordMode.PublicKey:
                     {
-                        var e = new ExternalDependecies();
+                        var e = new ExternalDependencies();
                         await e.EnsureAllDependenciesPresent();
                         var kp = await CreateKeyPairCommand(e.OpenSsl(), "keypair.pem", KeySize.Key4096).Run(keysFolder, CancellationToken.None);
                         var pub = await CreatePublicKeyCommand(e.OpenSsl(), "keypair.pem", "public.pem").Run(keysFolder, CancellationToken.None);

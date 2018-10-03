@@ -13,27 +13,36 @@ using TCC.Lib.Options;
 
 namespace TCC.Lib
 {
-    public static class TarCompressCrypt
+    public class TarCompressCrypt
     {
-        public static Task<OperationSummary> Compress(CompressOption compressOption, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> obervableLog = null, CancellationToken cancellationToken = default)
+        private readonly ExternalDependencies _externalDependencies;
+        private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly BlockListener _blockListener;
+
+        public TarCompressCrypt(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource, BlockListener blockListener)
+        {
+            _externalDependencies = externalDependencies;
+            _cancellationTokenSource = cancellationTokenSource;
+            _blockListener = blockListener;
+        }
+
+        public Task<OperationSummary> Compress(CompressOption compressOption)
         {
             List<Block> blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
-            return ProcessingLoop(blocks, compressOption, Encrypt, obervableLog, cancellationToken);
+            return ProcessingLoop(blocks, compressOption, Encrypt);
         }
 
-        public static Task<OperationSummary> Decompress(DecompressOption decompressOption, BlockingCollection<(CommandResult Cmd, Block Block, int Total)> obervableLog = null, CancellationToken cancellationToken = default)
+        public Task<OperationSummary> Decompress(DecompressOption decompressOption)
         {
             List<Block> blocks = BlockHelper.PreprareDecompressBlocks(decompressOption).ToList();
 
-            return ProcessingLoop(blocks, decompressOption, Decrypt, obervableLog, cancellationToken);
+            return ProcessingLoop(blocks, decompressOption, Decrypt);
         }
 
-        private static async Task<OperationSummary> ProcessingLoop(IList<Block> blocks,
+        private async Task<OperationSummary> ProcessingLoop(IList<Block> blocks,
             TccOption option,
-            Func<Block, TccOption, CancellationToken, Task<CommandResult>> processor,
-            BlockingCollection<(CommandResult Cmd, Block Block, int Total)> obervableLog = null,
-            CancellationToken cancellationToken = default)
+            Func<Block, TccOption, Task<CommandResult>> processor)
         {
             var commandResults = new ConcurrentBag<CommandResult>();
             await blocks.ParallelizeAsync(async (b, token) =>
@@ -41,8 +50,8 @@ namespace TCC.Lib
                 CommandResult result = null;
                 try
                 {
-                    result = await processor(b, option, cancellationToken);
-                    obervableLog?.Add((result, b, blocks.Count));
+                    result = await processor(b, option);
+                    _blockListener?.BlockingCollection?.Add((result, b, blocks.Count));
                 }
                 catch (Exception e)
                 {
@@ -53,35 +62,33 @@ namespace TCC.Lib
                 }
                 commandResults.Add(result);
 
-            }, option.Threads, option.FailFast ? Fail.Fast : Fail.Smart, cancellationToken);
+            }, option.Threads, option.FailFast ? Fail.Fast : Fail.Smart, _cancellationTokenSource.Token);
 
-            obervableLog?.CompleteAdding();
+            _blockListener?.BlockingCollection.CompleteAdding();
 
             return new OperationSummary(blocks, commandResults);
         }
 
-        private static async Task<CommandResult> Encrypt(Block block, TccOption option, CancellationToken cancellationToken)
+        private async Task<CommandResult> Encrypt(Block block, TccOption option)
         {
-            var ext = new ExternalDependecies();
+            var k = await PrepareEncryptionKey(block, option, _cancellationTokenSource.Token);
 
-            var k = await PrepareEncryptionKey(block, option, cancellationToken);
-
-            string cmd = CompressCommand(block, option as CompressOption, ext);
-            var result = await cmd.Run(block.OperationFolder, cancellationToken);
+            string cmd = CompressCommand(block, option as CompressOption, _externalDependencies);
+            var result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
 
             await CleanupKey(block, option, k, result, Mode.Compress);
 
             return result;
         }
 
-        private static async Task<CommandResult> Decrypt(Block block, TccOption option, CancellationToken cancellationToken)
+        private async Task<CommandResult> Decrypt(Block block, TccOption option)
         {
-            var ext = new ExternalDependecies();
+            var ext = new ExternalDependencies();
 
-            var k = await PrepareDecryptionKey(block, option, cancellationToken);
+            var k = await PrepareDecryptionKey(block, option, _cancellationTokenSource.Token);
 
             string cmd = DecompressCommand(block, option, ext);
-            var result = await cmd.Run(block.OperationFolder, cancellationToken);
+            var result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
 
             await CleanupKey(block, option, k, result, Mode.Compress);
 
@@ -130,7 +137,7 @@ namespace TCC.Lib
                 key = block.ArchiveName + ".key";
                 keyCrypted = block.ArchiveName + ".key.encrypted";
 
-                var ext = new ExternalDependecies();
+                var ext = new ExternalDependencies();
                 // generate random passfile
                 var passfile = await GenerateRandomKey(ext.OpenSsl(), key).Run(block.DestinationFolder, cancellationToken);
                 passfile.ThrowOnError();
@@ -162,7 +169,7 @@ namespace TCC.Lib
                     var name = file.Name.Substring(0, file.Name.IndexOf(".tar", StringComparison.InvariantCultureIgnoreCase));
                     keyCrypted = Path.Combine(dir, name + ".key.encrypted");
                     key = Path.Combine(dir, name + ".key");
-                    var ext = new ExternalDependecies();
+                    var ext = new ExternalDependencies();
                     await DecryptRandomKey(ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
                     block.BlockPasswordFile = key;
 
@@ -174,7 +181,7 @@ namespace TCC.Lib
             return new EncryptionKey(key, keyCrypted);
         }
 
-        private static string CompressCommand(Block block, CompressOption option, ExternalDependecies ext)
+        private static string CompressCommand(Block block, CompressOption option, ExternalDependencies ext)
         {
             string cmd;
             string ratio;
@@ -245,7 +252,7 @@ namespace TCC.Lib
         }
 
 
-        private static string DecompressCommand(Block block, TccOption option, ExternalDependecies ext)
+        private static string DecompressCommand(Block block, TccOption option, ExternalDependencies ext)
         {
             string cmd;
             switch (option.PasswordOption.PasswordMode)

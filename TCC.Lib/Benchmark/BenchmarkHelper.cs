@@ -10,9 +10,17 @@ using TCC.Lib.Options;
 
 namespace TCC.Lib.Benchmark
 {
-    public static class BenchmarkHelper
+    public class BenchmarkHelper
     {
-        private static IEnumerable<BenchmarIteration> GenerateBenchmarkIteration(this BenchmarkOption benchmarkOption)
+        private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly TarCompressCrypt _tarCompressCrypt;
+        public BenchmarkHelper(CancellationTokenSource cancellationTokenSource, TarCompressCrypt tarCompressCrypt)
+        {
+            _cancellationTokenSource = cancellationTokenSource;
+            _tarCompressCrypt = tarCompressCrypt;
+        }
+
+        private IEnumerable<BenchmarIteration> GenerateBenchmarkIteration()
         {
             var algos = new[] {
                 CompressionAlgo.Lz4,
@@ -60,13 +68,13 @@ namespace TCC.Lib.Benchmark
             return ratioMax;
         }
 
-        public static async Task<OperationSummary> RunBenchmark(BenchmarkOption benchmarkOption, CancellationToken cts)
+        public async Task<OperationSummary> RunBenchmark(BenchmarkOption benchmarkOption)
         {
             var keysFolder = TestFileHelper.NewFolder();
              
             FileInfo src = new FileInfo(benchmarkOption.Source);
 
-            var iterations = benchmarkOption.GenerateBenchmarkIteration().ToList();
+            var iterations = GenerateBenchmarkIteration().ToList();
 
             foreach (var iter in iterations)
             {
@@ -88,7 +96,7 @@ namespace TCC.Lib.Benchmark
 
                 Stopwatch swComp = Stopwatch.StartNew();
 
-                var resultCompress = await TarCompressCrypt.Compress(compressOption, cancellationToken: cts);
+                var resultCompress = await _tarCompressCrypt.Compress(compressOption);
 
                 swComp.Stop();
                 foreach (var result in resultCompress.CommandResults)
@@ -111,7 +119,7 @@ namespace TCC.Lib.Benchmark
                 };
 
                 Stopwatch swDecomp = Stopwatch.StartNew();
-                var resultDecompress = await TarCompressCrypt.Decompress(decompressOption, cancellationToken: cts);
+                var resultDecompress = await _tarCompressCrypt.Decompress(decompressOption);
                 swDecomp.Stop();
 
                 foreach (var result in resultDecompress.CommandResults)

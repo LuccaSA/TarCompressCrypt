@@ -7,7 +7,7 @@ using TCC.Lib.Helpers;
 
 namespace TCC.Lib.Dependencies
 {
-    public class ExternalDependecies
+    public class ExternalDependencies
     {
         private const string ExeTar = @"Libs\tar.exe";
 
@@ -35,7 +35,7 @@ namespace TCC.Lib.Dependencies
             await EnsureDependency(_openSsl, progress);
         }
 
-        public string Root => Path.GetDirectoryName(typeof(ExternalDependecies).Assembly.CodeBase.Replace("file:///", ""));
+        public string Root => Path.GetDirectoryName(typeof(ExternalDependencies).Assembly.CodeBase.Replace("file:///", ""));
 
         public string GetPath(ExternalDep dependency)
         {

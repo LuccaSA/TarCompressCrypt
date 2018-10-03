@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Dependencies;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 using Xunit;
 
@@ -13,6 +15,19 @@ namespace TCC.Tests
 {
     public class CompressTest
     {
+        public CompressTest()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddTcc();
+
+            var provider = serviceCollection.BuildServiceProvider();
+            _tarCompressCrypt = provider.GetRequiredService<TarCompressCrypt>();
+            _externalDependencies = provider.GetRequiredService<ExternalDependencies>();
+        }
+
+        private readonly TarCompressCrypt _tarCompressCrypt;
+        private readonly ExternalDependencies _externalDependencies;
+
         [Theory]
         [InlineData(PasswordMode.None, CompressionAlgo.Lz4)]
         [InlineData(PasswordMode.InlinePassword, CompressionAlgo.Lz4)]
@@ -28,8 +43,7 @@ namespace TCC.Tests
         [InlineData(PasswordMode.PublicKey, CompressionAlgo.Zstd)]
         public async Task CompressDecompress(PasswordMode mode, CompressionAlgo algo)
         {
-            var e = new ExternalDependecies();
-            await e.EnsureAllDependenciesPresent();
+            await _externalDependencies.EnsureAllDependenciesPresent();
 
             string toCompressFolder = TestFileHelper.NewFolder();
             string compressedFolder = TestFileHelper.NewFolder();
@@ -60,24 +74,24 @@ namespace TCC.Tests
             Assert.True(TestFileHelper.FilesAreEqual(src, dst));
         }
 
-        private static async Task<OperationSummary> Decompress(PasswordMode passwordMode, string decompressedFolder, string keysFolder, TestData decomp)
+        private async Task<OperationSummary> Decompress(PasswordMode passwordMode, string decompressedFolder, string keysFolder, TestData decomp)
         {
             var decompOption = decomp.GetTccDecompressOption(decompressedFolder);
 
             decompOption.PasswordOption = BenchmarkOptionHelper.GenerateDecompressPasswordOption(passwordMode, keysFolder);
 
-            var resultDecompress = await TarCompressCrypt.Decompress(decompOption);
+            var resultDecompress = await _tarCompressCrypt.Decompress(decompOption);
             return resultDecompress;
         }
 
-        private static async Task<OperationSummary> Compress(PasswordMode passwordMode, CompressionAlgo algo,
+        private async Task<OperationSummary> Compress(PasswordMode passwordMode, CompressionAlgo algo,
             string compressedFolder, string keysFolder, TestData data)
         {
             CompressOption compressOption = data.GetTccCompressOption(compressedFolder, algo);
 
             compressOption.PasswordOption = await BenchmarkOptionHelper.GenerateCompressPassswordOption(passwordMode, keysFolder);
 
-            var resultCompress = await TarCompressCrypt.Compress(compressOption);
+            var resultCompress = await _tarCompressCrypt.Compress(compressOption);
             return resultCompress;
         }
 
