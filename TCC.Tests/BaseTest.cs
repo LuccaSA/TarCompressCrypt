@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
-using TCC.Lib.Command;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Options;
 using Xunit;

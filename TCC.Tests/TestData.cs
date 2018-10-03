@@ -73,7 +73,7 @@ namespace TCC.Tests
 
         public static TestData CreateFiles(int nbFiles, int sizeMb, string folder)
         {
-            foreach (var i in Enumerable.Range(0, nbFiles))
+            foreach (var _ in Enumerable.Range(0, nbFiles))
             {
                 var filePath = TestFileHelper.NewFile(folder, sizeMb);
                 Console.Out.WriteLine("File created : " + filePath);

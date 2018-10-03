@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
@@ -9,8 +10,8 @@ namespace TCC.Lib
     {
         public OperationSummary(IEnumerable<Block> blocks, IEnumerable<CommandResult> commandResults)
         {
-            Blocks = blocks;
-            CommandResults = commandResults;
+            Blocks = blocks ?? throw new ArgumentNullException(nameof(blocks));
+            CommandResults = commandResults ?? throw new ArgumentNullException(nameof(commandResults));
         }
 
         public IEnumerable<Block> Blocks { get; }

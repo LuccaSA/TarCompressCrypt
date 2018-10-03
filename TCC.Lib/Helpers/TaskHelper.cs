@@ -94,12 +94,14 @@ namespace TCC.Lib.Helpers
             Func<T, CancellationToken, Task> funk, int maxDegreeOfParallelism, Fail mode, CancellationToken ct = default(CancellationToken))
         {
             var cs = new ConcurrentQueue<T>(source);
-            var core = new ParallelizeCore(ct, mode);
+           
 
             var globalCompletionSource = new TaskCompletionSource<ParallelizedSummary>();
 
             Task.Run(async () =>
             {
+                var core = new ParallelizeCore(ct, mode);
+
                 var parallelTasks =
                     Enumerable.Range(0, maxDegreeOfParallelism)
                         .Select(i => ParallelizeCoreAsync(core, funk, cs))

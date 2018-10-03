@@ -3,14 +3,13 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Threading.Tasks;
+using TCC.Lib.Helpers;
 
 namespace TCC.Lib.Dependencies
 {
     public class ExternalDependecies
     {
         private const string ExeTar = @"Libs\tar.exe";
-        private const string ExeOpenSsl = @"Libs\openssl.exe";
-        private const string CnfOpenSsl = @"Libs\openssl.cnf";
 
         public string Tar()
         {
@@ -22,30 +21,10 @@ namespace TCC.Lib.Dependencies
             return tarPath;
         }
 
-        public string OpenSsl()
-        {
-            EnsureOpenSslConfigurationPath();
-            string openSslPath = Path.Combine(Root, ExeOpenSsl);
-            if (!File.Exists(openSslPath))
-            {
-                throw new FileNotFoundException("openssl not found in " + openSslPath);
-            }
-            return openSslPath;
-        }
-
-        private void EnsureOpenSslConfigurationPath()
-        {
-            var openSslCnfPath = Environment.GetEnvironmentVariable("OPENSSL_CONF", EnvironmentVariableTarget.Process);
-            if (string.IsNullOrWhiteSpace(openSslCnfPath))
-            {
-                string openSslConfPath = Path.Combine(Root, CnfOpenSsl);
-                Environment.SetEnvironmentVariable("OPENSSL_CONF", openSslConfPath, EnvironmentVariableTarget.Process);
-            }
-        }
-
         public string Lz4() => GetPath(_lz4);
         public string Brotli() => GetPath(_brotli);
         public string Zstd() => GetPath(_zStd);
+        public string OpenSsl() => GetPath(_openSsl);
 
         public async Task EnsureAllDependenciesPresent()
         {
@@ -53,6 +32,7 @@ namespace TCC.Lib.Dependencies
             await EnsureDependency(_lz4, progress);
             await EnsureDependency(_brotli, progress);
             await EnsureDependency(_zStd, progress);
+            await EnsureDependency(_openSsl, progress);
         }
 
         public string Root => Path.GetDirectoryName(typeof(ExternalDependecies).Assembly.CodeBase.Replace("file:///", ""));
@@ -64,7 +44,7 @@ namespace TCC.Lib.Dependencies
             {
                 throw new FileNotFoundException(dependency.Name + " not found in " + exePath);
             }
-            return exePath;
+            return exePath.Escape();
         }
 
         public async Task<string> EnsureDependency(ExternalDep dependency, IProgress<int> percent)
@@ -98,7 +78,7 @@ namespace TCC.Lib.Dependencies
                         {
                             percent.Report(100);
                         };
-                        await wc.DownloadFileTaskAsync(dependency.URL, target);
+                        await wc.DownloadFileTaskAsync(dependency.Url, target);
                     }
 
                     if (!string.IsNullOrEmpty(dependency.ZipFilename))
@@ -120,7 +100,7 @@ namespace TCC.Lib.Dependencies
         private readonly ExternalDep _lz4 = new ExternalDep()
         {
             Name = "Lz4",
-            URL = @"https://github.com/lz4/lz4/releases/download/v1.8.0/lz4_v1_8_0_win64.zip",
+            Url = @"https://github.com/lz4/lz4/releases/download/v1.8.0/lz4_v1_8_0_win64.zip",
             ZipFilename = "lz4_v1_8_0_win64.zip",
             ExtractFolder = "lz4",
             ExeName = "lz4.exe"
@@ -129,7 +109,7 @@ namespace TCC.Lib.Dependencies
         private readonly ExternalDep _brotli = new ExternalDep()
         {
             Name = "Brotli",
-            URL = @"https://github.com/google/brotli/releases/download/v1.0.4/brotli-v1.0.4-win_x86_64.zip",
+            Url = @"https://github.com/google/brotli/releases/download/v1.0.4/brotli-v1.0.4-win_x86_64.zip",
             ZipFilename = "brotli-v1.0.4-win_x86_64.zip",
             ExtractFolder = "brotli",
             ExeName = "brotli.exe"
@@ -138,10 +118,21 @@ namespace TCC.Lib.Dependencies
         private readonly ExternalDep _zStd = new ExternalDep()
         {
             Name = "Zstandard",
-            URL = @"https://github.com/facebook/zstd/releases/download/v1.3.4/zstd-v1.3.4-win64.zip",
+            Url = @"https://github.com/facebook/zstd/releases/download/v1.3.4/zstd-v1.3.4-win64.zip",
             ZipFilename = "zstd-v1.3.4-win64.zip",
             ExtractFolder = "zstd",
             ExeName = "zstd.exe"
+        };
+
+        // From : https://bintray.com/vszakats/generic/openssl
+        // referenced from official OpenSSL wiki : https://wiki.openssl.org/index.php/Binaries
+        private readonly ExternalDep _openSsl = new ExternalDep()
+        {
+            Name = "OpenSSL",
+            Url = @"https://bintray.com/vszakats/generic/download_file?file_path=openssl-1.1.1-win64-mingw.zip",
+            ZipFilename = "openssl-1.1.1-win64-mingw.zip",
+            ExtractFolder = "openssl",
+            ExeName = "openssl-1.1.1-win64-mingw\\openssl.exe"
         };
 
     }

@@ -23,21 +23,7 @@ namespace TCC.Lib.Benchmark
 
             foreach (CompressionAlgo algo in algos)
             {
-                int ratioMax;
-                switch (algo)
-                {
-                    case CompressionAlgo.Lz4:
-                        ratioMax = 9;
-                        break;
-                    case CompressionAlgo.Brotli:
-                        ratioMax = 9;
-                        break;
-                    case CompressionAlgo.Zstd:
-                        ratioMax = 19;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                int ratioMax = MaxRatio(algo);
 
                 foreach (bool encrypt in withEncryption)
                 {
@@ -54,14 +40,30 @@ namespace TCC.Lib.Benchmark
             }
         }
 
+        private static int MaxRatio(CompressionAlgo algo)
+        {
+            int ratioMax;
+            switch (algo)
+            {
+                case CompressionAlgo.Lz4:
+                    ratioMax = 9;
+                    break;
+                case CompressionAlgo.Brotli:
+                    ratioMax = 9;
+                    break;
+                case CompressionAlgo.Zstd:
+                    ratioMax = 19;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(algo));
+            }
+            return ratioMax;
+        }
+
         public static async Task<OperationSummary> RunBenchmark(BenchmarkOption benchmarkOption, CancellationToken cts)
         {
-
-            //var inputFolder = TestFileHelper.NewFolder();
-
             var keysFolder = TestFileHelper.NewFolder();
-
-            //var testFile = TestFileHelper.NewFile(inputFolder, fileSizeMb);
+             
             FileInfo src = new FileInfo(benchmarkOption.Source);
 
             var iterations = benchmarkOption.GenerateBenchmarkIteration().ToList();
@@ -89,15 +91,15 @@ namespace TCC.Lib.Benchmark
                 var resultCompress = await TarCompressCrypt.Compress(compressOption, cancellationToken: cts);
 
                 swComp.Stop();
-                if (!resultCompress.IsSuccess)
+                foreach (var result in resultCompress.CommandResults)
                 {
-                    throw new Exception();
+                    result.ThrowOnError();
                 }
 
-                var compressedFile = resultCompress.Blocks.Select(i => i.DestinationArchive).FirstOrDefault();
+                var compressedFile = resultCompress.Blocks.Select(i => i.DestinationArchive).First();
                 FileInfo fi = new FileInfo(compressedFile);
 
-                double compressionFactor = (double)src.Length / (double)fi.Length;
+                double compressionFactor = src.Length / (double)fi.Length;
 
                 // decompress
                 var decompressOption = new DecompressOption
@@ -111,16 +113,17 @@ namespace TCC.Lib.Benchmark
                 Stopwatch swDecomp = Stopwatch.StartNew();
                 var resultDecompress = await TarCompressCrypt.Decompress(decompressOption, cancellationToken: cts);
                 swDecomp.Stop();
-                if (!resultDecompress.IsSuccess)
+
+                foreach (var result in resultDecompress.CommandResults)
                 {
-                    throw new Exception();
+                    result.ThrowOnError();
                 }
 
                 double sizeMb = src.Length / (double)(1024 * 1024);
-                double comp_Mbs = sizeMb / (swComp.ElapsedMilliseconds / (float)1000);
-                double decomp_Mbs = sizeMb / (swDecomp.ElapsedMilliseconds / (float)1000);
+                double compMbs = sizeMb / (swComp.ElapsedMilliseconds / (float)1000);
+                double decompMbs = sizeMb / (swDecomp.ElapsedMilliseconds / (float)1000);
 
-                Console.Out.WriteLine($"{iter.Algo} [{iter.CompressionRatio}] aes={iter.Encryption} : compress {comp_Mbs:0.###} Mb/s, decompress {decomp_Mbs:0.###} Mb/s, ratio {compressionFactor:0.###}");
+                Console.Out.WriteLine($"{iter.Algo} [{iter.CompressionRatio}] aes={iter.Encryption} : compress {compMbs:0.###} Mb/s, decompress {decompMbs:0.###} Mb/s, ratio {compressionFactor:0.###}");
             }
 
             return new OperationSummary(null, null);

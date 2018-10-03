@@ -170,14 +170,14 @@ namespace TCC.Lib.Blocks
             {
                 var fi = new FileInfo(sourceDir);
                 path = fi.Name;
-                operationFolder = fi.Directory.FullName;
+                operationFolder = fi.Directory?.FullName;
                 name = Path.GetFileNameWithoutExtension(fi.Name);
             }
             else if (Directory.Exists(sourceDir))
             {
                 var di = new DirectoryInfo(sourceDir);
                 path = di.Name;
-                operationFolder = di.Parent.FullName;
+                operationFolder = di.Parent?.FullName;
                 name = di.Name;
             }
             else
@@ -212,7 +212,7 @@ namespace TCC.Lib.Blocks
             {
                 yield return new Block
                 {
-                    OperationFolder = fi.Directory.FullName,
+                    OperationFolder = fi.Directory?.FullName,
                     Source = fi.Name,
                     DestinationArchive = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension),
                     DestinationFolder = dstDir.FullName,

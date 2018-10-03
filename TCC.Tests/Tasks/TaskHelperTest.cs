@@ -109,7 +109,7 @@ namespace TCC.Tests.Tasks
                 }
             }, 8, failMode);
 
-            ParallelizedSummary result = null;
+            ParallelizedSummary result;
 
             if (failMode == Fail.Default)
             {
