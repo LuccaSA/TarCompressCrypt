@@ -25,8 +25,8 @@ namespace TCC.Tests
             _externalDependencies = provider.GetRequiredService<ExternalDependencies>();
         }
 
-        private readonly TarCompressCrypt _tarCompressCrypt;
-        private readonly ExternalDependencies _externalDependencies;
+        private TarCompressCrypt _tarCompressCrypt;
+        private ExternalDependencies _externalDependencies;
 
         [Theory]
         [InlineData(PasswordMode.None, CompressionAlgo.Lz4)]

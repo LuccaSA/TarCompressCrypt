@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib.Blocks;
 using TCC.Lib.Options;
@@ -12,30 +11,32 @@ namespace TCC.Lib.Benchmark
 {
     public class BenchmarkHelper
     {
-        private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TarCompressCrypt _tarCompressCrypt;
-        public BenchmarkHelper(CancellationTokenSource cancellationTokenSource, TarCompressCrypt tarCompressCrypt)
+        public BenchmarkHelper(TarCompressCrypt tarCompressCrypt)
         {
-            _cancellationTokenSource = cancellationTokenSource;
             _tarCompressCrypt = tarCompressCrypt;
         }
 
-        private IEnumerable<BenchmarIteration> GenerateBenchmarkIteration()
+        private IEnumerable<BenchmarIteration> GenerateBenchmarkIteration(BenchmarkOption benchmarkOption)
         {
             var algos = new[] {
                 CompressionAlgo.Lz4,
-                CompressionAlgo.Brotli, 
+                CompressionAlgo.Brotli,
                 CompressionAlgo.Zstd
             };
+
             var withEncryption = new[] { false, true };
 
             foreach (CompressionAlgo algo in algos)
             {
-                int ratioMax = MaxRatio(algo);
+                if (!ShouldTestAlgo(benchmarkOption, algo))
+                {
+                    continue;
+                }
 
                 foreach (bool encrypt in withEncryption)
                 {
-                    foreach (int ratio in Enumerable.Range(1, ratioMax))
+                    foreach (int ratio in GetBenchmarkRatios(benchmarkOption, algo))
                     {
                         yield return new BenchmarIteration
                         {
@@ -48,33 +49,53 @@ namespace TCC.Lib.Benchmark
             }
         }
 
-        private static int MaxRatio(CompressionAlgo algo)
+        private static IEnumerable<int> GetBenchmarkRatios(BenchmarkOption benchmarkOption, CompressionAlgo algo)
         {
-            int ratioMax;
+            if (benchmarkOption.Ratio == 0)
+                return Enumerable.Range(1, MaxRatio(algo));
+            else
+                return new[] {benchmarkOption.Ratio};
+        }
+
+        private static bool ShouldTestAlgo(BenchmarkOption benchmarkOption, CompressionAlgo algo)
+        {
             switch (algo)
             {
                 case CompressionAlgo.Lz4:
-                    ratioMax = 9;
-                    break;
+                    return (benchmarkOption.Algorithm & BenchmarkCompressionAlgo.Lz4) == BenchmarkCompressionAlgo.Lz4;
                 case CompressionAlgo.Brotli:
-                    ratioMax = 9;
-                    break;
+                    return (benchmarkOption.Algorithm & BenchmarkCompressionAlgo.Brotli) == BenchmarkCompressionAlgo.Brotli;
                 case CompressionAlgo.Zstd:
-                    ratioMax = 19;
-                    break;
+                    return (benchmarkOption.Algorithm & BenchmarkCompressionAlgo.Zstd) == BenchmarkCompressionAlgo.Zstd;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(algo), algo, "Unknown algo");
+            }
+        }
+
+        private static int MaxRatio(CompressionAlgo algo)
+        {
+            switch (algo)
+            {
+                case CompressionAlgo.Lz4:
+                    return 9;
+                case CompressionAlgo.Brotli:
+                    return 9;
+                case CompressionAlgo.Zstd:
+                    return 19;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(algo));
             }
-            return ratioMax;
         }
 
         public async Task<OperationSummary> RunBenchmark(BenchmarkOption benchmarkOption)
         {
             var keysFolder = TestFileHelper.NewFolder();
-             
+
             FileInfo src = new FileInfo(benchmarkOption.Source);
 
-            var iterations = GenerateBenchmarkIteration().ToList();
+            var iterations = GenerateBenchmarkIteration(benchmarkOption).ToList();
+
+            var operationSummaries = new List<OperationSummary>();
 
             foreach (var iter in iterations)
             {
@@ -97,8 +118,9 @@ namespace TCC.Lib.Benchmark
                 Stopwatch swComp = Stopwatch.StartNew();
 
                 var resultCompress = await _tarCompressCrypt.Compress(compressOption);
-
                 swComp.Stop();
+
+                operationSummaries.Add(resultCompress);
                 foreach (var result in resultCompress.CommandResults)
                 {
                     result.ThrowOnError();
@@ -122,6 +144,8 @@ namespace TCC.Lib.Benchmark
                 var resultDecompress = await _tarCompressCrypt.Decompress(decompressOption);
                 swDecomp.Stop();
 
+                operationSummaries.Add(resultDecompress);
+
                 foreach (var result in resultDecompress.CommandResults)
                 {
                     result.ThrowOnError();
@@ -134,7 +158,7 @@ namespace TCC.Lib.Benchmark
                 Console.Out.WriteLine($"{iter.Algo} [{iter.CompressionRatio}] aes={iter.Encryption} : compress {compMbs:0.###} Mb/s, decompress {decompMbs:0.###} Mb/s, ratio {compressionFactor:0.###}");
             }
 
-            return new OperationSummary(null, null);
+            return new OperationSummary(operationSummaries.SelectMany(i => i.Blocks), operationSummaries.SelectMany(i => i.CommandResults));
         }
     }
 }

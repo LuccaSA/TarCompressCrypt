@@ -16,7 +16,7 @@
     public class BenchmarkOption
     {
         public string Source { get; set; }
-        public CompressionAlgo Algorithm { get; set; }
+        public BenchmarkCompressionAlgo Algorithm { get; set; }
         public int Ratio { get; set; }
         public bool Encrypt { get; set; }
     }

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
+using TCC.Lib.Blocks;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
@@ -15,19 +16,23 @@ namespace TCC
     {
         static async Task Main(string[] args)
         {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddTcc();
-
-            IServiceProvider provider = serviceCollection.BuildServiceProvider();
-
-            provider.GetRequiredService<CancellationTokenSource>().HookTermination();
-            await provider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
-
             TccCommand parsed = args.ParseCommandLine();
             if (parsed.ReturnCode == 1)
             {
                 Environment.Exit(1);
             }
+
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddTcc();
+            if (parsed.Mode != Mode.Benchmark)
+            {
+                serviceCollection.AddSingleton<IBlockListener, CommandLineBlockListener>();
+            }
+
+            IServiceProvider provider = serviceCollection.BuildServiceProvider();
+
+            provider.GetRequiredService<CancellationTokenSource>().HookTermination();
+            await provider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
 
             OperationSummary op = await RunTcc(provider, parsed);
 

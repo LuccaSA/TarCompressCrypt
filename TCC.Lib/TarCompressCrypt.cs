@@ -17,9 +17,9 @@ namespace TCC.Lib
     {
         private readonly ExternalDependencies _externalDependencies;
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly BlockListener _blockListener;
+        private readonly IBlockListener _blockListener;
 
-        public TarCompressCrypt(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource, BlockListener blockListener)
+        public TarCompressCrypt(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource, IBlockListener blockListener)
         {
             _externalDependencies = externalDependencies;
             _cancellationTokenSource = cancellationTokenSource;
@@ -51,7 +51,7 @@ namespace TCC.Lib
                 try
                 {
                     result = await processor(b, option);
-                    _blockListener?.BlockingCollection?.Add((result, b, blocks.Count));
+                    _blockListener.Add(new BlockReport(result, b, blocks.Count));
                 }
                 catch (Exception e)
                 {
@@ -63,8 +63,6 @@ namespace TCC.Lib
                 commandResults.Add(result);
 
             }, option.Threads, option.FailFast ? Fail.Fast : Fail.Smart, _cancellationTokenSource.Token);
-
-            _blockListener?.BlockingCollection.CompleteAdding();
 
             return new OperationSummary(blocks, commandResults);
         }
