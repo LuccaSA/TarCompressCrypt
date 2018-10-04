@@ -36,10 +36,8 @@ namespace TCC
 
             OperationSummary op = await RunTcc(provider, parsed);
 
-            Environment.Exit(op.IsSuccess ? 0 : 1);
+            Environment.Exit(op != null && op.IsSuccess ? 0 : 1);
         }
-
-   
 
         private static Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {
@@ -65,5 +63,5 @@ namespace TCC
         }
     }
 
-   
+
 }

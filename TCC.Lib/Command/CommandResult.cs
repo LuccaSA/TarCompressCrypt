@@ -14,6 +14,7 @@ namespace TCC.Lib.Command
         public bool HasError => !String.IsNullOrEmpty(Errors);
         public string Command { get; set; }
         public List<string> Infos { get; set; }
+        public long ElapsedMilliseconds { get; set; }
 
         public void ThrowOnError()
         {

@@ -50,7 +50,7 @@ namespace TCC.Tests
             string decompressedFolder = TestFileHelper.NewFolder();
             string keysFolder = TestFileHelper.NewFolder();
 
-            var data = TestData.CreateFiles(1, 1, toCompressFolder);
+            var data = TestData.CreateFiles(1, 1024, toCompressFolder);
 
             OperationSummary resultCompress = await Compress(mode, algo, compressedFolder, keysFolder, data);
 

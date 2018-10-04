@@ -6,6 +6,7 @@ namespace TCC.Lib.Benchmark
     {
         public CompressionAlgo Algo { get; set; }
         public bool Encryption { get; set; }
-        public int CompressionRatio { get; set; } 
+        public int CompressionRatio { get; set; }
+        public BenchmarkTestContent Content { get; set; } 
     }
 }

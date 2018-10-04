@@ -71,11 +71,11 @@ namespace TCC.Tests
             return decompressOption;
         }
 
-        public static TestData CreateFiles(int nbFiles, int sizeMb, string folder)
+        public static TestData CreateFiles(int nbFiles, int sizeKb, string folder)
         {
             foreach (var _ in Enumerable.Range(0, nbFiles))
             {
-                var filePath = TestFileHelper.NewFile(folder, sizeMb);
+                var filePath = TestFileHelper.NewFile(folder, sizeKb);
                 Console.Out.WriteLine("File created : " + filePath);
             }
             Thread.Sleep(150); // for filesystem latency

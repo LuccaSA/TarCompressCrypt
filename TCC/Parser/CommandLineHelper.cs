@@ -72,7 +72,11 @@ namespace TCC.Parser
                             Algorithm = opts.Algorithm,
                             Ratio = opts.Ratio,
                             Encrypt = opts.Encrypt,
-                            Source = opts.Source
+                            Source = opts.Source,
+                            Content = opts.Content,
+                            NumberOfFiles = opts.NumberOfFiles,
+                            FileSize = opts.FileSize,
+                            Threads = opts.Threads
                         };
                         return new TccCommand
                         {

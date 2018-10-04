@@ -100,8 +100,8 @@ namespace TCC.Lib.Dependencies
         private readonly ExternalDep _lz4 = new ExternalDep()
         {
             Name = "Lz4",
-            Url = @"https://github.com/lz4/lz4/releases/download/v1.8.0/lz4_v1_8_0_win64.zip",
-            ZipFilename = "lz4_v1_8_0_win64.zip",
+            Url = @"https://github.com/lz4/lz4/releases/download/v1.8.3/lz4_v1_8_3_win64.zip",
+            ZipFilename = "lz4_v1_8_3_win64.zip",
             ExtractFolder = "lz4",
             ExeName = "lz4.exe"
         };
@@ -118,8 +118,8 @@ namespace TCC.Lib.Dependencies
         private readonly ExternalDep _zStd = new ExternalDep()
         {
             Name = "Zstandard",
-            Url = @"https://github.com/facebook/zstd/releases/download/v1.3.4/zstd-v1.3.4-win64.zip",
-            ZipFilename = "zstd-v1.3.4-win64.zip",
+            Url = @"https://github.com/facebook/zstd/releases/download/v1.3.5/zstd-v1.3.5-win64.zip",
+            ZipFilename = "zstd-v1.3.5-win64.zip",
             ExtractFolder = "zstd",
             ExeName = "zstd.exe"
         };

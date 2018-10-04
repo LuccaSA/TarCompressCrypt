@@ -1,12 +1,14 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace TCC.Lib.Benchmark
 {
     public static class TestFileHelper
     {
-      
+
         const int BytesToRead = sizeof(Int64);
 
         public static bool FilesAreEqual(FileInfo first, FileInfo second)
@@ -44,10 +46,17 @@ namespace TCC.Lib.Benchmark
             return filepath;
         }
 
-        public static string NewFile(string folder, int sizeInMb = 1)
+        public static string NewFile(string folder, int sizeInKb = 1024, bool alphaNumContent = false)
         {
             var filepath = NewFileName(folder);
-            FillRandomFile(filepath, sizeInMb);
+            if (alphaNumContent)
+            {
+                FillRandomFileAlphaNum(filepath, sizeInKb);
+            }
+            else
+            {
+                FillRandomFile(filepath, sizeInKb);
+            }
             return filepath;
         }
 
@@ -64,21 +73,49 @@ namespace TCC.Lib.Benchmark
             return name;
         }
 
-        public static void FillRandomFile(string fileName, int sizeInMb)
+        public static void FillRandomFile(string fileName, int sizeInKb)
         {
-            const int blockSize = 1024 * 8;
-            const int blocksPerMb = (1024 * 1024) / blockSize;
+            const int blockSize = 1024;
+            const int blocksPerKb = (1024) / blockSize;
             byte[] data = new byte[blockSize];
             var rng = RandomNumberGenerator.Create();
             using (FileStream stream = File.OpenWrite(fileName))
             {
-                // There 
-                for (int i = 0; i < sizeInMb * blocksPerMb; i++)
+                for (int i = 0; i < sizeInKb * blocksPerKb; i++)
                 {
                     rng.GetBytes(data);
                     stream.Write(data, 0, data.Length);
                 }
             }
+        }
+
+        public static void FillRandomFileAlphaNum(string fileName, int sizeInKb)
+        {
+            char[] chars = " abcdef ".ToCharArray();
+            const int blockSize = 1024;
+            const int blocksPerKb = (1024) / blockSize;
+
+            byte[] data = new byte[blockSize];
+            var rng = RandomNumberGenerator.Create();
+            
+            using (FileStream stream = File.OpenWrite(fileName))
+            {
+                for (int i = 0; i < sizeInKb * blocksPerKb; i++)
+                {
+                    rng.GetBytes(data);
+                    byte[] alpha = data.Select(d => (byte)chars[d % chars.Length]).ToArray();
+                    stream.Write(alpha, 0, alpha.Length);
+                }
+            }
+
+
+            // ----- ------ -----
+
+            // ----- ------ -----
+
+            // ----- ------ -----
+
+
         }
 
         public static void FillFile(string fileName, string content)
