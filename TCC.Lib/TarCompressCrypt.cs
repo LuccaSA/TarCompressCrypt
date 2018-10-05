@@ -190,7 +190,7 @@ namespace TCC.Lib
                     ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
                     break;
                 case CompressionAlgo.Brotli:
-                    ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
+                    ratio = option.CompressionRatio != 0 ? $"-q{option.CompressionRatio}" : string.Empty;
                     break;
                 case CompressionAlgo.Zstd:
                     ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
