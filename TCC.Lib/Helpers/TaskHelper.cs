@@ -14,11 +14,11 @@ namespace TCC.Lib.Helpers
         /// </summary>
         Default,
         /// <summary>
-        /// Fail loop as soon as an exception happends, return a sucessfull task, with exceptions in ParallelizedSummary
+        /// Fail loop as soon as an exception happens, return a successful task, with exceptions in ParallelizedSummary
         /// </summary>
         Fast,
         /// <summary>
-        /// Don't fail loop on exception, return a sucessfull task, with exceptions in ParallelizedSummary
+        /// Don't fail loop on exception, return a successful task, with exceptions in ParallelizedSummary
         /// </summary>
         Smart
     }
@@ -94,10 +94,9 @@ namespace TCC.Lib.Helpers
             Func<T, CancellationToken, Task> funk, int maxDegreeOfParallelism, Fail mode, CancellationToken ct = default(CancellationToken))
         {
             var cs = new ConcurrentQueue<T>(source);
-            var core = new ParallelizeCore(ct, mode);
 
             var globalCompletionSource = new TaskCompletionSource<ParallelizedSummary>();
-
+            var core = new ParallelizeCore(ct, mode);
             Task.Run(async () =>
             {
                 var parallelTasks =

@@ -41,8 +41,11 @@ namespace TCC.Lib.Command
                 registration.Dispose();
             }
 
+            var stopwatch = new Stopwatch();
+
             async void OnProcessExit(object sender, EventArgs args)
             {
+                stopwatch.Stop();
                 var stdout = await standardOutputResults.Task;
                 var stderr = await standardErrorResults.Task;
 
@@ -54,6 +57,7 @@ namespace TCC.Lib.Command
                     Output = string.Join(Environment.NewLine, stdout),
                     Errors = string.Join(Environment.NewLine, stderr),
                     Infos = standardInfos,
+                    ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
                 };
 
                 tcs.TrySetResult(result);
@@ -71,6 +75,7 @@ namespace TCC.Lib.Command
             
             try
             {
+                stopwatch.Start();
                 if (!process.Start())
                 {
                     tcs.TrySetException(new InvalidOperationException("Failed to start process"));

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 using TCC.Parser;
@@ -43,6 +44,20 @@ namespace TCC.Tests.Parsing
         }
 
         [Theory]
+        [InlineData("compress file.txt -r 3 -a Lz4 -o temp", CompressionAlgo.Lz4)] 
+        [InlineData("compress file.txt -r 3 -a Brotli -o temp", CompressionAlgo.Brotli)] 
+        [InlineData("compress file.txt -r 3 -a Zstd -o temp", CompressionAlgo.Zstd)]
+        public void AlgoCommands(string command, CompressionAlgo algo)
+        {
+            var commandBlocks = command.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+            var parsed = commandBlocks.ParseCommandLine();
+            Assert.Equal(0, parsed.ReturnCode);
+            Assert.IsType<CompressOption>(parsed.Option);
+            Assert.Equal(algo, ((CompressOption)parsed.Option).Algo);
+            Assert.Equal(3, ((CompressOption)parsed.Option).CompressionRatio);
+        }
+         
+        [Theory]
         [InlineData("compress file.txt -o temp", null, PasswordMode.None)]
         [InlineData("decompress file.txt -o temp", null, PasswordMode.None)]
         [InlineData("compress file.txt -p 1234 -o temp", "1234", PasswordMode.InlinePassword)]
@@ -51,7 +66,7 @@ namespace TCC.Tests.Parsing
         [InlineData("decompress file.txt -e pass2.txt -o temp", "pass2.txt", PasswordMode.PasswordFile)]
         [InlineData("compress file.txt -k pass3.pem -o temp", "pass3.pem", PasswordMode.PublicKey)]
         [InlineData("decompress file.txt -k pass4.pem -o temp", "pass4.pem", PasswordMode.PublicKey)]
-        public void EcryptionCommands(string command, string passchain, PasswordMode mode)
+        public async Task EcryptionCommands(string command, string passchain, PasswordMode mode)
         {
             var commandBlocks = command.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 
@@ -90,7 +105,7 @@ namespace TCC.Tests.Parsing
 
             if (passchain != null && passchain.Contains("."))
             {
-                passchain.TryDeleteFileWithRetry(); // cleanup
+                await passchain.TryDeleteFileWithRetryAsync();
             }
         }
     }

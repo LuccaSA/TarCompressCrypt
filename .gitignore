@@ -8,3 +8,4 @@
 packages 
 *.user
 /coverage-opencover.xml
+/TCC/Properties/launchSettings.json

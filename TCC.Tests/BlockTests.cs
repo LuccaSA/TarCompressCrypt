@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
@@ -15,34 +17,48 @@ namespace TCC.Tests
         private readonly string _fo1;
         private readonly string _fo2;
         private readonly string _fo3;
-        private readonly string _fi11;
-        private readonly string _fi12;
-        private readonly string _fi13;
-        private readonly string _fi1;
-        private readonly string _fi2;
-        private readonly string _fi3;
+        private string _fi11;
+        private string _fi12;
+        private string _fi13;
+        private string _fi1;
+        private string _fi2;
+        private string _fi3;
 
         public CompressBlockTests()
         {
-            _root = TestHelper.NewFolder();
-            _target = TestHelper.NewFolder();
+            _root = TestFileHelper.NewFolder();
+            _target = TestFileHelper.NewFolder();
 
-            _fo1 = TestHelper.NewFolder(_root);
-            _fo2 = TestHelper.NewFolder(_root);
-            _fo3 = TestHelper.NewFolder(_root);
+            _fo1 = TestFileHelper.NewFolder(_root);
+            _fo2 = TestFileHelper.NewFolder(_root);
+            _fo3 = TestFileHelper.NewFolder(_root);
+        }
 
-            _fi11 = TestHelper.NewFile(_fo1);
-            _fi12 = TestHelper.NewFile(_fo1);
-            _fi13 = TestHelper.NewFile(_fo1);
+        private async Task Prepare()
+        {
+            _fi11 = await TestFileHelper.NewFile(_fo1);
+            _fi12 = await TestFileHelper.NewFile(_fo1);
+            _fi13 = await TestFileHelper.NewFile(_fo1);
 
-            _fi1 = TestHelper.NewFile(_root);
-            _fi2 = TestHelper.NewFile(_root);
-            _fi3 = TestHelper.NewFile(_root);
+            _fi1 = await TestFileHelper.NewFile(_root);
+            _fi2 = await TestFileHelper.NewFile(_root);
+            _fi3 = await TestFileHelper.NewFile(_root);
+        }
+
+        private async Task Cleanup()
+        {
+            await _fi11.TryDeleteFileWithRetryAsync();
+            await _fi12.TryDeleteFileWithRetryAsync();
+            await _fi13.TryDeleteFileWithRetryAsync();
+            await _fi1.TryDeleteFileWithRetryAsync();
+            await _fi2.TryDeleteFileWithRetryAsync();
+            await _fi3.TryDeleteFileWithRetryAsync();
         }
 
         [Fact]
-        public void DiscoverExplicitBlocks()
+        public async Task DiscoverExplicitBlocks()
         {
+            await Prepare();
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -51,14 +67,16 @@ namespace TCC.Tests
             };
 
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
-
+            var fi = new FileInfo(_root);
             Assert.Single(blocks);
-            Assert.Equal(_root, blocks.First().Source);
+            Assert.Equal(fi.Name, blocks.First().Source.Trim('"'));
+            await Cleanup();
         }
 
         [Fact]
-        public void DiscoverIndividualBlocks()
+        public async Task DiscoverIndividualBlocks()
         {
+            await Prepare();
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -68,12 +86,14 @@ namespace TCC.Tests
 
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
-            Assert.Equal(6, blocks.Count); 
+            Assert.Equal(6, blocks.Count);
+            await Cleanup();
         }
 
         [Fact]
-        public void DiscoverEachFileBlocks()
+        public async Task DiscoverEachFileBlocks()
         {
+            await Prepare();
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -84,11 +104,14 @@ namespace TCC.Tests
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
             Assert.Equal(3, blocks.Count);
+            await Cleanup();
         }
 
         [Fact]
-        public void DiscoverEachFileRecursiveBlocks()
+        public async Task DiscoverEachFileRecursiveBlocks()
         {
+            await Prepare();
+
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -99,17 +122,11 @@ namespace TCC.Tests
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
             Assert.Equal(6, blocks.Count);
+            await Cleanup();
         }
 
         public void Dispose()
         {
-            _fi11.TryDeleteFileWithRetry();
-            _fi12.TryDeleteFileWithRetry();
-            _fi13.TryDeleteFileWithRetry();
-            _fi1.TryDeleteFileWithRetry();
-            _fi2.TryDeleteFileWithRetry();
-            _fi3.TryDeleteFileWithRetry();
-
             Directory.Delete(_fo1);
             Directory.Delete(_fo2);
             Directory.Delete(_fo3);

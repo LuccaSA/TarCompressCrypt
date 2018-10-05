@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Options;
 
@@ -14,7 +16,7 @@ namespace TCC.Tests
         public List<DirectoryInfo> Directories { get; set; }
         public string Target { get; set; }
 
-        public CompressOption GetTccCompressOption(string targetFolder)
+        public CompressOption GetTccCompressOption(string targetFolder, CompressionAlgo algo)
         {
             string src;
             if (Files != null)
@@ -33,6 +35,7 @@ namespace TCC.Tests
 
             var compressOption = new CompressOption
             {
+                Algo = algo,
                 BlockMode = BlockMode.Individual,
                 SourceDirOrFile = src,
                 DestinationDir = Target,
@@ -69,14 +72,13 @@ namespace TCC.Tests
             return decompressOption;
         }
 
-        public static TestData CreateFiles(int nbFiles, int sizeMb, string folder)
+        public static async Task<TestData> CreateFiles(int nbFiles, int sizeKb, string folder)
         {
-            foreach (var i in Enumerable.Range(0, nbFiles))
+            foreach (var _ in Enumerable.Range(0, nbFiles))
             {
-                var filePath = TestHelper.NewFile(folder, sizeMb);
-                Console.Out.WriteLine("File created : " + filePath);
+                await TestFileHelper.NewFile(folder, sizeKb);
             }
-            Thread.Sleep(150); // for filesystem latency
+            await Task.Delay(150); // for filesystem latency
             return new TestData
             {
                 Directories = new List<DirectoryInfo> { new DirectoryInfo(folder) }

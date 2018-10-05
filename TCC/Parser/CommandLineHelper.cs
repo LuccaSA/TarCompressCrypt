@@ -8,70 +8,97 @@ using TCC.Lib.Options;
 
 namespace TCC.Parser
 {
+    public class TccCommand
+    {
+        public Mode Mode { get; set; }
+        public TccOption Option { get; set; }
+        public BenchmarkOption BenchmarkOption { get; set; }
+        public int ReturnCode { get; set; }
+    }
+
     public static class ParseCommandLineHelper
     {
-        public static (Mode Mode, TccOption Option, int ReturnCode) ParseCommandLine(this string[] args)
+        public static TccCommand ParseCommandLine(this string[] args)
         {
-            TccOption option = null;
-            Mode mode = Mode.Unknown;
-            int returnCode = 0;
+            TccCommand command;
 
             var parsed = CommandLine.Parser.Default.ParseArguments<CompressCmdOptions, DecompressOptions, BenchmarkOptions>(args);
             try
             {
-                returnCode = parsed.MapResult(
+                command = parsed.MapResult(
                     (CompressCmdOptions opts) =>
                     {
-                        mode = Mode.Compress;
-                        option = new CompressOption
+                        var option = new CompressOption
                         {
-                            Algo = CompressionAlgo.Lz4,
+                            Algo = opts.Algorithm,
+                            CompressionRatio = opts.Ratio,
                             DestinationDir = opts.Output,
                             FailFast = opts.FailFast,
+                            Verbose = opts.Verbose,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
-                            BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit, 
+                            BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
                             Threads = ExtractThreads(opts)
                         };
 
-                        ExtractPasswordInfo(opts, option, mode);
+                        ExtractPasswordInfo(opts, option, Mode.Compress);
 
-                        return 0;
+                        return new TccCommand
+                        {
+                            Mode = Mode.Compress,
+                            Option = option
+                        };
                     },
                     (DecompressOptions opts) =>
                     {
-                        mode = Mode.Decompress;
-                        option = new DecompressOption
+                        var option = new DecompressOption
                         {
-                            Algo = CompressionAlgo.Lz4,
                             DestinationDir = opts.Output,
                             FailFast = opts.FailFast,
+                            Verbose = opts.Verbose,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
                             Threads = ExtractThreads(opts)
                         };
 
-                        ExtractPasswordInfo(opts, option, mode);
+                        ExtractPasswordInfo(opts, option, Mode.Decompress);
 
-                        return 0;
+                        return new TccCommand
+                        {
+                            Mode = Mode.Decompress,
+                            Option = option
+                        };
                     },
                     (BenchmarkOptions opts) =>
                     {
-                        mode = Mode.Benchmark;
-                        option = new DecompressOption();
-                        return 0;
+                        var option = new BenchmarkOption
+                        {
+                            Algorithm = opts.Algorithm,
+                            Ratio = opts.Ratio,
+                            Encrypt = opts.Encrypt,
+                            Source = opts.Source,
+                            Content = opts.Content,
+                            NumberOfFiles = opts.NumberOfFiles,
+                            FileSize = opts.FileSize,
+                            Threads = opts.Threads
+                        };
+                        return new TccCommand
+                        {
+                            Mode = Mode.Benchmark,
+                            BenchmarkOption = option
+                        };
                     },
-                    errs => 1);
+                    errs => new TccCommand { ReturnCode = 1 });
             }
             catch (CommandLineException ae)
             {
                 Console.Out.WriteLine(ae.Message);
-                returnCode = 1;
+                return new TccCommand { ReturnCode = 1 };
             }
             catch (Exception e)
             {
                 Console.Out.WriteLine(e.ToString());
-                returnCode = 1;
+                return new TccCommand { ReturnCode = 1 };
             }
-            return (mode, option, returnCode);
+            return command;
         }
 
         private static int ExtractThreads(BaseCmdOptions opts)
