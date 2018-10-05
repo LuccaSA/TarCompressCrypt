@@ -30,8 +30,7 @@ namespace TCC.Lib.Helpers
                             // prevent orphan lock file
                         }
                     }
-                    await Task.Delay(100);
-                    File.Delete(lockFilePath.FullName);
+                    await lockFilePath.FullName.TryDeleteFileWithRetry();
                     break;
                 }
                 catch (IOException)
@@ -56,7 +55,7 @@ namespace TCC.Lib.Helpers
                 throw new ArgumentOutOfRangeException(nameof(retries));
 
             retries--;
-            while (File.Exists(filePath) && retries > 0)
+            while (File.Exists(filePath) && retries >= 0)
             {
                 try
                 {
