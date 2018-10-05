@@ -51,15 +51,16 @@ namespace TCC.Lib.Dependencies
         {
             string path = Path.Combine(Root, dependency.ExtractFolder);
             string exePath = Path.Combine(Root, dependency.ExtractFolder, dependency.ExeName);
-            string downloadLock = Path.Combine(Root, dependency.Name + ".lock");
+            var downloadLock = new FileInfo(Path.Combine(Root, dependency.Name + ".lock"));
+
             if (!Directory.Exists(path) || !File.Exists(exePath))
             {
-                using (new FileStream(downloadLock, FileMode.OpenOrCreate, FileAccess.Read, FileShare.None))
+                await downloadLock.Lock(async () =>
                 {
                     if (File.Exists(exePath))
                     {
                         percent.Report(100);
-                        return exePath;
+                        return;
                     }
 
                     string target = Path.Combine(path, string.IsNullOrEmpty(dependency.ZipFilename)
@@ -90,8 +91,7 @@ namespace TCC.Lib.Dependencies
                     {
                         throw new FileNotFoundException(dependency.Name + " not found in " + exePath);
                     }
-                }
-                File.Delete(downloadLock);
+                });
             }
             percent.Report(100);
             return exePath;
@@ -102,7 +102,7 @@ namespace TCC.Lib.Dependencies
             Name = "Lz4",
             Url = @"https://github.com/lz4/lz4/releases/download/v1.8.3/lz4_v1_8_3_win64.zip",
             ZipFilename = "lz4_v1_8_3_win64.zip",
-            ExtractFolder = "lz4",
+            ExtractFolder = "lz4_v183",
             ExeName = "lz4.exe"
         };
 
@@ -111,7 +111,7 @@ namespace TCC.Lib.Dependencies
             Name = "Brotli",
             Url = @"https://github.com/google/brotli/releases/download/v1.0.4/brotli-v1.0.4-win_x86_64.zip",
             ZipFilename = "brotli-v1.0.4-win_x86_64.zip",
-            ExtractFolder = "brotli",
+            ExtractFolder = "brotli_v104",
             ExeName = "brotli.exe"
         };
 
@@ -120,7 +120,7 @@ namespace TCC.Lib.Dependencies
             Name = "Zstandard",
             Url = @"https://github.com/facebook/zstd/releases/download/v1.3.5/zstd-v1.3.5-win64.zip",
             ZipFilename = "zstd-v1.3.5-win64.zip",
-            ExtractFolder = "zstd",
+            ExtractFolder = "zstd_v135",
             ExeName = "zstd.exe"
         };
 
@@ -131,7 +131,7 @@ namespace TCC.Lib.Dependencies
             Name = "OpenSSL",
             Url = @"https://bintray.com/vszakats/generic/download_file?file_path=openssl-1.1.1-win64-mingw.zip",
             ZipFilename = "openssl-1.1.1-win64-mingw.zip",
-            ExtractFolder = "openssl",
+            ExtractFolder = "openssl_v111",
             ExeName = "openssl-1.1.1-win64-mingw\\openssl.exe"
         };
 

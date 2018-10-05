@@ -7,6 +7,65 @@ namespace TCC.Lib.Helpers
 {
     public static class FileExtensions
     {
+        public static async Task Lock(this FileInfo lockFilePath, Func<Task> action)
+        {
+            if (lockFilePath == null) throw new ArgumentNullException(nameof(lockFilePath));
+            if (action == null) throw new ArgumentNullException(nameof(action));
+
+            using (var autoResetEvent = new AutoResetEvent(false))
+            {
+                while (true)
+                {
+                    try
+                    {
+                        using (File.Open(lockFilePath.FullName,
+                            FileMode.OpenOrCreate,
+                            FileAccess.Read,
+                            FileShare.None))
+                        {
+                            try
+                            {
+                                await action();
+                            }
+                            catch (Exception)
+                            {
+                                // prevent orphan lock file
+                            }
+                        }
+                        File.Delete(lockFilePath.FullName);
+                        break;
+                    }
+                    catch (IOException)
+                    {
+                        try
+                        {
+                            var fileSystemWatcher =
+                                new FileSystemWatcher(Path.GetDirectoryName(lockFilePath.FullName))
+                                {
+                                    EnableRaisingEvents = true
+                                };
+                            fileSystemWatcher.Changed +=
+                                (o, e) =>
+                                {
+                                    if (Path.GetFullPath(e.FullPath) == Path.GetFullPath(lockFilePath.FullName))
+                                    {
+                                        autoResetEvent.Set();
+                                    }
+                                };
+                            if (File.Exists(lockFilePath.FullName))
+                            {
+                                autoResetEvent.WaitOne();
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Catch possible WaitOne() exceptions
+                        }
+                    }
+                }
+            }
+        }
+
         public static void CreateEmptyFile(this string filePath)
         {
             using (File.Open(filePath, FileMode.OpenOrCreate))
