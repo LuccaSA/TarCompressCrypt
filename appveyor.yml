@@ -54,10 +54,19 @@ artifacts:
   - path: .\TCC\artifacts\**\*.nupkg
 
 deploy:
-  provider: GitHub
+- provider: GitHub
   auth_token:
     secure: 33HkOpRzd2oV5gqorwoeU80F3KynRJwjCRIMRTESBBiJYYUW4sG+9jCGCsEyo+VS
-  artifact: /.*-x64\.zip/
+  artifact: /.*\.nupkg/
   on:
     branch: master                 # release from master branch only
     appveyor_repo_tag: true        # deploy on tag push only
+- provider: NuGet
+  name: nuget_release
+  api_key:
+    secure: u2VIyNJijO5CsVIcKm7oBHwLNpbvV2sZfT+/UjN2JsFUUdJK5QyTuQqbYMsOHNyU
+  skip_symbols: true
+  artifact: /.*\.nupkg/
+  on:
+    branch: master
+    deploy_public: true
