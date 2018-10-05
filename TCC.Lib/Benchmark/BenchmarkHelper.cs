@@ -53,7 +53,7 @@ namespace TCC.Lib.Benchmark
 
        
 
-        private List<BenchmarkTestContent> PrepareTestData(BenchmarkOption benchmarkOption)
+        private async Task<List<BenchmarkTestContent>> PrepareTestData(BenchmarkOption benchmarkOption)
         {
             var list = new List<BenchmarkTestContent>();
             if (!String.IsNullOrEmpty(benchmarkOption.Source))
@@ -69,7 +69,7 @@ namespace TCC.Lib.Benchmark
                 var testAsciiDataFolder = TestFileHelper.NewFolder();
                 foreach (int i in Enumerable.Range(0, benchmarkOption.NumberOfFiles))
                 {
-                    TestFileHelper.NewFile(testAsciiDataFolder, benchmarkOption.FileSize, true);
+                    await TestFileHelper.NewFile(testAsciiDataFolder, benchmarkOption.FileSize, true);
                 }
                 list.Add(new BenchmarkTestContent(testAsciiDataFolder, true, BenchmarkContent.Ascii));
             }
@@ -79,7 +79,7 @@ namespace TCC.Lib.Benchmark
                 var testBinaryDataFolder = TestFileHelper.NewFolder();
                 foreach (int i in Enumerable.Range(0, benchmarkOption.NumberOfFiles))
                 {
-                    TestFileHelper.NewFile(testBinaryDataFolder, benchmarkOption.FileSize, false);
+                    await TestFileHelper.NewFile(testBinaryDataFolder, benchmarkOption.FileSize, false);
                 }
                 list.Add(new BenchmarkTestContent(testBinaryDataFolder, true, BenchmarkContent.Binary));
             }
@@ -128,7 +128,7 @@ namespace TCC.Lib.Benchmark
         {
             var keysFolder = TestFileHelper.NewFolder();
 
-            var data = PrepareTestData(benchmarkOption);
+            var data = await PrepareTestData(benchmarkOption);
 
             var iterations = GenerateBenchmarkIteration(benchmarkOption, data).ToList();
 

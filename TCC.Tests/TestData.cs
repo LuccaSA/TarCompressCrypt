@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Options;
@@ -71,14 +72,13 @@ namespace TCC.Tests
             return decompressOption;
         }
 
-        public static TestData CreateFiles(int nbFiles, int sizeKb, string folder)
+        public static async Task<TestData> CreateFiles(int nbFiles, int sizeKb, string folder)
         {
             foreach (var _ in Enumerable.Range(0, nbFiles))
             {
-                var filePath = TestFileHelper.NewFile(folder, sizeKb);
-                Console.Out.WriteLine("File created : " + filePath);
+                await TestFileHelper.NewFile(folder, sizeKb);
             }
-            Thread.Sleep(150); // for filesystem latency
+            await Task.Delay(150); // for filesystem latency
             return new TestData
             {
                 Directories = new List<DirectoryInfo> { new DirectoryInfo(folder) }

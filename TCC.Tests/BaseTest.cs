@@ -50,7 +50,7 @@ namespace TCC.Tests
             string decompressedFolder = TestFileHelper.NewFolder();
             string keysFolder = TestFileHelper.NewFolder();
 
-            var data = TestData.CreateFiles(1, 1024, toCompressFolder);
+            var data = await TestData.CreateFiles(1, 1024, toCompressFolder);
 
             OperationSummary resultCompress = await Compress(mode, algo, compressedFolder, keysFolder, data);
             foreach (var result in resultCompress.CommandResults)
@@ -71,9 +71,6 @@ namespace TCC.Tests
             Assert.True(resultDecompress.IsSuccess);
             Assert.NotEmpty(resultDecompress.Blocks);
             Assert.NotEmpty(resultDecompress.CommandResults);
-
-            Console.WriteLine("TEST : src=" + toCompressFolder);
-            Console.WriteLine("TEST : dst=" + decompressedFolder);
 
             FileInfo src = new DirectoryInfo(toCompressFolder).EnumerateFiles().FirstOrDefault();
             FileInfo dst = new DirectoryInfo(decompressedFolder).EnumerateFiles().FirstOrDefault();

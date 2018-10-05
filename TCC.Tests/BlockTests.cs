@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Helpers;
@@ -16,12 +17,12 @@ namespace TCC.Tests
         private readonly string _fo1;
         private readonly string _fo2;
         private readonly string _fo3;
-        private readonly string _fi11;
-        private readonly string _fi12;
-        private readonly string _fi13;
-        private readonly string _fi1;
-        private readonly string _fi2;
-        private readonly string _fi3;
+        private string _fi11;
+        private string _fi12;
+        private string _fi13;
+        private string _fi1;
+        private string _fi2;
+        private string _fi3;
 
         public CompressBlockTests()
         {
@@ -31,19 +32,23 @@ namespace TCC.Tests
             _fo1 = TestFileHelper.NewFolder(_root);
             _fo2 = TestFileHelper.NewFolder(_root);
             _fo3 = TestFileHelper.NewFolder(_root);
+        }
 
-            _fi11 = TestFileHelper.NewFile(_fo1);
-            _fi12 = TestFileHelper.NewFile(_fo1);
-            _fi13 = TestFileHelper.NewFile(_fo1);
+        private async Task Prepare()
+        {
+            _fi11 = await TestFileHelper.NewFile(_fo1);
+            _fi12 = await TestFileHelper.NewFile(_fo1);
+            _fi13 = await TestFileHelper.NewFile(_fo1);
 
-            _fi1 = TestFileHelper.NewFile(_root);
-            _fi2 = TestFileHelper.NewFile(_root);
-            _fi3 = TestFileHelper.NewFile(_root);
+            _fi1 = await TestFileHelper.NewFile(_root);
+            _fi2 = await TestFileHelper.NewFile(_root);
+            _fi3 = await TestFileHelper.NewFile(_root);
         }
 
         [Fact]
-        public void DiscoverExplicitBlocks()
+        public async Task DiscoverExplicitBlocks()
         {
+            await Prepare();
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -58,8 +63,9 @@ namespace TCC.Tests
         }
 
         [Fact]
-        public void DiscoverIndividualBlocks()
+        public async Task DiscoverIndividualBlocks()
         {
+            await Prepare();
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -69,12 +75,13 @@ namespace TCC.Tests
 
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
-            Assert.Equal(6, blocks.Count); 
+            Assert.Equal(6, blocks.Count);
         }
 
         [Fact]
-        public void DiscoverEachFileBlocks()
+        public async Task DiscoverEachFileBlocks()
         {
+            await Prepare();
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -88,8 +95,9 @@ namespace TCC.Tests
         }
 
         [Fact]
-        public void DiscoverEachFileRecursiveBlocks()
+        public async Task DiscoverEachFileRecursiveBlocks()
         {
+            await Prepare();
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,

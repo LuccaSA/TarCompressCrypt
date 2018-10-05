@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace TCC.Lib.Benchmark
 {
@@ -46,16 +47,16 @@ namespace TCC.Lib.Benchmark
             return filepath;
         }
 
-        public static string NewFile(string folder, int sizeInKb = 1024, bool alphaNumContent = false)
+        public static async Task<string> NewFile(string folder, int sizeInKb = 1024, bool alphaNumContent = false)
         {
             var filepath = NewFileName(folder);
             if (alphaNumContent)
             {
-                FillRandomFileAlphaNum(filepath, sizeInKb);
+                await FillRandomFileAlphaNum(filepath, sizeInKb);
             }
             else
             {
-                FillRandomFile(filepath, sizeInKb);
+                await FillRandomFile(filepath, sizeInKb);
             }
             return filepath;
         }
@@ -73,7 +74,7 @@ namespace TCC.Lib.Benchmark
             return name;
         }
 
-        public static void FillRandomFile(string fileName, int sizeInKb)
+        public static async Task FillRandomFile(string fileName, int sizeInKb)
         {
             const int blockSize = 1024;
             const int blocksPerKb = (1024) / blockSize;
@@ -84,12 +85,12 @@ namespace TCC.Lib.Benchmark
                 for (int i = 0; i < sizeInKb * blocksPerKb; i++)
                 {
                     rng.GetBytes(data);
-                    stream.Write(data, 0, data.Length);
+                    await stream.WriteAsync(data, 0, data.Length);
                 }
             }
         }
 
-        public static void FillRandomFileAlphaNum(string fileName, int sizeInKb)
+        public static async Task FillRandomFileAlphaNum(string fileName, int sizeInKb)
         {
             char[] chars = " abcdef ".ToCharArray();
             const int blockSize = 1024;
@@ -97,25 +98,16 @@ namespace TCC.Lib.Benchmark
 
             byte[] data = new byte[blockSize];
             var rng = RandomNumberGenerator.Create();
-            
+
             using (FileStream stream = File.OpenWrite(fileName))
             {
                 for (int i = 0; i < sizeInKb * blocksPerKb; i++)
                 {
                     rng.GetBytes(data);
                     byte[] alpha = data.Select(d => (byte)chars[d % chars.Length]).ToArray();
-                    stream.Write(alpha, 0, alpha.Length);
+                    await stream.WriteAsync(alpha, 0, alpha.Length);
                 }
             }
-
-
-            // ----- ------ -----
-
-            // ----- ------ -----
-
-            // ----- ------ -----
-
-
         }
 
         public static void FillFile(string fileName, string content)
