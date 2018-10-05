@@ -2,15 +2,19 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/9mdd3hlgm234ey38/branch/master?svg=true)](https://ci.appveyor.com/project/Raph/tarcompresscrypt/branch/master)
 [![codecov](https://codecov.io/gh/rducom/TarCompressCrypt/branch/master/graph/badge.svg)](https://codecov.io/gh/rducom/TarCompressCrypt)
-[![Quality Gate](https://sonarcloud.io/api/badges/gate?key=TCC)](https://sonarcloud.io/dashboard?id=TCC)
+[![Sonarcloud coverage](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=coverage)](https://sonarcloud.io/dashboard?id=TCC)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=alert_status)](https://sonarcloud.io/dashboard?id=TCC)
+[![Sonarcloud Debt](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=sqale_index)](https://sonarcloud.io/dashboard?id=TCC)
+[![Sonarcloud Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=TCC)
 
-
-TarCompressCrypt is a command line tool for blazing fast compression + encryption / decompression + decryption
+TarCompressCrypt (TCC) is a command line tool for blazing fast compression + encryption / decompression + decryption
 - package multiple files / folders with tar
-- use lz4 for blazing fast compression operations
-- use openssl for aes256 encryption (native aes-ni instructions support)
+- then use lz4/zstd/brotli for blazing fast compression operations
+- then use openssl for aes256 encryption (native aes-ni instructions support)
 
-It's aimed for fast backup operation on production server, with minimum CPU impact
+All operations are parallelized for maximum throughput. The goal is to saturate disk ios, not the CPU
+
+Tcc is mainly used for massive backup operation on production servers, with minimum CPU impact
 
 The bottleneck will be your storage :
 
@@ -21,17 +25,17 @@ The bottleneck will be your storage :
 Why LZ4 ? : https://quixdb.github.io/squash-benchmark/
 
 ### Current status : 
-- alpha : DOT NOT USE IN PRODUCTION  
+- alpha : use with care, API and archive format are subject to breaking changes. Be sure to keep the version you use actually in order to be able to decrypt your archives. 
 
 ### Roadmap :
 - [ ] documenatation
-- [ ] operation logs
+- [x] operation logs
 - [ ] differential backup
 - [x] password file / asymetric key support
 - [ ] external storage provider support
 - [x] exe packaging + distribution
-- [ ] brotli support
-- [ ] benchmark mode
+- [x] lz4 / brotli / zstd support
+- [x] benchmark mode
 
 ### Plateform support : 
 - [x] Windows
