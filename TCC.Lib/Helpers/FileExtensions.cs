@@ -12,57 +12,33 @@ namespace TCC.Lib.Helpers
             if (lockFilePath == null) throw new ArgumentNullException(nameof(lockFilePath));
             if (action == null) throw new ArgumentNullException(nameof(action));
 
-            using (var autoResetEvent = new AutoResetEvent(false))
+            while (true)
             {
-                while (true)
+                try
                 {
-                    try
-                    {
-                        using (File.Open(lockFilePath.FullName,
-                            FileMode.OpenOrCreate,
-                            FileAccess.Read,
-                            FileShare.None))
-                        {
-                            try
-                            {
-                                await action();
-                            }
-                            catch (Exception)
-                            {
-                                // prevent orphan lock file
-                            }
-                        }
-                        File.Delete(lockFilePath.FullName);
-                        break;
-                    }
-                    catch (IOException)
+                    using (File.Open(lockFilePath.FullName,
+                        FileMode.OpenOrCreate,
+                        FileAccess.Read,
+                        FileShare.None))
                     {
                         try
                         {
-                            var fileSystemWatcher =
-                                new FileSystemWatcher(Path.GetDirectoryName(lockFilePath.FullName))
-                                {
-                                    EnableRaisingEvents = true
-                                };
-                            fileSystemWatcher.Changed +=
-                                (o, e) =>
-                                {
-                                    if (Path.GetFullPath(e.FullPath) == Path.GetFullPath(lockFilePath.FullName))
-                                    {
-                                        autoResetEvent.Set();
-                                    }
-                                };
-                            if (File.Exists(lockFilePath.FullName))
-                            {
-                                autoResetEvent.WaitOne();
-                            }
+                            await action();
                         }
                         catch (Exception)
                         {
-                            // Catch possible WaitOne() exceptions
+                            // prevent orphan lock file
                         }
                     }
+                    await Task.Delay(100);
+                    File.Delete(lockFilePath.FullName);
+                    break;
                 }
+                catch (IOException)
+                {
+                    // lock file exists
+                }
+                await Task.Delay(1000);
             }
         }
 
