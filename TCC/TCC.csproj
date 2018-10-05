@@ -2,7 +2,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
-    <LangVersion>latest</LangVersion>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>tcc</ToolCommandName>
+    <ProjectGuid>{64E77240-F71E-492A-A725-1E2B0059B946}</ProjectGuid>
   </PropertyGroup>
 
   <ItemGroup>

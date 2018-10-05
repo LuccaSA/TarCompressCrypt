@@ -1,7 +1,5 @@
 image: Visual Studio 2017
 
-version: 2.0.{build}
-
 environment:
   global:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -50,15 +48,10 @@ test_script:
 - Codecov.1.0.5\tools\codecov -f coverage-opencover.xml
 
 after_test:
-- dotnet publish -c Release -r win10-x64 TCC\TCC.csproj
-- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win10-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.1\win10-x64\publish\*" -mx7
-- dotnet publish -c Release -r win-x64 TCC\TCC.csproj
-- 7z a TCC-%APPVEYOR_BUILD_VERSION%-win-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.1\win-x64\publish\*" -mx7
-- dotnet publish -c Release -r linux-x64 TCC\TCC.csproj
-- 7z a TCC-%APPVEYOR_BUILD_VERSION%-linux-x64.zip "%APPVEYOR_BUILD_FOLDER%\TCC\bin\Any CPU\Release\netcoreapp2.1\linux-x64\publish\*" -mx7
+  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$version.Prefix+";VersionSuffix="+$version.Suffix) /p:PackageVersion=$env:APPVEYOR_BUILD_VERSION -o sartifacts
 
 artifacts:
-  - path: '**\*-x64.zip'
+  - path: .\artifacts\**\*.nupkg
 
 deploy:
   provider: GitHub

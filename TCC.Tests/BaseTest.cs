@@ -53,7 +53,10 @@ namespace TCC.Tests
             var data = TestData.CreateFiles(1, 1024, toCompressFolder);
 
             OperationSummary resultCompress = await Compress(mode, algo, compressedFolder, keysFolder, data);
-
+            foreach (var result in resultCompress.CommandResults)
+            {
+                result.ThrowOnError();
+            }
             Assert.True(resultCompress.IsSuccess);
             Assert.NotEmpty(resultCompress.Blocks);
             Assert.NotEmpty(resultCompress.CommandResults);
@@ -61,6 +64,10 @@ namespace TCC.Tests
             var decomp = new TestData { Directories = new List<DirectoryInfo> { new DirectoryInfo(compressedFolder) } };
 
             OperationSummary resultDecompress = await Decompress(mode, decompressedFolder, keysFolder, decomp);
+            foreach (var result in resultDecompress.CommandResults)
+            {
+                result.ThrowOnError();
+            }
             Assert.True(resultDecompress.IsSuccess);
             Assert.NotEmpty(resultDecompress.Blocks);
             Assert.NotEmpty(resultDecompress.CommandResults);
