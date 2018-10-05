@@ -11,6 +11,7 @@
         public int Threads { get; set; }
 
         public bool FailFast { get; set; }
+        public bool Verbose { get; set; }
     }
 
     public class BenchmarkOption

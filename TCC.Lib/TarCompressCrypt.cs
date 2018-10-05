@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
 using TCC.Lib.Dependencies;
@@ -19,12 +20,14 @@ namespace TCC.Lib
         private readonly ExternalDependencies _externalDependencies;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly IBlockListener _blockListener;
+        private readonly ILogger<TarCompressCrypt> _logger;
 
-        public TarCompressCrypt(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource, IBlockListener blockListener)
+        public TarCompressCrypt(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger)
         {
             _externalDependencies = externalDependencies;
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
+            _logger = logger;
         }
 
         public Task<OperationSummary> Compress(CompressOption compressOption)
@@ -51,11 +54,15 @@ namespace TCC.Lib
                 CommandResult result = null;
                 try
                 {
+                    
+                    _logger.LogInformation($"Starting {b.Source}");
                     result = await processor(b, option);
                     _blockListener.Add(new BlockReport(result, b, blocks.Count));
+                    _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
                 }
                 catch (Exception e)
                 {
+                    _logger.LogError(e,$"Error on {b.Source}");
                     if (result != null)
                     {
                         result.Errors += e.Message;

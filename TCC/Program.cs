@@ -24,6 +24,8 @@ namespace TCC
 
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddTcc();
+            serviceCollection.AddSerilog(parsed.Mode != Mode.Benchmark && parsed.Option.Verbose);
+
             if (parsed.Mode != Mode.Benchmark)
             {
                 serviceCollection.AddSingleton<IBlockListener, CommandLineBlockListener>();
@@ -38,6 +40,7 @@ namespace TCC
 
             Environment.Exit(op != null && op.IsSuccess ? 0 : 1);
         }
+
 
         private static Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {
@@ -62,6 +65,4 @@ namespace TCC
             }
         }
     }
-
-
 }

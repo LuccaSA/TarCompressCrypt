@@ -105,7 +105,7 @@ namespace TCC.Tests.Parsing
 
             if (passchain != null && passchain.Contains("."))
             {
-                await passchain.TryDeleteFileWithRetry(); // cleanup
+                await passchain.TryDeleteFileWithRetryAsync();
             }
         }
     }

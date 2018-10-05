@@ -34,6 +34,7 @@ namespace TCC.Parser
                             CompressionRatio = opts.Ratio,
                             DestinationDir = opts.Output,
                             FailFast = opts.FailFast,
+                            Verbose = opts.Verbose,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
                             BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
                             Threads = ExtractThreads(opts)
@@ -53,6 +54,7 @@ namespace TCC.Parser
                         {
                             DestinationDir = opts.Output,
                             FailFast = opts.FailFast,
+                            Verbose = opts.Verbose,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
                             Threads = ExtractThreads(opts)
                         };

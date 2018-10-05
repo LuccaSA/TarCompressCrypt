@@ -21,5 +21,8 @@ namespace TCC.Parser
 
         [Option('k', "key", HelpText = "Public key for compression, private key for decompression")]
         public string PasswordKey { get; set; }
+
+        [Option('v', "verbose", HelpText = "Verbose output", Default = false)]
+        public bool Verbose { get; set; }
     }
 }

@@ -47,12 +47,12 @@ namespace TCC.Tests
 
         private async Task Cleanup()
         {
-            await _fi11.TryDeleteFileWithRetry();
-            await _fi12.TryDeleteFileWithRetry();
-            await _fi13.TryDeleteFileWithRetry();
-            await _fi1.TryDeleteFileWithRetry();
-            await _fi2.TryDeleteFileWithRetry();
-            await _fi3.TryDeleteFileWithRetry();
+            await _fi11.TryDeleteFileWithRetryAsync();
+            await _fi12.TryDeleteFileWithRetryAsync();
+            await _fi13.TryDeleteFileWithRetryAsync();
+            await _fi1.TryDeleteFileWithRetryAsync();
+            await _fi2.TryDeleteFileWithRetryAsync();
+            await _fi3.TryDeleteFileWithRetryAsync();
         }
 
         [Fact]

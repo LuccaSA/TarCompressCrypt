@@ -30,7 +30,7 @@ namespace TCC.Lib.Helpers
                             // prevent orphan lock file
                         }
                     }
-                    await lockFilePath.FullName.TryDeleteFileWithRetry();
+                    await lockFilePath.FullName.TryDeleteFileWithRetryAsync();
                     break;
                 }
                 catch (IOException)
@@ -49,11 +49,16 @@ namespace TCC.Lib.Helpers
             }
         }
 
-        public static async Task TryDeleteFileWithRetry(this string filePath, int retries = 100)
+        public static Task TryDeleteFileWithRetryAsync(this string filePath, int retries = 100)
         {
             if (retries <= 1)
                 throw new ArgumentOutOfRangeException(nameof(retries));
 
+            return TryDeleteFileWithRetryInternalAsync(filePath, retries);
+        }
+
+        private static async Task TryDeleteFileWithRetryInternalAsync(string filePath, int retries)
+        {
             retries--;
             while (File.Exists(filePath) && retries >= 0)
             {
@@ -68,41 +73,12 @@ namespace TCC.Lib.Helpers
                 await Task.Delay(10);
                 retries--;
             }
-
             // last try, we let throw exception
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
             }
+            
         }
-
-
-        public static async Task TryDeleteFileWithRetryAsync(this string filePath, int retries = 100)
-        {
-            if (retries <= 1)
-                throw new ArgumentOutOfRangeException(nameof(retries));
-
-            retries--;
-            while (File.Exists(filePath) && retries > 0)
-            {
-                try
-                {
-                    File.Delete(filePath);
-                }
-                catch (Exception)
-                {
-                    // Exceptions are ignored
-                }
-                await Task.Delay(10);
-                retries--;
-            }
-
-            // last try, we let throw exception
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-            }
-        }
-
     }
 }
