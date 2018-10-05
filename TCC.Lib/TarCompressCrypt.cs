@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib.Blocks;
@@ -181,7 +182,7 @@ namespace TCC.Lib
 
         private static string CompressCommand(Block block, CompressOption option, ExternalDependencies ext)
         {
-            string cmd;
+            var cmd = new StringBuilder();
             string ratio;
 
             switch (option.Algo)
@@ -190,7 +191,7 @@ namespace TCC.Lib
                     ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
                     break;
                 case CompressionAlgo.Brotli:
-                    ratio = option.CompressionRatio != 0 ? $"-q{option.CompressionRatio}" : string.Empty;
+                    ratio = option.CompressionRatio != 0 ? $"-q {option.CompressionRatio}" : string.Empty;
                     break;
                 case CompressionAlgo.Zstd:
                     ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
@@ -203,18 +204,17 @@ namespace TCC.Lib
             {
                 case PasswordMode.None:
                     // tar -c C:\SourceFolder | lz4.exe -1 - compressed.tar.lz4
-                    cmd = $"{ext.Tar().Escape()} -c {block.Source.Escape()}";
-
+                    cmd.Append($"{ext.Tar()} -c {block.Source}");
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd += $" | {ext.Lz4()} {ratio} -v - {block.DestinationArchive.Escape()}";
+                            cmd.Append($" | {ext.Lz4()} {ratio} -v - {block.DestinationArchive}");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd += $" | {ext.Brotli()} {ratio} - -o {block.DestinationArchive.Escape()}";
+                            cmd.Append($" | {ext.Brotli()} {ratio} - -o {block.DestinationArchive}");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd += $" | {ext.Zstd()} {ratio} - -o {block.DestinationArchive.Escape()}";
+                            cmd.Append($" | {ext.Zstd()} {ratio} - -o {block.DestinationArchive}");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
@@ -225,34 +225,33 @@ namespace TCC.Lib
                 case PasswordMode.PublicKey:
                     string passwdCommand = PasswordCommand(option, block);
                     // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
-                    cmd = $"{ext.Tar().Escape()} -c {block.Source.Escape()}";
+                    cmd.Append($"{ext.Tar()} -c {block.Source}");
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd += $" | {ext.Lz4()} {ratio} -v - ";
+                            cmd.Append($" | {ext.Lz4()} {ratio} -v - ");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd += $" | {ext.Brotli()} {ratio} - ";
+                            cmd.Append($" | {ext.Brotli()} {ratio} - ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd += $" | {ext.Zstd()} {ratio} - ";
+                            cmd.Append($" | {ext.Zstd()} {ratio} - ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
                     }
-
-                    cmd += $" | {ext.OpenSsl()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive.Escape()}";
+                    cmd.Append($" | {ext.OpenSsl()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive}");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(option));
             }
-            return cmd;
+            return cmd.ToString();
         }
 
 
         private static string DecompressCommand(Block block, TccOption option, ExternalDependencies ext)
         {
-            string cmd;
+            var cmd = new StringBuilder();
             switch (option.PasswordOption.PasswordMode)
             {
                 case PasswordMode.None:
@@ -260,45 +259,45 @@ namespace TCC.Lib
                     switch (block.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd = $"{ext.Lz4()} {block.Source.Escape()} -dc --no-sparse ";
+                            cmd.Append($"{ext.Lz4()} {block.Source} -dc --no-sparse ");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd = $"{ext.Brotli()} {block.Source.Escape()} -d -c ";
+                            cmd.Append($"{ext.Brotli()} {block.Source} -d -c ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd = $"{ext.Zstd()} {block.Source.Escape()} -d -c ";
+                            cmd.Append($"{ext.Zstd()} {block.Source} -d -c ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");
                     }
-                    cmd += $" | {ext.Tar().Escape()} xf - ";
+                    cmd.Append($" | {ext.Tar()} xf - ");
                     break;
                 case PasswordMode.InlinePassword:
                 case PasswordMode.PasswordFile:
                 case PasswordMode.PublicKey:
                     string passwdCommand = PasswordCommand(option, block);
                     //openssl aes-256-cbc -d -k "test" -in crypted.tar.lz4.aes | lz4 -dc --no-sparse - | tar xf -
-                    cmd = $"{ext.OpenSsl()} aes-256-cbc -d {passwdCommand} -in {block.Source}";
+                    cmd.Append($"{ext.OpenSsl()} aes-256-cbc -d {passwdCommand} -in {block.Source}");
                     switch (block.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd += $" | {ext.Lz4()} -dc --no-sparse - ";
+                            cmd.Append($" | {ext.Lz4()} -dc --no-sparse - ");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd += $" | {ext.Brotli()} - -d ";
+                            cmd.Append($" | {ext.Brotli()} - -d ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd += $" | {ext.Zstd()} - -d ";
+                            cmd.Append($" | {ext.Zstd()} - -d ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");
                     }
-                    cmd += $" | {ext.Tar().Escape()} xf - ";
+                    cmd.Append($" | {ext.Tar()} xf - ");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(option));
             }
-            return cmd;
+            return cmd.ToString();
         }
 
         private static string PasswordCommand(TccOption option, Block block)

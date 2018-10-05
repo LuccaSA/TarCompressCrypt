@@ -59,7 +59,7 @@ namespace TCC.Lib.Benchmark
             if (!String.IsNullOrEmpty(benchmarkOption.Source))
             {
                 // explicit test file
-                list.Add(new BenchmarkTestContent(benchmarkOption.Source, false, BenchmarkContent.UserDefined));
+                list.Add(new BenchmarkTestContent(benchmarkOption.Source, false, BenchmarkContent.None));
                 return list;
             }
 
@@ -168,7 +168,7 @@ namespace TCC.Lib.Benchmark
                     result.ThrowOnError();
                 }
 
-                var compressedSize = resultCompress.Blocks.Select(i => new FileInfo(i.DestinationArchive))
+                var compressedSize = resultCompress.Blocks.Select(i => new FileInfo(i.DestinationArchive.Trim('"')))
                     .Select(f => f.Length)
                     .Sum();
 

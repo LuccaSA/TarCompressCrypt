@@ -17,7 +17,10 @@ namespace TCC.Lib.Command
             {
                 return true;
             }
-
+            if (line.StartsWith("Read : "))
+            {
+                return true;
+            }
             if (line.EndsWith(" bytes "))
             {
                 return true;

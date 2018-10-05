@@ -18,7 +18,7 @@ namespace TCC.Lib.Dependencies
             {
                 throw new FileNotFoundException("tar not found in " + tarPath);
             }
-            return tarPath;
+            return tarPath.Escape();
         }
 
         public string Lz4() => GetPath(_lz4);

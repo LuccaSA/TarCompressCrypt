@@ -21,7 +21,7 @@ namespace TCC.Lib.Options
     [Flags]
     public enum BenchmarkContent
     {
-        UserDefined = 0,
+        None = 0,
         Ascii = 1 << 0,
         Binary = 1 << 1,
         Both = Ascii | Binary

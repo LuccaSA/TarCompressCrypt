@@ -54,7 +54,7 @@ namespace TCC.Tests
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
             var fi = new FileInfo(_root);
             Assert.Single(blocks);
-            Assert.Equal(fi.Name, blocks.First().Source);
+            Assert.Equal(fi.Name, blocks.First().Source.Trim('"'));
         }
 
         [Fact]
