@@ -89,7 +89,7 @@ namespace TCC.Tests.Tasks
         {
             var tasks = Enumerable.Range(0, 10);
             int index = 0;
-
+            bool badBehavior = false;
             var pTask = tasks.ParallelizeAsync(async (i, ct) =>
             {
                 int ix = Interlocked.Increment(ref index);
@@ -103,9 +103,9 @@ namespace TCC.Tests.Tasks
                 {
                     return;
                 }
-                if (failMode != Fail.Default)
+                if (failMode == Fail.Fast)
                 {
-                    Assert.True(false);
+                    badBehavior = true;
                 }
             }, 8, failMode);
 
@@ -125,6 +125,11 @@ namespace TCC.Tests.Tasks
                 Assert.False(result.IsSucess);
                 Assert.False(result.IsCancelled);
                 Assert.NotEmpty(result.Exceptions);
+            }
+
+            if (badBehavior)
+            {
+                Assert.True(false);
             }
         }
 
