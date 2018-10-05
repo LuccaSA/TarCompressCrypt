@@ -11,8 +11,8 @@ namespace TCC
         private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
 
         private delegate bool ConsoleEventDelegate(int eventType);
+        private static CancellationTokenSource _staticCancellationTokenSource;
 
-        [ExcludeFromCodeCoverage]
         public static void HookTermination(this CancellationTokenSource cts)
         {
             _staticCancellationTokenSource = cts;
@@ -20,14 +20,14 @@ namespace TCC
             Console.CancelKeyPress += Console_CancelKeyPress;
         }
 
+        [ExcludeFromCodeCoverage]
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
             Console.Error.WriteLine("Closing process");
             _staticCancellationTokenSource?.Cancel();
         }
 
-        private static CancellationTokenSource _staticCancellationTokenSource;
-
+        [ExcludeFromCodeCoverage]
         private static bool CtrlC(int eventType)
         {
             Console.Error.WriteLine("Process termination requested");

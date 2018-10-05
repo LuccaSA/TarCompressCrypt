@@ -12,9 +12,9 @@ using TCC.Parser;
 
 namespace TCC
 {
-    static class Program
+    public static class Program
     {
-        static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             TccCommand parsed = args.ParseCommandLine();
             if (parsed.ReturnCode == 1)
@@ -38,9 +38,11 @@ namespace TCC
 
             OperationSummary op = await RunTcc(provider, parsed);
 
-            Environment.Exit(op != null && op.IsSuccess ? 0 : 1);
+            if(op == null || !op.IsSuccess)
+            {
+                Environment.Exit(1);
+            }
         }
-
 
         private static Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {

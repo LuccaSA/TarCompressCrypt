@@ -7,11 +7,16 @@ namespace TCC.Lib.Helpers
 {
     public static class FileExtensions
     {
-        public static async Task Lock(this FileInfo lockFilePath, Func<Task> action)
+        public static Task Lock(this FileInfo lockFilePath, Func<Task> action)
         {
             if (lockFilePath == null) throw new ArgumentNullException(nameof(lockFilePath));
             if (action == null) throw new ArgumentNullException(nameof(action));
 
+            return LockInternal(lockFilePath, action);
+        }
+
+        private static async Task LockInternal(FileInfo lockFilePath, Func<Task> action)
+        {
             while (true)
             {
                 try
