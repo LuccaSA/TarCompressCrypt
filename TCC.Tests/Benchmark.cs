@@ -27,7 +27,7 @@ namespace TCC.Tests
                 {
                     Content = BenchmarkContent.Both,
                     Algorithm = BenchmarkCompressionAlgo.All,
-                    FileSize = 1,
+                    FileSize = 1024,
                     NumberOfFiles = 1,
                     Ratio = 1
                 });

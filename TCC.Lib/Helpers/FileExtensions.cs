@@ -50,7 +50,7 @@ namespace TCC.Lib.Helpers
             }
         }
 
-        public static void TryDeleteFileWithRetry(this string filePath, int retries = 100)
+        public static async Task TryDeleteFileWithRetry(this string filePath, int retries = 100)
         {
             if (retries <= 1)
                 throw new ArgumentOutOfRangeException(nameof(retries));
@@ -66,7 +66,7 @@ namespace TCC.Lib.Helpers
                 {
                     // Exceptions are ignored
                 }
-                Thread.Sleep(10);
+                await Task.Delay(10);
                 retries--;
             }
 

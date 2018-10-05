@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 using TCC.Parser;
@@ -65,7 +66,7 @@ namespace TCC.Tests.Parsing
         [InlineData("decompress file.txt -e pass2.txt -o temp", "pass2.txt", PasswordMode.PasswordFile)]
         [InlineData("compress file.txt -k pass3.pem -o temp", "pass3.pem", PasswordMode.PublicKey)]
         [InlineData("decompress file.txt -k pass4.pem -o temp", "pass4.pem", PasswordMode.PublicKey)]
-        public void EcryptionCommands(string command, string passchain, PasswordMode mode)
+        public async Task EcryptionCommands(string command, string passchain, PasswordMode mode)
         {
             var commandBlocks = command.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 
@@ -104,7 +105,7 @@ namespace TCC.Tests.Parsing
 
             if (passchain != null && passchain.Contains("."))
             {
-                passchain.TryDeleteFileWithRetry(); // cleanup
+                await passchain.TryDeleteFileWithRetry(); // cleanup
             }
         }
     }

@@ -347,8 +347,5 @@ namespace TCC.Lib
             // 512 byte == 4096 bit
             return $"{openSslPath} rand -base64 256 > {filename}";
         }
-
-        //"C:\Program Files\Git\usr\bin\find.exe" C:\Sites\lucca\ -mmin -5760 -type f
-
     }
 }

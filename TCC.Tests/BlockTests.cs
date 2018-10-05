@@ -45,6 +45,16 @@ namespace TCC.Tests
             _fi3 = await TestFileHelper.NewFile(_root);
         }
 
+        private async Task Cleanup()
+        {
+            await _fi11.TryDeleteFileWithRetry();
+            await _fi12.TryDeleteFileWithRetry();
+            await _fi13.TryDeleteFileWithRetry();
+            await _fi1.TryDeleteFileWithRetry();
+            await _fi2.TryDeleteFileWithRetry();
+            await _fi3.TryDeleteFileWithRetry();
+        }
+
         [Fact]
         public async Task DiscoverExplicitBlocks()
         {
@@ -60,6 +70,7 @@ namespace TCC.Tests
             var fi = new FileInfo(_root);
             Assert.Single(blocks);
             Assert.Equal(fi.Name, blocks.First().Source.Trim('"'));
+            await Cleanup();
         }
 
         [Fact]
@@ -76,6 +87,7 @@ namespace TCC.Tests
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
             Assert.Equal(6, blocks.Count);
+            await Cleanup();
         }
 
         [Fact]
@@ -92,12 +104,14 @@ namespace TCC.Tests
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
             Assert.Equal(3, blocks.Count);
+            await Cleanup();
         }
 
         [Fact]
         public async Task DiscoverEachFileRecursiveBlocks()
         {
             await Prepare();
+
             var compressOption = new CompressOption()
             {
                 SourceDirOrFile = _root,
@@ -108,17 +122,11 @@ namespace TCC.Tests
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
             Assert.Equal(6, blocks.Count);
+            await Cleanup();
         }
 
         public void Dispose()
         {
-            _fi11.TryDeleteFileWithRetry();
-            _fi12.TryDeleteFileWithRetry();
-            _fi13.TryDeleteFileWithRetry();
-            _fi1.TryDeleteFileWithRetry();
-            _fi2.TryDeleteFileWithRetry();
-            _fi3.TryDeleteFileWithRetry();
-
             Directory.Delete(_fo1);
             Directory.Delete(_fo2);
             Directory.Delete(_fo3);
