@@ -22,7 +22,26 @@ The bottleneck will be your storage :
 
 (on 16 vcore Ryzen 1700 no oc & 960 pro SSD)
 
-Why LZ4 ? : https://quixdb.github.io/squash-benchmark/
+### How to install : 
+
+- Install the [.NET Core 2.1 Runtime](https://www.microsoft.com/net/download)
+- Install TCC as global tool :
+```
+dotnet tool install -g TCC
+```
+- Run TCC in command line :
+```
+tcc --help
+```
+
+Don't hesitate to use the benchmark mode on your data to find the better speed / compression tradeoff in your case : 
+```
+tcc benchmark C:\ToBackupFolder
+```
+
+### Recommandations : 
+
+For maximum performances, you have to backup files from one physical disk, and output archives on another physical disk. IOps are the main bottleneck even on a recent SSD.
 
 ### Current status : 
 - alpha : use with care, API and archive format are subject to breaking changes. Be sure to keep the version you use actually in order to be able to decrypt your archives. 
@@ -40,3 +59,5 @@ Why LZ4 ? : https://quixdb.github.io/squash-benchmark/
 ### Plateform support : 
 - [x] Windows
 - [ ] Linux
+
+This project is inspired from the excellent Squash Compression Benchmark : https://quixdb.github.io/squash-benchmark/
