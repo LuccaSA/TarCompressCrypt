@@ -25,11 +25,11 @@ install:
   - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
   - ps: Update-AppveyorBuild -Version $version.Semver
   - dotnet tool install --global dotnet-sonarscanner
-  - nuget install OpenCover -Version 4.6.519 
-  - nuget install Codecov -Version 1.0.5 
+  - nuget install OpenCover -Version 4.6.519 -Verbosity quiet
+  - nuget install Codecov -Version 1.0.5 -Verbosity quiet
 
 before_build:
-- nuget restore TCC.sln
+- dotnet restore TCC.sln --verbosity m
 - cmd: >-
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
     dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
@@ -48,10 +48,10 @@ test_script:
 - Codecov.1.0.5\tools\codecov -f coverage-opencover.xml
 
 after_test:
-  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$version.Prefix+";VersionSuffix="+$version.Suffix) /p:PackageVersion=$env:APPVEYOR_BUILD_VERSION -o sartifacts
+  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$version.Prefix+";VersionSuffix="+$version.Suffix) /p:PackageVersion=$env:APPVEYOR_BUILD_VERSION -o artifacts
 
 artifacts:
-  - path: .\artifacts\**\*.nupkg
+  - path: .\TCC\artifacts\**\*.nupkg
 
 deploy:
   provider: GitHub
