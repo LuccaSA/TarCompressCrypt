@@ -2,7 +2,7 @@
 
 namespace TCC.Lib.Benchmark
 {
-    public class BenchmarIteration
+    public class BenchmarkIteration
     {
         public CompressionAlgo Algo { get; set; }
         public bool Encryption { get; set; }

@@ -14,13 +14,16 @@ namespace TCC.Lib.Benchmark
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TarCompressCrypt _tarCompressCrypt;
-        public BenchmarkHelper(TarCompressCrypt tarCompressCrypt, CancellationTokenSource cancellationTokenSource)
+        private readonly BenchmarkOptionHelper _benchmarkOptionHelper;
+
+        public BenchmarkHelper(TarCompressCrypt tarCompressCrypt, CancellationTokenSource cancellationTokenSource, BenchmarkOptionHelper benchmarkOptionHelper)
         {
             _tarCompressCrypt = tarCompressCrypt;
             _cancellationTokenSource = cancellationTokenSource;
+            _benchmarkOptionHelper = benchmarkOptionHelper;
         }
 
-        private IEnumerable<BenchmarIteration> GenerateBenchmarkIteration(BenchmarkOption benchmarkOption, IEnumerable<BenchmarkTestContent> testData)
+        private IEnumerable<BenchmarkIteration> GenerateBenchmarkIteration(BenchmarkOption benchmarkOption, IEnumerable<BenchmarkTestContent> testData)
         {
             var algos = new[] {
                 CompressionAlgo.Lz4,
@@ -38,7 +41,7 @@ namespace TCC.Lib.Benchmark
                     {
                         foreach (int ratio in GetBenchmarkRatios(benchmarkOption, algo))
                         {
-                            yield return new BenchmarIteration
+                            yield return new BenchmarkIteration
                             {
                                 Algo = algo,
                                 CompressionRatio = ratio,
@@ -50,8 +53,6 @@ namespace TCC.Lib.Benchmark
                 }
             }
         }
-
-       
 
         private async Task<List<BenchmarkTestContent>> PrepareTestData(BenchmarkOption benchmarkOption)
         {
@@ -136,27 +137,27 @@ namespace TCC.Lib.Benchmark
 
             var threads = benchmarkOption.Threads == 0 ? Environment.ProcessorCount : benchmarkOption.Threads;
 
-            foreach (var iter in iterations)
+            foreach (var iteration in iterations)
             {
-                PasswordMode pm = iter.Encryption ? PasswordMode.PublicKey : PasswordMode.None;
+                PasswordMode pm = iteration.Encryption ? PasswordMode.PublicKey : PasswordMode.None;
                 var compressedFolder = TestFileHelper.NewFolder();
                 var outputFolder = TestFileHelper.NewFolder();
 
                 // compress
                 var compressOption = new CompressOption
                 {
-                    Algo = iter.Algo,
-                    CompressionRatio = iter.CompressionRatio,
+                    Algo = iteration.Algo,
+                    CompressionRatio = iteration.CompressionRatio,
                     BlockMode = BlockMode.Individual,
-                    SourceDirOrFile = iter.Content.Source,
+                    SourceDirOrFile = iteration.Content.Source,
                     DestinationDir = compressedFolder,
                     Threads = threads,
-                    PasswordOption = await BenchmarkOptionHelper.GenerateCompressPassswordOption(pm, keysFolder)
+                    PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder)
                 };
 
-                var swComp = Stopwatch.StartNew();
+                var swCompress = Stopwatch.StartNew();
                 OperationSummary resultCompress = await _tarCompressCrypt.Compress(compressOption);
-                swComp.Stop();
+                swCompress.Stop();
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
                     return null;
@@ -172,7 +173,7 @@ namespace TCC.Lib.Benchmark
                     .Select(f => f.Length)
                     .Sum();
 
-                double compressionFactor = iter.Content.Size / (double)compressedSize;
+                double compressionFactor = iteration.Content.Size / (double)compressedSize;
 
                 // decompress
                 var decompressOption = new DecompressOption
@@ -180,11 +181,11 @@ namespace TCC.Lib.Benchmark
                     SourceDirOrFile = compressedFolder,
                     DestinationDir = outputFolder,
                     Threads = threads,
-                    PasswordOption = BenchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)
+                    PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)
                 };
-                var swDecomp = Stopwatch.StartNew();
+                var swDecompress = Stopwatch.StartNew();
                 OperationSummary resultDecompress = await _tarCompressCrypt.Decompress(decompressOption);
-                swDecomp.Stop();
+                swDecompress.Stop();
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
                     return null;
@@ -197,13 +198,13 @@ namespace TCC.Lib.Benchmark
                     result.ThrowOnError();
                 }
 
-                double sizeMb = iter.Content.Size / (double)(1024 * 1024);
-                double compMbs = sizeMb / (swComp.ElapsedMilliseconds / (float)1000);
-                double decompMbs = sizeMb / (swDecomp.ElapsedMilliseconds / (float)1000);
+                double sizeMb = iteration.Content.Size / (double)(1024 * 1024);
+                double compressMbs = sizeMb / (swCompress.ElapsedMilliseconds / (float)1000);
+                double decompressMbs = sizeMb / (swDecompress.ElapsedMilliseconds / (float)1000);
 
-                string aes = iter.Encryption ? "yes" : "no ";
+                string aes = iteration.Encryption ? "yes" : "no ";
 
-                Console.Out.WriteLine($"{iter.Algo} [{iter.CompressionRatio}] aes:{aes} data:{iter.Content.Content} compress {compMbs:0.###} Mb/s, decompress {decompMbs:0.###} Mb/s, ratio {compressionFactor:0.###}");
+                Console.Out.WriteLine($"{iteration.Algo} [{iteration.CompressionRatio}] aes:{aes} data:{iteration.Content.Content} compress {compressMbs:0.###} Mb/s, decompress {decompressMbs:0.###} Mb/s, ratio {compressionFactor:0.###}");
             }
 
             return new OperationSummary(operationSummaries.SelectMany(i => i.Blocks), operationSummaries.SelectMany(i => i.CommandResults));

@@ -12,41 +12,38 @@ TarCompressCrypt (TCC) is a command line tool for blazing fast compression + enc
 - then use lz4/zstd/brotli for blazing fast compression operations
 - then use openssl for aes256 encryption (native aes-ni instructions support)
 
-All operations are parallelized for maximum throughput. The goal is to saturate disk ios, not the CPU
+Basically, TCC job's is to pipe ( `|` ) tar, compressor and openssl commands. Natives and official implementations of each command are used for maximum performance.
 
-Tcc is mainly used for massive backup operation on production servers, with minimum CPU impact
+The other TCC purpose is to prepare the compression job with differents strategies : for example, you can create an archive for each folder found in the source folder, and choose how many parallel threads to process the batch for maximum throughput. You can either saturate disk ios, or the CPU depending on your settings, or choose to keep some room on your servers.
 
-The bottleneck will be your storage :
+TCC is actually used for off-site backup operations on production servers.
 
-![image](https://user-images.githubusercontent.com/5228175/33807616-e57be752-ddd9-11e7-8ea8-0b26cae6e228.png)
-
-(on 16 vcore Ryzen 1700 no oc & 960 pro SSD)
-
-### How to install : 
+## How to install : 
 
 - Install the [.NET Core 2.1 Runtime](https://www.microsoft.com/net/download)
 - Install TCC as global tool :
-```
-dotnet tool install -g TCC
-```
+    ```dotnetcli
+    dotnet tool install -g TCC
+    ```
+
 - Run TCC in command line :
-```
-tcc --help
-```
+    ```dotnetcli
+    tcc --help
+    ```
 
-Don't hesitate to use the benchmark mode on your data to find the better speed / compression tradeoff in your case : 
-```
-tcc benchmark C:\ToBackupFolder
-```
+- Don't hesitate to use the benchmark mode on your data to find the better speed / compression tradeoff in your case : 
+    ```dotnetcli
+    tcc benchmark C:\ToBackupFolder
+    ```
 
-### Recommandations : 
+## Recommandations : 
 
 For maximum performances, you have to backup files from one physical disk, and output archives on another physical disk. IOps are the main bottleneck even on a recent SSD.
 
-### Current status : 
+## Current status : 
 - alpha : use with care, API and archive format are subject to breaking changes. Be sure to keep the version you use actually in order to be able to decrypt your archives. 
 
-### Roadmap :
+## Roadmap :
 - [ ] documenatation
 - [x] operation logs
 - [ ] differential backup
@@ -56,8 +53,22 @@ For maximum performances, you have to backup files from one physical disk, and o
 - [x] lz4 / brotli / zstd support
 - [x] benchmark mode
 
-### Plateform support : 
+## Plateform support : 
 - [x] Windows
 - [ ] Linux
 
-This project is inspired from the excellent Squash Compression Benchmark : https://quixdb.github.io/squash-benchmark/
+## Dependencies : 
+
+This project relies on the following external dependencies :
+
+On windows :
+- Tar v1.30 : extracted from the msys2 build of [git for windows 2.19.1](https://git-scm.com/)
+- OpenSsl v1.1.1 : from [bintray](https://bintray.com/vszakats/generic/openssl) referenced in [official wiki](https://wiki.openssl.org/index.php/Binaries)
+- Zstandard v1.3.5 : from facebook [Zstandard github repo](https://github.com/facebook/zstd/)
+- Brotli v1.0.4 : from google [Brotli github repo](https://github.com/google/brotli/)
+- Lz4 v1.8.3 : from [Lz4 github repo](https://github.com/lz4/lz4/)
+
+All dependencies are downloaded on first TCC start, and are not included in TCC repository, except tar (for now)
+Please consult the different project licences.
+
+TCC is inspired from the excellent Squash Compression Benchmark : https://quixdb.github.io/squash-benchmark/

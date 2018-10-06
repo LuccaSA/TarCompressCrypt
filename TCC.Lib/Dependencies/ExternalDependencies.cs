@@ -3,24 +3,21 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using TCC.Lib.Helpers;
 
 namespace TCC.Lib.Dependencies
 {
     public class ExternalDependencies
     {
-        private const string ExeTar = @"Libs\tar.exe";
-
-        public string Tar()
+        public ExternalDependencies(ILogger<ExternalDependencies> logger)
         {
-            string tarPath = Path.Combine(Root, ExeTar);
-            if (!File.Exists(tarPath))
-            {
-                throw new FileNotFoundException("tar not found in " + tarPath);
-            }
-            return tarPath.Escape();
+            _logger = logger;
         }
 
+        private readonly ILogger<ExternalDependencies> _logger;
+
+        public string Tar() => GetPath(_tar);
         public string Lz4() => GetPath(_lz4);
         public string Brotli() => GetPath(_brotli);
         public string Zstd() => GetPath(_zStd);
@@ -33,6 +30,7 @@ namespace TCC.Lib.Dependencies
             await EnsureDependency(_brotli, progress);
             await EnsureDependency(_zStd, progress);
             await EnsureDependency(_openSsl, progress);
+            await EnsureDependency(_tar, progress);
         }
 
         public string Root => Path.GetDirectoryName(typeof(ExternalDependencies).Assembly.CodeBase.Replace("file:///", ""));
@@ -57,47 +55,64 @@ namespace TCC.Lib.Dependencies
             {
                 await downloadLock.Lock(async () =>
                 {
-                    if (File.Exists(exePath))
+                    try
                     {
-                        percent.Report(100);
-                        return;
+                        await DownloadDependencyInternal(dependency, percent, path, exePath);
                     }
-
-                    string target = Path.Combine(path, string.IsNullOrEmpty(dependency.ZipFilename)
-                        ? dependency.ExeName
-                        : dependency.ZipFilename);
-
-                    Directory.CreateDirectory(path);
-
-                    using (var wc = new WebClient())
+                    catch (Exception e)
                     {
-                        wc.DownloadProgressChanged += (s, e) =>
-                        {
-                            percent.Report((int)(e.BytesReceived / e.TotalBytesToReceive * 100));
-                        };
-                        wc.DownloadFileCompleted += (s, e) =>
-                        {
-                            percent.Report(100);
-                        };
-                        await wc.DownloadFileTaskAsync(dependency.Url, target);
-                    }
-
-                    if (!string.IsNullOrEmpty(dependency.ZipFilename))
-                    {
-                        ZipFile.ExtractToDirectory(target, path);
-                    }
-
-                    if (!File.Exists(exePath))
-                    {
-                        throw new FileNotFoundException(dependency.Name + " not found in " + exePath);
+                        _logger.LogCritical(e, "Critical error while downloading external dependency");
                     }
                 });
             }
+
             percent.Report(100);
             return exePath;
         }
 
-        private readonly ExternalDep _lz4 = new ExternalDep()
+        private async Task DownloadDependencyInternal(ExternalDep dependency, IProgress<int> percent, string path, string exePath)
+        {
+            if (File.Exists(exePath))
+            {
+                percent.Report(100);
+                return;
+            }
+
+            string target = Path.Combine(path, string.IsNullOrEmpty(dependency.ZipFilename)
+                ? dependency.ExeName
+                : dependency.ZipFilename);
+
+            Directory.CreateDirectory(path);
+
+            _logger.LogInformation($"Downloading {dependency.Name} from {dependency.Url} ");
+
+            using (var wc = new WebClient())
+            {
+                wc.DownloadProgressChanged += (s, e) =>
+                {
+                    percent.Report((int)(e.BytesReceived / e.TotalBytesToReceive * 100));
+                };
+                wc.DownloadFileCompleted += (s, e) =>
+                {
+                    percent.Report(100);
+                };
+                await wc.DownloadFileTaskAsync(dependency.Url, target);
+            }
+
+            _logger.LogInformation($"Download finished for {dependency.Name}");
+
+            if (!string.IsNullOrEmpty(dependency.ZipFilename))
+            {
+                ZipFile.ExtractToDirectory(target, path);
+            }
+
+            if (!File.Exists(exePath))
+            {
+                throw new FileNotFoundException(dependency.Name + " not found in " + exePath);
+            }
+        }
+
+        private static readonly ExternalDep _lz4 = new ExternalDep()
         {
             Name = "Lz4",
             Url = @"https://github.com/lz4/lz4/releases/download/v1.8.3/lz4_v1_8_3_win64.zip",
@@ -106,7 +121,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "lz4.exe"
         };
 
-        private readonly ExternalDep _brotli = new ExternalDep()
+        private static readonly ExternalDep _brotli = new ExternalDep()
         {
             Name = "Brotli",
             Url = @"https://github.com/google/brotli/releases/download/v1.0.4/brotli-v1.0.4-win_x86_64.zip",
@@ -115,7 +130,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "brotli.exe"
         };
 
-        private readonly ExternalDep _zStd = new ExternalDep()
+        private static readonly ExternalDep _zStd = new ExternalDep()
         {
             Name = "Zstandard",
             Url = @"https://github.com/facebook/zstd/releases/download/v1.3.5/zstd-v1.3.5-win64.zip",
@@ -126,13 +141,22 @@ namespace TCC.Lib.Dependencies
 
         // From : https://bintray.com/vszakats/generic/openssl
         // referenced from official OpenSSL wiki : https://wiki.openssl.org/index.php/Binaries
-        private readonly ExternalDep _openSsl = new ExternalDep()
+        private static readonly ExternalDep _openSsl = new ExternalDep()
         {
             Name = "OpenSSL",
             Url = @"https://bintray.com/vszakats/generic/download_file?file_path=openssl-1.1.1-win64-mingw.zip",
             ZipFilename = "openssl-1.1.1-win64-mingw.zip",
             ExtractFolder = "openssl_v111",
             ExeName = "openssl-1.1.1-win64-mingw\\openssl.exe"
+        };
+
+        private static readonly ExternalDep _tar = new ExternalDep()
+        {
+            Name = "Tar",
+            Url = @"https://github.com/rducom/TarCompressCrypt/raw/dependencies/Dependencies/tar_msys2_130.zip",
+            ZipFilename = "tar_msys2_130.zip",
+            ExtractFolder = "tar_v130",
+            ExeName = "tar.exe"
         };
 
     }
