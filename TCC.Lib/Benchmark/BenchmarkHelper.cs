@@ -14,6 +14,7 @@ namespace TCC.Lib.Benchmark
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TarCompressCrypt _tarCompressCrypt;
+
         public BenchmarkHelper(TarCompressCrypt tarCompressCrypt, CancellationTokenSource cancellationTokenSource)
         {
             _tarCompressCrypt = tarCompressCrypt;
@@ -50,8 +51,6 @@ namespace TCC.Lib.Benchmark
                 }
             }
         }
-
-       
 
         private async Task<List<BenchmarkTestContent>> PrepareTestData(BenchmarkOption benchmarkOption)
         {
