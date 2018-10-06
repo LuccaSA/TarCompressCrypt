@@ -332,7 +332,7 @@ namespace TCC.Lib
         {
             if (String.IsNullOrWhiteSpace(publicKey))
             {
-                throw new CommandLineException("Asynmetric public key file missing");
+                throw new CommandLineException("Asymmetric public key file missing");
             }
             return $"{openSslPath} rsautl -encrypt -inkey {publicKey} -pubin -in {keyPath} -out {keyCryptedPath}";
         }
@@ -341,7 +341,7 @@ namespace TCC.Lib
         {
             if (String.IsNullOrWhiteSpace(privateKey))
             {
-                throw new CommandLineException("Asynmetric private key file missing");
+                throw new CommandLineException("Asymmetric private key file missing");
             }
             return $"{openSslPath} rsautl -decrypt -inkey {privateKey} -in {keyCryptedPath} -out {keyPath}";
         }

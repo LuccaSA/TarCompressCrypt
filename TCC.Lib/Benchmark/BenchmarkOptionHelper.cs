@@ -12,10 +12,12 @@ namespace TCC.Lib.Benchmark
     {
         private static Guid _pass = new Guid("ECEF7408-4D58-4776-98FE-E0ED604C2D7C");
         private readonly ExternalDependencies _externalDependencies;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
-        public BenchmarkOptionHelper(ExternalDependencies externalDependencies)
+        public BenchmarkOptionHelper(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource)
         {
             _externalDependencies = externalDependencies;
+            _cancellationTokenSource = cancellationTokenSource;
         }
 
         public PasswordOption GenerateDecompressPasswordOption(PasswordMode passwordMode, string keysFolder)
@@ -27,8 +29,7 @@ namespace TCC.Lib.Benchmark
                 case PasswordMode.InlinePassword:
                     return new InlinePasswordOption { Password = _pass.ToString("N") };
                 case PasswordMode.PasswordFile:
-                    string passfile = Path.Combine(keysFolder, "password.txt");
-                    return new PasswordFileOption { PasswordFile = passfile };
+                    return new PasswordFileOption { PasswordFile = Path.Combine(keysFolder, "password.txt") };
                 case PasswordMode.PublicKey:
                     return new PrivateKeyPasswordOption
                     {
@@ -39,7 +40,7 @@ namespace TCC.Lib.Benchmark
             }
         }
 
-        public async Task<PasswordOption> GenerateCompressPassswordOption(PasswordMode passwordMode, string keysFolder)
+        public async Task<PasswordOption> GenerateCompressPasswordOption(PasswordMode passwordMode, string keysFolder)
         {
             switch (passwordMode)
             {
@@ -48,19 +49,19 @@ namespace TCC.Lib.Benchmark
                 case PasswordMode.InlinePassword:
                     return new InlinePasswordOption { Password = _pass.ToString("N") };
                 case PasswordMode.PasswordFile:
-                    string passfile = Path.Combine(keysFolder, "password.txt");
-                    TestFileHelper.FillFile(passfile, "123456");
-                    return new PasswordFileOption { PasswordFile = passfile };
+                    string passwordFile = Path.Combine(keysFolder, "password.txt");
+                    TestFileHelper.FillFile(passwordFile, "123456");
+                    return new PasswordFileOption { PasswordFile = passwordFile };
                 case PasswordMode.PublicKey:
                     {
                         var e = _externalDependencies;
-                        var kp = await CreateKeyPairCommand(e.OpenSsl(), "keypair.pem", KeySize.Key4096).Run(keysFolder, CancellationToken.None);
-                        var pub = await CreatePublicKeyCommand(e.OpenSsl(), "keypair.pem", "public.pem").Run(keysFolder, CancellationToken.None);
-                        var priv = await CreatePrivateKeyCommand(e.OpenSsl(), "keypair.pem", "private.pem").Run(keysFolder, CancellationToken.None);
+                        var keyPair = await CreateKeyPairCommand(e.OpenSsl(), "keypair.pem", KeySize.Key4096).Run(keysFolder, _cancellationTokenSource.Token);
+                        var publicKey = await CreatePublicKeyCommand(e.OpenSsl(), "keypair.pem", "public.pem").Run(keysFolder, _cancellationTokenSource.Token);
+                        var privateKey = await CreatePrivateKeyCommand(e.OpenSsl(), "keypair.pem", "private.pem").Run(keysFolder, _cancellationTokenSource.Token);
 
-                        kp.ThrowOnError();
-                        pub.ThrowOnError();
-                        priv.ThrowOnError();
+                        keyPair.ThrowOnError();
+                        publicKey.ThrowOnError();
+                        privateKey.ThrowOnError();
 
                         return new PublicKeyPasswordOption
                         {

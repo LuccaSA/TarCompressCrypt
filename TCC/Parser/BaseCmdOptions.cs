@@ -10,7 +10,7 @@ namespace TCC.Parser
         [Option('t', "threads", HelpText = "Number of threads [1,2...N] / all")]
         public string Threads { get; set; }
 
-        [Option('f', "failfast", HelpText = "Fail-fast mode")]
+        [Option('f', "failFast", HelpText = "Fail-fast mode")]
         public bool FailFast { get; set; }
 
         [Option('p', "password", HelpText = "encryption password")]

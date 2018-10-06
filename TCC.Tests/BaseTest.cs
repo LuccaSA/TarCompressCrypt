@@ -95,7 +95,7 @@ namespace TCC.Tests
         {
             CompressOption compressOption = data.GetTccCompressOption(compressedFolder, algo);
 
-            compressOption.PasswordOption = await _benchmarkOptionHelper.GenerateCompressPassswordOption(passwordMode, keysFolder);
+            compressOption.PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(passwordMode, keysFolder);
 
             var resultCompress = await _tarCompressCrypt.Compress(compressOption);
             return resultCompress;

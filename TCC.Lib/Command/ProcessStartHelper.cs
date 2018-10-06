@@ -15,7 +15,7 @@ namespace TCC.Lib.Command
             return command.Run(workingDirectory, cancellationToken, TccProcessOutputClassifier.Instance, timeout);
         }
 
-        public static Task<CommandResult> Run(this string command, string workingDirectory,
+        private static Task<CommandResult> Run(this string command, string workingDirectory,
             CancellationToken cancellationToken, IProcessOutputClassifier outputClassifier, TimeSpan? timeout = null)
         {
             TimeSpan timeOutSpan = timeout ?? TimeSpan.FromMinutes(120);
