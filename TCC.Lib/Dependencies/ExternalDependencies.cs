@@ -9,18 +9,7 @@ namespace TCC.Lib.Dependencies
 {
     public class ExternalDependencies
     {
-        private const string ExeTar = @"Libs\tar.exe";
-
-        public string Tar()
-        {
-            string tarPath = Path.Combine(Root, ExeTar);
-            if (!File.Exists(tarPath))
-            {
-                throw new FileNotFoundException("tar not found in " + tarPath);
-            }
-            return tarPath.Escape();
-        }
-
+        public string Tar() => GetPath(_tar);
         public string Lz4() => GetPath(_lz4);
         public string Brotli() => GetPath(_brotli);
         public string Zstd() => GetPath(_zStd);
@@ -33,6 +22,7 @@ namespace TCC.Lib.Dependencies
             await EnsureDependency(_brotli, progress);
             await EnsureDependency(_zStd, progress);
             await EnsureDependency(_openSsl, progress);
+            await EnsureDependency(_tar, progress);
         }
 
         public string Root => Path.GetDirectoryName(typeof(ExternalDependencies).Assembly.CodeBase.Replace("file:///", ""));
@@ -133,6 +123,15 @@ namespace TCC.Lib.Dependencies
             ZipFilename = "openssl-1.1.1-win64-mingw.zip",
             ExtractFolder = "openssl_v111",
             ExeName = "openssl-1.1.1-win64-mingw\\openssl.exe"
+        };
+
+        private readonly ExternalDep _tar = new ExternalDep()
+        {
+            Name = "Tar",
+            Url = @"https://github.com/rducom/TarCompressCrypt/raw/dependencies/Dependencies/tar_msys2_130.zip",
+            ZipFilename = "tar_msys2_130.zip",
+            ExtractFolder = "tar_v130",
+            ExeName = "tar.exe"
         };
 
     }
