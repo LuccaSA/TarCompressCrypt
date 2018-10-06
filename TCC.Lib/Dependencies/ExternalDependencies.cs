@@ -153,7 +153,7 @@ namespace TCC.Lib.Dependencies
         private static readonly ExternalDep _tar = new ExternalDep()
         {
             Name = "Tar",
-            Url = @"https://github.com/rducom/TarCompressCrypt/raw/dependencies/Dependencies/tar_msys2_130.zip",
+            Url = @"https://github.com/rducom/TarCompressCrypt/raw/master/Dependencies/tar_msys2_130.zip",
             ZipFilename = "tar_msys2_130.zip",
             ExtractFolder = "tar_v130",
             ExeName = "tar.exe"
