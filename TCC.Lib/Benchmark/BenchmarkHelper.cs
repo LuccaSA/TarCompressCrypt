@@ -68,20 +68,22 @@ namespace TCC.Lib.Benchmark
             if ((benchmarkOption.Content & BenchmarkContent.Ascii) == BenchmarkContent.Ascii)
             {
                 var testAsciiDataFolder = TestFileHelper.NewFolder();
-                foreach (int i in Enumerable.Range(0, benchmarkOption.NumberOfFiles))
-                {
-                    await TestFileHelper.NewFile(testAsciiDataFolder, benchmarkOption.FileSize, true);
-                }
+
+                await Task.WhenAll(
+                    Enumerable.Range(0, benchmarkOption.NumberOfFiles)
+                        .Select(i => TestFileHelper.NewFile(testAsciiDataFolder, benchmarkOption.FileSize, true)));
+                 
                 list.Add(new BenchmarkTestContent(testAsciiDataFolder, true, BenchmarkContent.Ascii));
             }
 
             if ((benchmarkOption.Content & BenchmarkContent.Binary) == BenchmarkContent.Binary)
             {
                 var testBinaryDataFolder = TestFileHelper.NewFolder();
-                foreach (int i in Enumerable.Range(0, benchmarkOption.NumberOfFiles))
-                {
-                    await TestFileHelper.NewFile(testBinaryDataFolder, benchmarkOption.FileSize, false);
-                }
+
+                await Task.WhenAll(
+                    Enumerable.Range(0, benchmarkOption.NumberOfFiles)
+                        .Select(i => TestFileHelper.NewFile(testBinaryDataFolder, benchmarkOption.FileSize)));
+
                 list.Add(new BenchmarkTestContent(testBinaryDataFolder, true, BenchmarkContent.Binary));
             }
             return list;

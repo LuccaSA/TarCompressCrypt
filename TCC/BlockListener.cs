@@ -13,7 +13,7 @@ namespace TCC
             ThreadPool.QueueUserWorkItem(_ => OnProgress(ref _counter, BlockingCollection));
         }
 
-        private int _counter = 0;
+        private int _counter;
 
         public BlockingCollection<BlockReport> BlockingCollection { get; } 
 
