@@ -8,11 +8,17 @@ using TCC.Lib.Options;
 
 namespace TCC.Lib.Benchmark
 {
-    public static class BenchmarkOptionHelper
+    public class BenchmarkOptionHelper
     {
-        private  static Guid _pass = new Guid("ECEF7408-4D58-4776-98FE-E0ED604C2D7C");
+        private static Guid _pass = new Guid("ECEF7408-4D58-4776-98FE-E0ED604C2D7C");
+        private readonly ExternalDependencies _externalDependencies;
 
-        public static PasswordOption GenerateDecompressPasswordOption(PasswordMode passwordMode, string keysFolder)
+        public BenchmarkOptionHelper(ExternalDependencies externalDependencies)
+        {
+            _externalDependencies = externalDependencies;
+        }
+
+        public PasswordOption GenerateDecompressPasswordOption(PasswordMode passwordMode, string keysFolder)
         {
             switch (passwordMode)
             {
@@ -33,7 +39,7 @@ namespace TCC.Lib.Benchmark
             }
         }
 
-        public static async Task<PasswordOption> GenerateCompressPassswordOption(PasswordMode passwordMode, string keysFolder)
+        public async Task<PasswordOption> GenerateCompressPassswordOption(PasswordMode passwordMode, string keysFolder)
         {
             switch (passwordMode)
             {
@@ -47,8 +53,7 @@ namespace TCC.Lib.Benchmark
                     return new PasswordFileOption { PasswordFile = passfile };
                 case PasswordMode.PublicKey:
                     {
-                        var e = new ExternalDependencies();
-                        await e.EnsureAllDependenciesPresent();
+                        var e = _externalDependencies;
                         var kp = await CreateKeyPairCommand(e.OpenSsl(), "keypair.pem", KeySize.Key4096).Run(keysFolder, CancellationToken.None);
                         var pub = await CreatePublicKeyCommand(e.OpenSsl(), "keypair.pem", "public.pem").Run(keysFolder, CancellationToken.None);
                         var priv = await CreatePrivateKeyCommand(e.OpenSsl(), "keypair.pem", "private.pem").Run(keysFolder, CancellationToken.None);
@@ -67,13 +72,13 @@ namespace TCC.Lib.Benchmark
             }
         }
 
-        public static string CreateKeyPairCommand(string openSslPath, string keyPairFile, KeySize keySize)
+        public string CreateKeyPairCommand(string openSslPath, string keyPairFile, KeySize keySize)
             => $"{openSslPath} genpkey -algorithm RSA -out {keyPairFile} -pkeyopt rsa_keygen_bits:{(int)keySize}";
 
-        public static string CreatePublicKeyCommand(string openSslPath, string keyPairFile, string publicKeyFile)
+        public string CreatePublicKeyCommand(string openSslPath, string keyPairFile, string publicKeyFile)
             => $"{openSslPath} rsa -pubout -outform PEM -in {keyPairFile} -out {publicKeyFile}";
 
-        public static string CreatePrivateKeyCommand(string openSslPath, string keyPairFile, string privateKeyFile)
+        public string CreatePrivateKeyCommand(string openSslPath, string keyPairFile, string privateKeyFile)
             => $"{openSslPath} rsa -outform PEM -in {keyPairFile} -out {privateKeyFile}";
 
     }

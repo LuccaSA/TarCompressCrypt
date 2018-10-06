@@ -17,14 +17,14 @@ namespace TCC.Lib
 {
     public class TarCompressCrypt
     {
-        private readonly ExternalDependencies _externalDependencies;
+        private readonly ExternalDependencies _ext;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly IBlockListener _blockListener;
         private readonly ILogger<TarCompressCrypt> _logger;
 
         public TarCompressCrypt(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger)
         {
-            _externalDependencies = externalDependencies;
+            _ext = externalDependencies;
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
             _logger = logger;
@@ -79,7 +79,7 @@ namespace TCC.Lib
         {
             var k = await PrepareEncryptionKey(block, option, _cancellationTokenSource.Token);
 
-            string cmd = CompressCommand(block, option as CompressOption, _externalDependencies);
+            string cmd = CompressCommand(block, option as CompressOption);
             var result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
 
             await CleanupKey(block, option, k, result, Mode.Compress);
@@ -89,11 +89,9 @@ namespace TCC.Lib
 
         private async Task<CommandResult> Decrypt(Block block, TccOption option)
         {
-            var ext = new ExternalDependencies();
-
             var k = await PrepareDecryptionKey(block, option, _cancellationTokenSource.Token);
 
-            string cmd = DecompressCommand(block, option, ext);
+            string cmd = DecompressCommand(block, option);
             var result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
 
             await CleanupKey(block, option, k, result, Mode.Compress);
@@ -132,7 +130,7 @@ namespace TCC.Lib
             public string KeyCrypted { get; }
         }
 
-        private static async Task<EncryptionKey> PrepareEncryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
+        private async Task<EncryptionKey> PrepareEncryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
         {
             string key = null;
             string keyCrypted = null;
@@ -142,13 +140,12 @@ namespace TCC.Lib
             {
                 key = block.ArchiveName + ".key";
                 keyCrypted = block.ArchiveName + ".key.encrypted";
-
-                var ext = new ExternalDependencies();
+                 
                 // generate random passfile
-                var passfile = await GenerateRandomKey(ext.OpenSsl(), key).Run(block.DestinationFolder, cancellationToken);
+                var passfile = await GenerateRandomKey(_ext.OpenSsl(), key).Run(block.DestinationFolder, cancellationToken);
                 passfile.ThrowOnError();
                 // crypt passfile
-                var cryptPass = await EncryptRandomKey(ext.OpenSsl(), key, keyCrypted, publicKey.PublicKeyFile).Run(block.DestinationFolder, cancellationToken);
+                var cryptPass = await EncryptRandomKey(_ext.OpenSsl(), key, keyCrypted, publicKey.PublicKeyFile).Run(block.DestinationFolder, cancellationToken);
                 cryptPass.ThrowOnError();
 
                 block.BlockPasswordFile = Path.Combine(block.DestinationFolder, key);
@@ -162,7 +159,7 @@ namespace TCC.Lib
             return new EncryptionKey(key, keyCrypted);
         }
 
-        private static async Task<EncryptionKey> PrepareDecryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
+        private async Task<EncryptionKey> PrepareDecryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
         {
             string key = null;
             string keyCrypted = null;
@@ -175,8 +172,8 @@ namespace TCC.Lib
                     var name = file.Name.Substring(0, file.Name.IndexOf(".tar", StringComparison.InvariantCultureIgnoreCase));
                     keyCrypted = Path.Combine(dir, name + ".key.encrypted");
                     key = Path.Combine(dir, name + ".key");
-                    var ext = new ExternalDependencies();
-                    await DecryptRandomKey(ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
+           
+                    await DecryptRandomKey(_ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
                     block.BlockPasswordFile = key;
 
                     break;
@@ -187,7 +184,7 @@ namespace TCC.Lib
             return new EncryptionKey(key, keyCrypted);
         }
 
-        private static string CompressCommand(Block block, CompressOption option, ExternalDependencies ext)
+        private string CompressCommand(Block block, CompressOption option)
         {
             var cmd = new StringBuilder();
             string ratio;
@@ -211,17 +208,17 @@ namespace TCC.Lib
             {
                 case PasswordMode.None:
                     // tar -c C:\SourceFolder | lz4.exe -1 - compressed.tar.lz4
-                    cmd.Append($"{ext.Tar()} -c {block.Source}");
+                    cmd.Append($"{_ext.Tar()} -c {block.Source}");
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd.Append($" | {ext.Lz4()} {ratio} -v - {block.DestinationArchive}");
+                            cmd.Append($" | {_ext.Lz4()} {ratio} -v - {block.DestinationArchive}");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd.Append($" | {ext.Brotli()} {ratio} - -o {block.DestinationArchive}");
+                            cmd.Append($" | {_ext.Brotli()} {ratio} - -o {block.DestinationArchive}");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($" | {ext.Zstd()} {ratio} - -o {block.DestinationArchive}");
+                            cmd.Append($" | {_ext.Zstd()} {ratio} - -o {block.DestinationArchive}");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
@@ -232,22 +229,22 @@ namespace TCC.Lib
                 case PasswordMode.PublicKey:
                     string passwdCommand = PasswordCommand(option, block);
                     // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
-                    cmd.Append($"{ext.Tar()} -c {block.Source}");
+                    cmd.Append($"{_ext.Tar()} -c {block.Source}");
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd.Append($" | {ext.Lz4()} {ratio} -v - ");
+                            cmd.Append($" | {_ext.Lz4()} {ratio} -v - ");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd.Append($" | {ext.Brotli()} {ratio} - ");
+                            cmd.Append($" | {_ext.Brotli()} {ratio} - ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($" | {ext.Zstd()} {ratio} - ");
+                            cmd.Append($" | {_ext.Zstd()} {ratio} - ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
                     }
-                    cmd.Append($" | {ext.OpenSsl()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive}");
+                    cmd.Append($" | {_ext.OpenSsl()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive}");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(option));
@@ -256,7 +253,7 @@ namespace TCC.Lib
         }
 
 
-        private static string DecompressCommand(Block block, TccOption option, ExternalDependencies ext)
+        private string DecompressCommand(Block block, TccOption option)
         {
             var cmd = new StringBuilder();
             switch (option.PasswordOption.PasswordMode)
@@ -266,40 +263,40 @@ namespace TCC.Lib
                     switch (block.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd.Append($"{ext.Lz4()} {block.Source} -dc --no-sparse ");
+                            cmd.Append($"{_ext.Lz4()} {block.Source} -dc --no-sparse ");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd.Append($"{ext.Brotli()} {block.Source} -d -c ");
+                            cmd.Append($"{_ext.Brotli()} {block.Source} -d -c ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($"{ext.Zstd()} {block.Source} -d -c ");
+                            cmd.Append($"{_ext.Zstd()} {block.Source} -d -c ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");
                     }
-                    cmd.Append($" | {ext.Tar()} xf - ");
+                    cmd.Append($" | {_ext.Tar()} xf - ");
                     break;
                 case PasswordMode.InlinePassword:
                 case PasswordMode.PasswordFile:
                 case PasswordMode.PublicKey:
                     string passwdCommand = PasswordCommand(option, block);
                     //openssl aes-256-cbc -d -k "test" -in crypted.tar.lz4.aes | lz4 -dc --no-sparse - | tar xf -
-                    cmd.Append($"{ext.OpenSsl()} aes-256-cbc -d {passwdCommand} -in {block.Source}");
+                    cmd.Append($"{_ext.OpenSsl()} aes-256-cbc -d {passwdCommand} -in {block.Source}");
                     switch (block.Algo)
                     {
                         case CompressionAlgo.Lz4:
-                            cmd.Append($" | {ext.Lz4()} -dc --no-sparse - ");
+                            cmd.Append($" | {_ext.Lz4()} -dc --no-sparse - ");
                             break;
                         case CompressionAlgo.Brotli:
-                            cmd.Append($" | {ext.Brotli()} - -d ");
+                            cmd.Append($" | {_ext.Brotli()} - -d ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($" | {ext.Zstd()} - -d ");
+                            cmd.Append($" | {_ext.Zstd()} - -d ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");
                     }
-                    cmd.Append($" | {ext.Tar()} xf - ");
+                    cmd.Append($" | {_ext.Tar()} xf - ");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(option));

@@ -23,10 +23,12 @@ namespace TCC.Tests
             var provider = serviceCollection.BuildServiceProvider();
             _tarCompressCrypt = provider.GetRequiredService<TarCompressCrypt>();
             _externalDependencies = provider.GetRequiredService<ExternalDependencies>();
+            _benchmarkOptionHelper = provider.GetRequiredService<BenchmarkOptionHelper>();
         }
 
-        private TarCompressCrypt _tarCompressCrypt;
-        private ExternalDependencies _externalDependencies;
+        private readonly TarCompressCrypt _tarCompressCrypt;
+        private readonly ExternalDependencies _externalDependencies;
+        private readonly BenchmarkOptionHelper _benchmarkOptionHelper;
 
         [Theory]
         [InlineData(PasswordMode.None, CompressionAlgo.Lz4)]
@@ -82,7 +84,7 @@ namespace TCC.Tests
         {
             var decompOption = decomp.GetTccDecompressOption(decompressedFolder);
 
-            decompOption.PasswordOption = BenchmarkOptionHelper.GenerateDecompressPasswordOption(passwordMode, keysFolder);
+            decompOption.PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(passwordMode, keysFolder);
 
             var resultDecompress = await _tarCompressCrypt.Decompress(decompOption);
             return resultDecompress;
@@ -93,7 +95,7 @@ namespace TCC.Tests
         {
             CompressOption compressOption = data.GetTccCompressOption(compressedFolder, algo);
 
-            compressOption.PasswordOption = await BenchmarkOptionHelper.GenerateCompressPassswordOption(passwordMode, keysFolder);
+            compressOption.PasswordOption = await _benchmarkOptionHelper.GenerateCompressPassswordOption(passwordMode, keysFolder);
 
             var resultCompress = await _tarCompressCrypt.Compress(compressOption);
             return resultCompress;

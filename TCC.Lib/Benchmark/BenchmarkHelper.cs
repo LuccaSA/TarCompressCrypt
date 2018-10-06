@@ -14,11 +14,13 @@ namespace TCC.Lib.Benchmark
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TarCompressCrypt _tarCompressCrypt;
+        private readonly BenchmarkOptionHelper _benchmarkOptionHelper;
 
-        public BenchmarkHelper(TarCompressCrypt tarCompressCrypt, CancellationTokenSource cancellationTokenSource)
+        public BenchmarkHelper(TarCompressCrypt tarCompressCrypt, CancellationTokenSource cancellationTokenSource, BenchmarkOptionHelper benchmarkOptionHelper)
         {
             _tarCompressCrypt = tarCompressCrypt;
             _cancellationTokenSource = cancellationTokenSource;
+            _benchmarkOptionHelper = benchmarkOptionHelper;
         }
 
         private IEnumerable<BenchmarIteration> GenerateBenchmarkIteration(BenchmarkOption benchmarkOption, IEnumerable<BenchmarkTestContent> testData)
@@ -150,7 +152,7 @@ namespace TCC.Lib.Benchmark
                     SourceDirOrFile = iter.Content.Source,
                     DestinationDir = compressedFolder,
                     Threads = threads,
-                    PasswordOption = await BenchmarkOptionHelper.GenerateCompressPassswordOption(pm, keysFolder)
+                    PasswordOption = await _benchmarkOptionHelper.GenerateCompressPassswordOption(pm, keysFolder)
                 };
 
                 var swComp = Stopwatch.StartNew();
@@ -179,7 +181,7 @@ namespace TCC.Lib.Benchmark
                     SourceDirOrFile = compressedFolder,
                     DestinationDir = outputFolder,
                     Threads = threads,
-                    PasswordOption = BenchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)
+                    PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)
                 };
                 var swDecomp = Stopwatch.StartNew();
                 OperationSummary resultDecompress = await _tarCompressCrypt.Decompress(decompressOption);
