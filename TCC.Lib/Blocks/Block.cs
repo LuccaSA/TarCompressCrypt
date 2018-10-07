@@ -1,4 +1,5 @@
-﻿using TCC.Lib.Helpers;
+﻿using System.IO;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Lib.Blocks
@@ -25,5 +26,18 @@ namespace TCC.Lib.Blocks
         public string ArchiveName { get; set; }
         public string BlockPasswordFile { get; set; }
         public CompressionAlgo Algo { get; set; }
+
+        private long _sourceSize;
+        public long SourceSize
+        {
+            get
+            {
+                if (_sourceSize == 0)
+                {
+                    _sourceSize = Path.Combine(OperationFolder, _source).GetDirectoryOrFileSize();
+                }
+                return _sourceSize;
+            }
+        }
     }
 }

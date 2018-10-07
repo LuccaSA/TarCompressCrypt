@@ -44,14 +44,15 @@ For maximum performances, you have to backup files from one physical disk, and o
 - alpha : use with care, API and archive format are subject to breaking changes. Be sure to keep the version you use actually in order to be able to decrypt your archives. 
 
 ## Roadmap :
-- [ ] documenatation
-- [x] operation logs
-- [ ] differential backup
+
 - [x] password file / asymetric key support
-- [ ] external storage provider support
-- [x] exe packaging + distribution
+- [x] packaging + distribution
 - [x] lz4 / brotli / zstd support
 - [x] benchmark mode
+- [x] operation logs
+- [ ] differential backup
+- [ ] documentation
+- [ ] external storage provider support
 
 ## Plateform support : 
 - [x] Windows

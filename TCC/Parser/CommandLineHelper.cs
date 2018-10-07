@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CommandLine;
@@ -69,16 +70,24 @@ namespace TCC.Parser
                     },
                     (BenchmarkOptions opts) =>
                     {
+                        bool IsExplicitMode()
+                        {
+                            return !args.Any(i => BenchmarkOptions.AutoTestDataOptions.Contains(i));
+                        }
+
                         var option = new BenchmarkOption
                         {
                             Algorithm = opts.Algorithm,
-                            Ratio = opts.Ratio,
+                            Ratios = opts.Ratios,
                             Encrypt = opts.Encrypt,
-                            Source = opts.Source,
+                            Source = IsExplicitMode() ? opts.Source : null,
                             Content = opts.Content,
                             NumberOfFiles = opts.NumberOfFiles,
                             FileSize = opts.FileSize,
-                            Threads = opts.Threads
+                            Threads = opts.Threads,
+                            OutputCompressed = opts.OutputCompressed,
+                            OutputDecompressed = opts.OutputDecompressed,
+                            Cleanup = opts.Cleanup
                         };
                         return new TccCommand
                         {

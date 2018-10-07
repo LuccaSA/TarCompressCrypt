@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -48,7 +49,8 @@ namespace TCC.Lib
             TccOption option,
             Func<Block, TccOption, Task<CommandResult>> processor)
         {
-            var commandResults = new ConcurrentBag<CommandResult>();
+            var operationBlock = new ConcurrentBag<OperationBlock>();
+            Stopwatch sw = Stopwatch.StartNew();
             await blocks.ParallelizeAsync(async (b, token) =>
             {
                 CommandResult result = null;
@@ -68,11 +70,11 @@ namespace TCC.Lib
                         result.Errors += e.Message;
                     }
                 }
-                commandResults.Add(result);
+                operationBlock.Add(new OperationBlock(b,result));
 
             }, option.Threads, option.FailFast ? Fail.Fast : Fail.Smart, _cancellationTokenSource.Token);
-
-            return new OperationSummary(blocks, commandResults);
+            sw.Stop();
+            return new OperationSummary(operationBlock, option.Threads, sw);
         }
 
         private async Task<CommandResult> Encrypt(Block block, TccOption option)
@@ -322,7 +324,7 @@ namespace TCC.Lib
                 {
                     throw new CommandLineException("Password file missing");
                 }
-                passwdCommand = "-kfile " + block.BlockPasswordFile;
+                passwdCommand = "-kfile " + block.BlockPasswordFile.Escape();
             }
 
             return passwdCommand;
@@ -334,7 +336,7 @@ namespace TCC.Lib
             {
                 throw new CommandLineException("Asymmetric public key file missing");
             }
-            return $"{openSslPath} rsautl -encrypt -inkey {publicKey} -pubin -in {keyPath} -out {keyCryptedPath}";
+            return $"{openSslPath} rsautl -encrypt -inkey {publicKey.Escape()} -pubin -in {keyPath.Escape()} -out {keyCryptedPath.Escape()}";
         }
 
         private static string DecryptRandomKey(string openSslPath, string keyPath, string keyCryptedPath, string privateKey)
@@ -343,13 +345,13 @@ namespace TCC.Lib
             {
                 throw new CommandLineException("Asymmetric private key file missing");
             }
-            return $"{openSslPath} rsautl -decrypt -inkey {privateKey} -in {keyCryptedPath} -out {keyPath}";
+            return $"{openSslPath} rsautl -decrypt -inkey {privateKey.Escape()} -in {keyCryptedPath.Escape()} -out {keyPath.Escape()}";
         }
 
         private static string GenerateRandomKey(string openSslPath, string filename)
         {
             // 512 byte == 4096 bit
-            return $"{openSslPath} rand -base64 256 > {filename}";
+            return $"{openSslPath} rand -base64 256 > {filename.Escape()}";
         }
     }
 }

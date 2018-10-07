@@ -38,9 +38,6 @@ before_build:
     )
 
 build_script:
-- ps: msbuild "TCC.sln" /m /verbosity:minimal /property:Configuration=Debug /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
-
-after_build:
 - OpenCover.4.6.519\tools\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"C:\Program Files\dotnet\dotnet.exe" -targetargs:"test /p:DebugType=full -c Debug TCC.Tests\TCC.Tests.csproj" -excludebyattribute:*.ExcludeFromCodeCoverage* -filter:"+[TCC*]* -[*Tests*]*" -output:coverage-opencover.xml
 - dotnet sonarscanner end /d:"sonar.login=%SONAR_TOKEN%"
 
