@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace TCC.Lib.Helpers
@@ -42,6 +43,18 @@ namespace TCC.Lib.Helpers
                     // lock file exists
                 }
                 await Task.Delay(1000);
+            }
+        }
+
+        public static long GetDirectoryOrFileSize(this string source)
+        {
+            if (File.GetAttributes(source).HasFlag(FileAttributes.Directory))
+            {
+                return new DirectoryInfo(source).GetFiles("*", SearchOption.AllDirectories).Sum(file => file.Length);
+            }
+            else
+            {
+                return new FileInfo(source).Length;
             }
         }
 

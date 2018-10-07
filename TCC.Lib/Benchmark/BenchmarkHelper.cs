@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib.Blocks;
+using TCC.Lib.Command;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Lib.Benchmark
@@ -60,7 +63,7 @@ namespace TCC.Lib.Benchmark
             if (!String.IsNullOrEmpty(benchmarkOption.Source))
             {
                 // explicit test file
-                list.Add(new BenchmarkTestContent(benchmarkOption.Source, false, BenchmarkContent.None));
+                list.Add(new BenchmarkTestContent(benchmarkOption.Source, false, BenchmarkContent.UserDefined));
                 return list;
             }
 
@@ -72,7 +75,7 @@ namespace TCC.Lib.Benchmark
                 await Task.WhenAll(
                     Enumerable.Range(0, benchmarkOption.NumberOfFiles)
                         .Select(i => TestFileHelper.NewFile(testAsciiDataFolder, benchmarkOption.FileSize, true)));
-                 
+
                 list.Add(new BenchmarkTestContent(testAsciiDataFolder, true, BenchmarkContent.Ascii));
             }
 
@@ -91,10 +94,22 @@ namespace TCC.Lib.Benchmark
 
         private static IEnumerable<int> GetBenchmarkRatios(BenchmarkOption benchmarkOption, CompressionAlgo algo)
         {
-            if (benchmarkOption.Ratio == 0)
+            if (String.IsNullOrEmpty(benchmarkOption.Ratios))
                 return Enumerable.Range(1, MaxRatio(algo));
-            else
-                return new[] { benchmarkOption.Ratio };
+
+            var ratios = UserDefinedRatios(benchmarkOption.Ratios, algo).ToList();
+            return Enumerable.Range(ratios.Min(), ratios.Max() - ratios.Min() + 1);
+        }
+
+        private static IEnumerable<int> UserDefinedRatios(string ratios, CompressionAlgo algo)
+        {
+            foreach (var r in ratios.Split(','))
+            {
+                if (int.TryParse(r, out int ratio) && ratio > 0 && ratio <= MaxRatio(algo))
+                {
+                    yield return ratio;
+                }
+            }
         }
 
         private static bool ShouldTestAlgo(BenchmarkOption benchmarkOption, CompressionAlgo algo)
@@ -142,8 +157,8 @@ namespace TCC.Lib.Benchmark
             foreach (var iteration in iterations)
             {
                 PasswordMode pm = iteration.Encryption ? PasswordMode.PublicKey : PasswordMode.None;
-                var compressedFolder = TestFileHelper.NewFolder();
-                var outputFolder = TestFileHelper.NewFolder();
+                var compressedFolder = TestFileHelper.NewFolder(benchmarkOption.OutputCompressed);
+                var outputFolder = TestFileHelper.NewFolder(benchmarkOption.OutputDecompressed);
 
                 // compress
                 var compressOption = new CompressOption
@@ -156,26 +171,15 @@ namespace TCC.Lib.Benchmark
                     Threads = threads,
                     PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder)
                 };
-
-                var swCompress = Stopwatch.StartNew();
+         
                 OperationSummary resultCompress = await _tarCompressCrypt.Compress(compressOption);
-                swCompress.Stop();
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
+                    await Cleanup();
                     return null;
                 }
-
                 operationSummaries.Add(resultCompress);
-                foreach (var result in resultCompress.CommandResults)
-                {
-                    result.ThrowOnError();
-                }
-
-                var compressedSize = resultCompress.Blocks.Select(i => new FileInfo(i.DestinationArchive.Trim('"')))
-                    .Select(f => f.Length)
-                    .Sum();
-
-                double compressionFactor = iteration.Content.Size / (double)compressedSize;
+                resultCompress.ThrowOnError();
 
                 // decompress
                 var decompressOption = new DecompressOption
@@ -185,38 +189,66 @@ namespace TCC.Lib.Benchmark
                     Threads = threads,
                     PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)
                 };
-                var swDecompress = Stopwatch.StartNew();
+             
                 OperationSummary resultDecompress = await _tarCompressCrypt.Decompress(decompressOption);
-                swDecompress.Stop();
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
+                    await Cleanup();
                     return null;
                 }
 
                 operationSummaries.Add(resultDecompress);
+                resultDecompress.ThrowOnError();
 
-                foreach (var result in resultDecompress.CommandResults)
+                StringBuilder sb = FormatResultSummary(iteration, resultCompress, resultDecompress);
+
+                Console.Out.WriteLine(sb.ToString());
+
+                async Task Cleanup()
                 {
-                    result.ThrowOnError();
+                    if (benchmarkOption.Cleanup)
+                    {
+                        await "del /f /s /q * > NUL".Run(compressedFolder, CancellationToken.None);
+                        Directory.Delete(compressedFolder, true);
+                        await "del /f /s /q * > NUL".Run(outputFolder, CancellationToken.None);
+                        Directory.Delete(outputFolder, true);
+                    }
                 }
 
-                double sizeMb = iteration.Content.Size / (double)(1024 * 1024);
-                double compressMbs = sizeMb / (swCompress.ElapsedMilliseconds / (float)1000);
-                double decompressMbs = sizeMb / (swDecompress.ElapsedMilliseconds / (float)1000);
-
-                string aes = iteration.Encryption ? "yes" : "no ";
-
-                Console.Out.WriteLine($"{iteration.Algo} [{iteration.CompressionRatio}] aes:{aes} data:{iteration.Content.Content} compress {compressMbs:0.###} Mb/s, decompress {decompressMbs:0.###} Mb/s, ratio {compressionFactor:0.###}");
+                await Cleanup();
             }
 
-            return new OperationSummary(operationSummaries.SelectMany(i => i.Blocks), operationSummaries.SelectMany(i => i.CommandResults));
+            return new OperationSummary(operationSummaries.SelectMany(i => i.OperationBlocks), 0, default);
+        }
+
+        private static StringBuilder FormatResultSummary(BenchmarkIteration iteration, OperationSummary resultCompress, OperationSummary resultDecompress)
+        {
+            string aes = iteration.Encryption ? "yes" : "no ";
+
+            var statComp = resultCompress.Statistics;
+            var statDecomp = resultDecompress.Statistics;
+
+            var sb = new StringBuilder();
+            sb.Append($"{iteration.Algo}".PadRight(6));
+            sb.Append($"[{iteration.CompressionRatio.ToString().PadLeft(2)}] ");
+            sb.Append($"aes:{aes} ");
+            if (iteration.Content.Content != BenchmarkContent.UserDefined)
+            {
+                sb.Append($"data:{iteration.Content.Content} ");
+            }
+            sb.Append("compress ");
+            sb.Append(statComp.AverageThroughput.HumanizedBandwidth().Pad(12));
+            sb.Append($" [{resultCompress.Stopwatch.Elapsed.HumanizedTimeSpan().Pad(10)}] ");
+            sb.Append("decompress ");
+            sb.Append(statDecomp.AverageThroughput.HumanizedBandwidth().Pad(12));
+            sb.Append($" [{resultDecompress.Stopwatch.Elapsed.HumanizedTimeSpan().Pad(10)}] ");
+            sb.Append($"ratio:{resultCompress.CompressionRatio:0.####}");
+            return sb;
         }
     }
 
     public class BenchmarkTestContent
     {
-        private long _size;
-
         public BenchmarkTestContent(string source, bool shouldDelete, BenchmarkContent content)
         {
             Source = source ?? throw new ArgumentNullException(nameof(source));
@@ -227,25 +259,5 @@ namespace TCC.Lib.Benchmark
         public string Source { get; }
         public bool ShouldDelete { get; }
         public BenchmarkContent Content { get; }
-
-        public long Size
-        {
-            get
-            {
-                if (_size == 0)
-                {
-                    if (File.GetAttributes(Source).HasFlag(FileAttributes.Directory))
-                    {
-                        var dir = new DirectoryInfo(Source);
-                        _size = dir.GetFiles().Select(f => f.Length).Sum();
-                    }
-                    else
-                    {
-                        _size = new FileInfo(Source).Length;
-                    }
-                }
-                return _size;
-            } 
-        }
     }
 }
