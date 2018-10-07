@@ -14,7 +14,7 @@ TarCompressCrypt (TCC) is a command line tool for blazing fast compression + enc
 
 Basically, TCC job's is to pipe ( `|` ) tar, compressor and openssl commands. Natives and official implementations of each command are used for maximum performance.
 
-The other TCC purpose is to prepare the compression job with differents strategies : for example, you can create an archive for each folder found in the source folder, and choose how many parallel threads to process the batch for maximum throughput. You can either saturate disk ios, or the CPU depending on your settings, or choose to keep some room on your servers.
+The other TCC purpose is to prepare the compression job with different strategies. You can create an archive for each folder found in the source folder, and choose how many parallel threads to process the batch for maximum throughput. You can either saturate disk iops, or the CPU depending on your settings, or choose to keep some room on your servers.
 
 TCC is actually used for off-site backup operations on production servers.
 
@@ -36,12 +36,12 @@ TCC is actually used for off-site backup operations on production servers.
     tcc benchmark C:\ToBackupFolder
     ```
 
-## Recommandations : 
+## Recommendations : 
 
-For maximum performances, you have to backup files from one physical disk, and output archives on another physical disk. IOps are the main bottleneck even on a recent SSD.
+For maximum performances, you have to backup files from one physical disk, and output archives on another physical disk : iops are the main bottleneck even on a recent SSD.
 
 ## Current status : 
-- alpha : use with care, API and archive format are subject to breaking changes. Be sure to keep the version you use actually in order to be able to decrypt your archives. 
+- alpha : use with care, API and archive format are subject to breaking changes. Be sure to keep the version you use actually to be able to decrypt your archives. 
 
 ## Roadmap :
 
