@@ -19,6 +19,7 @@ namespace TCC.Lib.Helpers
             serviceCollection.AddSingleton<TarCompressCrypt>();
             serviceCollection.AddSingleton<BenchmarkRunner>();
             serviceCollection.AddSingleton<BenchmarkOptionHelper>();
+            serviceCollection.AddSingleton<BenchmarkIterationGenerator>();
             serviceCollection.AddSingleton(_ => new CancellationTokenSource());
         }
     }
