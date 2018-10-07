@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using TCC.Lib.Blocks;
-using TCC.Lib.Command;
 
 namespace TCC.Lib
 {
@@ -79,45 +77,5 @@ namespace TCC.Lib
                 return 0;
             return operations.Sum(o => (o.BlockThroughputMbps() - mean) * (o.BlockThroughputMbps() - mean) / (count - 1));
         }
-    }
-
-    public class OperationStatistic
-    {
-        /// <summary>
-        /// Mean throughput in Mbps per thread
-        /// </summary>
-        public double Mean { get; set; }
-        public double Variance { get; set; }
-        public double StandardDeviation { get; set; }
-        public double StandardError { get; set; }
-        /// <summary>
-        /// Average throughput on all threads
-        /// </summary>
-        public double AverageThroughput { get; set; }
-    }
-
-    public class OperationBlock
-    {
-        public OperationBlock(Block block, CommandResult commandResult)
-        {
-            Block = block ?? throw new ArgumentNullException(nameof(block));
-            CommandResult = commandResult ?? throw new ArgumentNullException(nameof(commandResult));
-        }
-
-        public Block Block { get; }
-        public CommandResult CommandResult { get; }
-
-        public double BlockThroughputMbps()
-        {
-            if (Block.SourceSize == 0 || CommandResult.ElapsedMilliseconds == 0)
-            {
-                throw new TccException("Block operation not finished yet");
-            }
-            if (!CommandResult.IsSuccess)
-            {
-                return 0;
-            }
-            return (double)Block.SourceSize * 1000 / CommandResult.ElapsedMilliseconds;
-        } 
     }
 }

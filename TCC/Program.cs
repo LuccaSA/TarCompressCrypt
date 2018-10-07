@@ -60,7 +60,7 @@ namespace TCC
 
                 case Mode.Benchmark:
                     return provider
-                        .GetRequiredService<BenchmarkHelper>()
+                        .GetRequiredService<BenchmarkRunner>()
                         .RunBenchmark(command.BenchmarkOption);
                 default:
                     throw new NotImplementedException();

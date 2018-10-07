@@ -17,7 +17,7 @@ namespace TCC.Lib.Helpers
             serviceCollection.TryAddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
             serviceCollection.AddSingleton<ExternalDependencies>();
             serviceCollection.AddSingleton<TarCompressCrypt>();
-            serviceCollection.AddSingleton<BenchmarkHelper>();
+            serviceCollection.AddSingleton<BenchmarkRunner>();
             serviceCollection.AddSingleton<BenchmarkOptionHelper>();
             serviceCollection.AddSingleton(_ => new CancellationTokenSource());
         }

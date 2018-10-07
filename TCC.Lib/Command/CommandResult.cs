@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 using System.Text;
 
 namespace TCC.Lib.Command
@@ -25,20 +24,6 @@ namespace TCC.Lib.Command
                 sb.AppendLine("error : " + Errors);
                 throw new TccException(sb.ToString());
             }
-        }
-    }
-
-    [Serializable]
-    public sealed class TccException : Exception
-    {
-        public TccException(string errors)
-            : base(errors)
-        {
-        }
-
-        private TccException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
         }
     }
 }

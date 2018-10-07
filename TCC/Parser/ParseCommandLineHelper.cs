@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CommandLine;
@@ -9,14 +8,6 @@ using TCC.Lib.Options;
 
 namespace TCC.Parser
 {
-    public class TccCommand
-    {
-        public Mode Mode { get; set; }
-        public TccOption Option { get; set; }
-        public BenchmarkOption BenchmarkOption { get; set; }
-        public int ReturnCode { get; set; }
-    }
-
     public static class ParseCommandLineHelper
     {
         public static TccCommand ParseCommandLine(this string[] args)

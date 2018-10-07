@@ -7,37 +7,6 @@ using System.Threading.Tasks;
 
 namespace TCC.Lib.Helpers
 {
-    public enum Fail
-    {
-        /// <summary>
-        /// Don't fail loop on exception, return a fault task
-        /// </summary>
-        Default,
-        /// <summary>
-        /// Fail loop as soon as an exception happens, return a successful task, with exceptions in ParallelizedSummary
-        /// </summary>
-        Fast,
-        /// <summary>
-        /// Don't fail loop on exception, return a successful task, with exceptions in ParallelizedSummary
-        /// </summary>
-        Smart
-    }
-
-    public class ParallelizedSummary
-    {
-        public IEnumerable<Exception> Exceptions { get; }
-
-        public bool IsCancelled { get; }
-
-        public bool IsSucess => !IsCancelled && (Exceptions == null || !Exceptions.Any());
-
-        public ParallelizedSummary(IEnumerable<Exception> exceptions, bool isCancelled)
-        {
-            Exceptions = exceptions;
-            IsCancelled = isCancelled;
-        }
-    }
-
     public static class TaskHelper
     {
         private sealed class ParallelizeCore : IDisposable
