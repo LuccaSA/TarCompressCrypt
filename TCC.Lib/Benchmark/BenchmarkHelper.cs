@@ -234,7 +234,7 @@ namespace TCC.Lib.Benchmark
             sb.Append($"aes:{aes} ");
             if (iteration.Content.Content != BenchmarkContent.UserDefined)
             {
-                sb.Append($"data:{iteration.Content.Content} ");
+                sb.Append($"{iteration.Content.Content.ToString().PadRight(6)} ");
             }
             sb.Append("compress ");
             sb.Append(statComp.AverageThroughput.HumanizedBandwidth().Pad(12));
