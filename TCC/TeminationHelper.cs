@@ -10,7 +10,7 @@ namespace TCC
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
 
-        private delegate bool ConsoleEventDelegate(int eventType);
+        private delegate bool ConsoleEventDelegate(CtrlType eventType);
         private static CancellationTokenSource _staticCancellationTokenSource;
 
         public static void HookTermination(this CancellationTokenSource cts)
@@ -28,11 +28,30 @@ namespace TCC
         }
 
         [ExcludeFromCodeCoverage]
-        private static bool CtrlC(int eventType)
+        private static bool CtrlC(CtrlType eventType)
         {
-            Console.Error.WriteLine("Process termination requested");
-            _staticCancellationTokenSource?.Cancel();
-            return false;
+            switch (eventType)
+            {
+                case CtrlType.CTRL_BREAK_EVENT:
+                case CtrlType.CTRL_C_EVENT:
+                case CtrlType.CTRL_LOGOFF_EVENT:
+                case CtrlType.CTRL_SHUTDOWN_EVENT:
+                case CtrlType.CTRL_CLOSE_EVENT:
+                    Console.Error.WriteLine("Process termination requested");
+                    _staticCancellationTokenSource?.Cancel();
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        private enum CtrlType
+        {
+            CTRL_C_EVENT = 0,
+            CTRL_BREAK_EVENT = 1,
+            CTRL_CLOSE_EVENT = 2,
+            CTRL_LOGOFF_EVENT = 5,
+            CTRL_SHUTDOWN_EVENT = 6
         }
     }
 }
