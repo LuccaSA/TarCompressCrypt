@@ -66,7 +66,8 @@ namespace TCC.Lib.Helpers
 
             var globalCompletionSource = new TaskCompletionSource<ParallelizedSummary>();
             var core = new ParallelizeCore(ct, mode);
-            Task.Run(async () =>
+
+            Task.Factory.StartNew(async () =>
             {
                 var parallelTasks =
                     Enumerable.Range(0, maxDegreeOfParallelism)
@@ -88,7 +89,7 @@ namespace TCC.Lib.Helpers
                     globalCompletionSource.SetResult(new ParallelizedSummary(core.Exceptions, core.IsCancelled));
                 }
                 core.Dispose();
-            });
+            }, TaskCreationOptions.LongRunning);
 
             return globalCompletionSource.Task;
         }
