@@ -56,7 +56,7 @@ namespace TCC.Lib
                 CommandResult result = null;
                 try
                 {
-                    
+
                     _logger.LogInformation($"Starting {b.Source}");
                     result = await processor(b, option);
                     _blockListener.Add(new BlockReport(result, b, blocks.Count));
@@ -64,14 +64,16 @@ namespace TCC.Lib
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e,$"Error on {b.Source}");
+                    _logger.LogError(e, $"Error on {b.Source}");
                     if (result != null)
                     {
                         result.Errors += e.Message;
                     }
                 }
-                operationBlock.Add(new OperationBlock(b,result));
-
+                if (result != null)
+                {
+                    operationBlock.Add(new OperationBlock(b, result));
+                }
             }, option.Threads, option.FailFast ? Fail.Fast : Fail.Smart, _cancellationTokenSource.Token);
             sw.Stop();
             return new OperationSummary(operationBlock, option.Threads, sw);
@@ -79,30 +81,50 @@ namespace TCC.Lib
 
         private async Task<CommandResult> Encrypt(Block block, TccOption option)
         {
-            var k = await PrepareEncryptionKey(block, option, _cancellationTokenSource.Token);
+            EncryptionKey k = null;
+            CommandResult result = null;
+            try
+            {
+                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                k = await PrepareEncryptionKey(block, option, _cancellationTokenSource.Token);
 
-            string cmd = CompressCommand(block, option as CompressOption);
-            var result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
-
-            await CleanupKey(block, option, k, result, Mode.Compress);
-
+                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                string cmd = CompressCommand(block, option as CompressOption);
+                result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
+            }
+            finally
+            {
+                await CleanupKey(block, option, k, result, Mode.Compress);
+            }
             return result;
         }
 
         private async Task<CommandResult> Decrypt(Block block, TccOption option)
         {
-            var k = await PrepareDecryptionKey(block, option, _cancellationTokenSource.Token);
+            EncryptionKey k = null;
+            CommandResult result = null;
+            try
+            {
+                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                k = await PrepareDecryptionKey(block, option, _cancellationTokenSource.Token);
 
-            string cmd = DecompressCommand(block, option);
-            var result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
-
-            await CleanupKey(block, option, k, result, Mode.Compress);
-
+                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                string cmd = DecompressCommand(block, option);
+                result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
+            }
+            finally
+            {
+                await CleanupKey(block, option, k, result, Mode.Compress);
+            }
             return result;
         }
 
         private static Task CleanupKey(Block block, TccOption option, EncryptionKey key, CommandResult result, Mode mode)
         {
+            if (key == null)
+            {
+                return Task.CompletedTask;
+            }
             if (option.PasswordOption.PasswordMode == PasswordMode.PublicKey)
             {
                 // delete uncrypted pass
@@ -111,12 +133,11 @@ namespace TCC.Lib
                     return Path.Combine(block.DestinationFolder, key.Key).TryDeleteFileWithRetryAsync();
                 }
                 // if error in compression, also delete encrypted passfile
-                if (mode == Mode.Compress && result.HasError && !String.IsNullOrEmpty(key.KeyCrypted))
+                if (mode == Mode.Compress && (result == null || result.HasError) && !String.IsNullOrEmpty(key.KeyCrypted))
                 {
                     return Path.Combine(block.DestinationFolder, key.KeyCrypted).TryDeleteFileWithRetryAsync();
                 }
             }
-
             return Task.CompletedTask;
         }
 
@@ -142,7 +163,7 @@ namespace TCC.Lib
             {
                 key = block.ArchiveName + ".key";
                 keyCrypted = block.ArchiveName + ".key.encrypted";
-                 
+
                 // generate random passfile
                 var passfile = await GenerateRandomKey(_ext.OpenSsl(), key).Run(block.DestinationFolder, cancellationToken);
                 passfile.ThrowOnError();
@@ -174,7 +195,7 @@ namespace TCC.Lib
                     var name = file.Name.Substring(0, file.Name.IndexOf(".tar", StringComparison.InvariantCultureIgnoreCase));
                     keyCrypted = Path.Combine(dir, name + ".key.encrypted");
                     key = Path.Combine(dir, name + ".key");
-           
+
                     await DecryptRandomKey(_ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
                     block.BlockPasswordFile = key;
 

@@ -13,7 +13,7 @@ namespace TCC.Parser
         [Option('i', "individual", HelpText = "Individual mode : create distinct archives for each file / folder in source")]
         public bool Individual { get; set; }
 
-        [Option('a', "algorithm", HelpText = "Algorithm : lz4 (default), brotli, zstd", Default = CompressionAlgo.Lz4)]
+        [Option('a', "algorithm", HelpText = "Algorithm : Lz4 (default), Brotli, Zstd", Default = CompressionAlgo.Lz4)]
         public CompressionAlgo Algorithm { get; set; }
 
         [Option('r', "ratio", HelpText = "Compression ratio. Valid values are : lz4 [1,9], brotli [1,11], zstd [1,19] ")]

@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,30 +10,45 @@ namespace TCC.Lib.Helpers
 {
     public static class TaskHelper
     {
-        private sealed class ParallelizeCore : IDisposable
+        private sealed class ParallelizeCore
         {
             private readonly Fail _failMode;
             private readonly ConcurrentBag<Exception> _exceptions = new ConcurrentBag<Exception>();
-            private readonly CancellationTokenRegistration _cancellationTokenRegistration;
-            private readonly CancellationTokenSource _cancellationTokenPropagation = new CancellationTokenSource();
+            private int _concurrencyEmergencyStop;
+            private bool _isLoopBreakRequested;
+            private readonly CancellationToken _cancellationRequestToken;
+            private readonly CancellationTokenSource _exceptionCancellationTokenSource = new CancellationTokenSource();
 
-            public ParallelizeCore(CancellationToken ct, Fail failMode)
+            public ParallelizeCore(CancellationToken cancellationToken, Fail failMode)
             {
+                _cancellationRequestToken = cancellationToken;
                 _failMode = failMode;
-                if (ct.CanBeCanceled)
-                    _cancellationTokenRegistration = ct.Register(OnCancelRequested, false);
+                GlobalCancellationToken =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _exceptionCancellationTokenSource.Token).Token;
             }
 
-            public volatile bool IsLoopBreakRequested;
-            public volatile bool IsCancelled;
+            public bool IsLoopBreakRequested => _isLoopBreakRequested || GlobalCancellationToken.IsCancellationRequested;
+            public CancellationToken GlobalCancellationToken { get; }
+            public bool IsCancelled => _cancellationRequestToken.IsCancellationRequested;
             public bool IsFaulted => _exceptions.Count != 0;
             public IEnumerable<Exception> Exceptions => _exceptions;
 
-            private void OnCancelRequested()
+            internal void ConcurrencyIncrement(int maxDegreeOfParallelism)
             {
-                IsLoopBreakRequested = true;
-                IsCancelled = true;
-                _cancellationTokenPropagation.Cancel();
+                var updated = Interlocked.Increment(ref _concurrencyEmergencyStop);
+                if (updated > maxDegreeOfParallelism)
+                {
+                    throw new MaximumParallelismReachedException();
+                }
+            }
+
+            internal void ConcurrencyDecrement()
+            {
+                var updated = Interlocked.Decrement(ref _concurrencyEmergencyStop);
+                if (updated < 0)
+                {
+                    throw new MaximumParallelismReachedException();
+                }
             }
 
             public void OnException(Exception e)
@@ -44,23 +60,15 @@ namespace TCC.Lib.Helpers
                 _exceptions.Add(e);
                 if (_failMode == Fail.Fast)
                 {
-                    IsLoopBreakRequested = true;
-                    _cancellationTokenPropagation.Cancel();
+                    _exceptionCancellationTokenSource.Cancel();
+                    _isLoopBreakRequested = true;
                 }
-            }
-
-            public CancellationToken CancellationToken => _cancellationTokenPropagation.Token;
-
-            public void Dispose()
-            {
-                _cancellationTokenRegistration.Dispose();
-                _cancellationTokenPropagation?.Dispose();
             }
         }
 
-      
+
         public static Task<ParallelizedSummary> ParallelizeAsync<T>(this IEnumerable<T> source,
-            Func<T, CancellationToken, Task> funk, int maxDegreeOfParallelism, Fail mode, CancellationToken ct = default(CancellationToken))
+            Func<T, CancellationToken, Task> funk, int maxDegreeOfParallelism, Fail mode, CancellationToken ct)
         {
             var cs = new ConcurrentQueue<T>(source);
 
@@ -69,12 +77,20 @@ namespace TCC.Lib.Helpers
 
             Task.Factory.StartNew(async () =>
             {
-                var parallelTasks =
-                    Enumerable.Range(0, maxDegreeOfParallelism)
-                        .Select(i => ParallelizeCoreAsync(core, funk, cs))
-                        .ToArray();
+                try
+                {
+                    var parallelTasks =
+                        Enumerable.Range(0, maxDegreeOfParallelism)
+                            .Select(i => ParallelizeCoreAsync(core, funk, cs, maxDegreeOfParallelism))
+                            .ToArray();
 
-                await Task.WhenAll(parallelTasks);
+                    await Task.WhenAll(parallelTasks);
+                }
+                catch (Exception e)
+                {
+                    globalCompletionSource.SetException(e);
+                    return;
+                }
 
                 if (core.IsFaulted && mode == Fail.Default)
                 {
@@ -88,33 +104,48 @@ namespace TCC.Lib.Helpers
                 {
                     globalCompletionSource.SetResult(new ParallelizedSummary(core.Exceptions, core.IsCancelled));
                 }
-                core.Dispose();
             }, TaskCreationOptions.LongRunning);
 
             return globalCompletionSource.Task;
         }
 
-        private static Task ParallelizeCoreAsync<T>(ParallelizeCore core, Func<T, CancellationToken, Task> funk, ConcurrentQueue<T> cs)
+        private static Task ParallelizeCoreAsync<T>(ParallelizeCore core, Func<T, CancellationToken, Task> funk,
+            ConcurrentQueue<T> cs, int maxDegreeOfParallelism)
         {
             return Task.Run(async () =>
             {
                 while (cs.TryDequeue(out var item))
                 {
+                    core.ConcurrencyIncrement(maxDegreeOfParallelism);
                     if (core.IsLoopBreakRequested)
                     {
+                        core.ConcurrencyDecrement();
                         break;
                     }
-
                     try
                     {
-                        await funk(item, core.CancellationToken);
+                        await funk(item, core.GlobalCancellationToken);
                     }
                     catch (Exception e)
                     {
                         core.OnException(e);
                     }
+                    core.ConcurrencyDecrement();
                 }
             });
+        }
+    }
+
+    [Serializable]
+    public class MaximumParallelismReachedException : Exception
+    {
+        public MaximumParallelismReachedException()
+        {
+        }
+
+        protected MaximumParallelismReachedException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
         }
     }
 }
