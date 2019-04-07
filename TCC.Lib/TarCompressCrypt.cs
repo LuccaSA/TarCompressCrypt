@@ -51,23 +51,25 @@ namespace TCC.Lib
             Func<Block, TccOption, Task<CommandResult>> processor)
         {
             var operationBlock = new ConcurrentBag<OperationBlock>();
-            Stopwatch sw = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             var po = new ParallelizeOption
             {
                 FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
                 MaxDegreeOfParallelism = option.Threads
             };
-            Channel<Block> channel = blocks.EnumerableToChannel(out Task feederTask);
-            var internalQueue = channel.InternalQueue();
-            Channel<StreamedValue<Block>> results = Channel.CreateUnbounded<StreamedValue<Block>>();
-            var pTask = channel.Reader.ParallelizeStreamAsync(results, async (b, token) =>
+
+            var asyncStream = blocks
+                .AsAsyncStream(_cancellationTokenSource.Token)
+                .CountAsync(out var counter);
+       
+            var pTask = await asyncStream.ParallelizeStreamAsync(async (b, token) =>
             {
                 CommandResult result = null;
                 try
                 {
                     _logger.LogInformation($"Starting {b.Source}");
                     result = await processor(b, option);
-                    _blockListener.Add(new BlockReport(result, b, internalQueue.Count));
+                    _blockListener.Add(new BlockReport(result, b, counter.Count));
                     _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
                 }
                 catch (Exception e)
@@ -82,8 +84,9 @@ namespace TCC.Lib
                 {
                     operationBlock.Add(new OperationBlock(b, result));
                 }
-            }, po, _cancellationTokenSource.Token);
-            await Task.WhenAll(pTask, feederTask);
+                return new OperationBlock(b, result);
+            }, po).GetExceptionsAsync();
+             
             sw.Stop();
             return new OperationSummary(operationBlock, option.Threads, sw);
         }

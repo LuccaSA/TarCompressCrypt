@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -9,8 +10,8 @@ namespace TCC.Lib.Helpers
 {
     public static class ParallelHelper
     {
-        public static Task<ParallelizedSummary> ParallelizeAsync<T>(this IEnumerable<T> source,
-            Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option, CancellationToken cancellationToken)
+        public static AsyncStream<TResult> ParallelizeAsync<T, TResult>(this IEnumerable<T> source,
+            Func<T, CancellationToken, Task<TResult>> actionAsync, ParallelizeOption option, CancellationToken cancellationToken)
         {
             if (source == null)
             {
@@ -22,62 +23,28 @@ namespace TCC.Lib.Helpers
                 throw new ArgumentNullException(nameof(actionAsync));
             }
 
-            return ParallelizeInternalAsync(source, actionAsync, option, cancellationToken);
+            return source.AsAsyncStream(cancellationToken).ParallelizeStreamAsync(actionAsync, option);
         }
-
-        private static async Task<ParallelizedSummary> ParallelizeInternalAsync<T>(IEnumerable<T> source, Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option,
-            CancellationToken cancellationToken)
+        
+        public static AsyncStream<TResult> ParallelizeStreamAsync<T, TResult>(this AsyncStream<T> source,
+            Func<T, CancellationToken, Task<TResult>> actionAsync, ParallelizeOption option)
         {
-            Channel<T> channel = source.EnumerableToChannel(out Task feederTask);
-
-            var processingTask = channel.Reader.ParallelizeStreamAsync(null, actionAsync, option, cancellationToken);
-            await Task.WhenAll(feederTask, processingTask);
-            return await processingTask;
-        }
-
-        public static Channel<T> EnumerableToChannel<T>(this IEnumerable<T> source, out Task feederTask)
-        {
-            var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
-            {
-                SingleWriter = true,
-                SingleReader = false,
-                AllowSynchronousContinuations = true
-            });
-            feederTask = Task.Run(async () =>
-            {
-                foreach (var item in source)
-                {
-                    await channel.Writer.WriteAsync(item);
-                }
-                channel.Writer.Complete();
-            });
-            return channel;
-        }
-
-        public static Task<ParallelizedSummary> ParallelizeStreamAsync<T>(this ChannelReader<T> source,
-            ChannelWriter<StreamedValue<T>> resultsChannel,
-            Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option, CancellationToken cancellationToken)
-        {
-            if (source == null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
             if (actionAsync == null)
             {
                 throw new ArgumentNullException(nameof(actionAsync));
             }
 
-            return ParallelizeStreamInternalAsync(source, resultsChannel, actionAsync, option, cancellationToken);
+            return ParallelizeStreamInternalAsync(source, actionAsync, option);
         }
 
-        private static Task<ParallelizedSummary> ParallelizeStreamInternalAsync<T>(ChannelReader<T> source, ChannelWriter<StreamedValue<T>> resultsChannel,
-            Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option, CancellationToken cancellationToken)
+        private static AsyncStream<TResult> ParallelizeStreamInternalAsync<T, TResult>(this AsyncStream<T> source, 
+            Func<T, CancellationToken, Task<TResult>> actionAsync, ParallelizeOption option)
         {
-            var core = new ParallelizeCore(cancellationToken, option);
+            var core = new ParallelizeCore(source.CancellationToken, option);
             var monitor = new ParallelMonitor<T>(option.MaxDegreeOfParallelism);
+            var channel = Channel.CreateUnbounded<StreamedValue<TResult>>();
 
-            return Task.Run(async () =>
+            var task = Task.Run(async () =>
             {
                 try
                 {
@@ -85,7 +52,7 @@ namespace TCC.Lib.Helpers
                     {
                         var parallelTasks =
                             Enumerable.Range(0, option.MaxDegreeOfParallelism)
-                                .Select(i => ParallelizeCoreStreamAsync(core, actionAsync, source, resultsChannel, i, monitor))
+                                .Select(i => ParallelizeCoreStreamAsync(core, actionAsync, source, channel, i, monitor))
                                 .ToArray();
 
                         await Task.WhenAll(parallelTasks);
@@ -93,14 +60,30 @@ namespace TCC.Lib.Helpers
                 }
                 catch (Exception e)
                 {
-                    resultsChannel?.TryComplete(e);
+                    channel.Writer.TryComplete(e);
                     throw;
                 }
 
-                resultsChannel?.TryComplete();
+                channel.Writer.TryComplete();
                 ThrowOnErrors(option, core);
                 return new ParallelizedSummary(core.Exceptions, core.IsCanceled);
             });
+
+            return new AsyncStream<TResult>(channel, task, source.CancellationToken);
+        }
+
+        public static async Task<ParallelizedSummary> GetExceptionsAsync<T>(this AsyncStream<T> source)
+        {
+            var exceptions = new ConcurrentBag<Exception>();
+            while (await source.ChannelReader.WaitToReadAsync())
+            {
+                var sourceValue = await source.ChannelReader.ReadAsync();
+                if (sourceValue.Status == ExecutionStatus.Faulted && sourceValue.Exception != null)
+                {
+                    exceptions.Add(sourceValue.Exception);
+                }
+            }
+            return new ParallelizedSummary(exceptions, source.CancellationToken.IsCancellationRequested); 
         }
 
         private static void ThrowOnErrors(ParallelizeOption option, ParallelizeCore core)
@@ -126,23 +109,29 @@ namespace TCC.Lib.Helpers
             }
         }
 
-        private static Task ParallelizeCoreStreamAsync<T>(ParallelizeCore core,
-            Func<T, CancellationToken, Task> actionAsync,
-            ChannelReader<T> channelReader,
-            ChannelWriter<StreamedValue<T>> resultsChannel,
+        private static Task ParallelizeCoreStreamAsync<T,TResult>(ParallelizeCore core,
+            Func<T, CancellationToken, Task<TResult>> actionAsync,
+            AsyncStream<T> sourceAsyncStream,
+            ChannelWriter<StreamedValue<TResult>> resultsChannel,
             int index,
             ParallelMonitor<T> monitor)
         {
             return Task.Run(async () =>
             {
-                while (await channelReader.WaitToReadAsync()) //returns false when the channel is completed
+                while (await sourceAsyncStream.ChannelReader.WaitToReadAsync()) //returns false when the channel is completed
                 {
-                    while (channelReader.TryRead(out T item))
+                    while (sourceAsyncStream.ChannelReader.TryRead(out StreamedValue<T> streamedValue))
                     {
+                        if (streamedValue.Status != ExecutionStatus.Succeeded)
+                        {
+                            continue;
+                        }
+
+                        var item = streamedValue.Item;
                         monitor.SetActive(index, item);
                         if (core.IsLoopBreakRequested)
                         {
-                            await YieldNotExecutedAsync(resultsChannel, item);
+                            await YieldNotExecutedAsync(resultsChannel,default, item);
                             monitor.SetInactive(index);
                             if (core.FailMode == Fail.Fast)
                             {
@@ -150,18 +139,20 @@ namespace TCC.Lib.Helpers
                             }
                             break;
                         }
+
+                        TResult result = default;
                         try
                         {
-                            await actionAsync(item, core.GlobalCancellationToken);
-                            await YieldExecutedAsync(resultsChannel, item);
+                            result = await actionAsync(item, core.GlobalCancellationToken);
+                            await YieldExecutedAsync(resultsChannel, result,item);
                         }
                         catch (TaskCanceledException tce)
                         {
-                            await YieldCanceledAsync(resultsChannel, item, tce);
+                            await YieldCanceledAsync(resultsChannel, result, item, tce);
                         }
                         catch (Exception e)
                         {
-                            await YieldFailedAsync(resultsChannel, item, e);
+                            await YieldFailedAsync(resultsChannel, result, item, e);
                             core.OnException(e);
                         }
                         monitor.SetInactive(index);
@@ -170,35 +161,35 @@ namespace TCC.Lib.Helpers
             });
         }
 
-        private static async Task YieldNotExecutedAsync<T>(ChannelWriter<StreamedValue<T>> resultsChannel, T item)
+        private static async Task YieldNotExecutedAsync<T, TSource>(ChannelWriter<StreamedValue<T>> resultsChannel, T item, TSource source)
         {
             if (resultsChannel != null)
             {
-                await resultsChannel.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Pending));
+                await resultsChannel.WriteAsync(new StreamedValue<T, TSource>(item, source, ExecutionStatus.Pending));
             }
         }
 
-        private static async Task YieldExecutedAsync<T>(ChannelWriter<StreamedValue<T>> resultsChannel, T item)
+        private static async Task YieldExecutedAsync<T, TSource>(ChannelWriter<StreamedValue<T>> resultsChannel, T item, TSource source)
         {
             if (resultsChannel != null)
             {
-                await resultsChannel.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded));
+                await resultsChannel.WriteAsync(new StreamedValue<T, TSource>(item, source, ExecutionStatus.Succeeded));
             }
         }
 
-        private static async Task YieldFailedAsync<T>(ChannelWriter<StreamedValue<T>> resultsChannel, T item, Exception e)
+        private static async Task YieldFailedAsync<T, TSource>(ChannelWriter<StreamedValue<T>> resultsChannel, T item, TSource source, Exception e)
         {
             if (resultsChannel != null)
             {
-                await resultsChannel.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Faulted, e));
+                await resultsChannel.WriteAsync(new StreamedValue<T, TSource>(item, source, ExecutionStatus.Faulted, e));
             }
         }
 
-        private static async Task YieldCanceledAsync<T>(ChannelWriter<StreamedValue<T>> resultsChannel, T item, Exception tce)
+        private static async Task YieldCanceledAsync<T, TSource>(ChannelWriter<StreamedValue<T>> resultsChannel, T item, TSource source, Exception tce)
         {
             if (resultsChannel != null)
             {
-                await resultsChannel.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Canceled, tce));
+                await resultsChannel.WriteAsync(new StreamedValue<T, TSource>(item, source, ExecutionStatus.Canceled, tce));
             }
         }
 
