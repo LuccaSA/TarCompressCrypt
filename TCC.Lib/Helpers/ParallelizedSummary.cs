@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,16 +6,16 @@ namespace TCC.Lib.Helpers
 {
     public class ParallelizedSummary
     {
-        public IEnumerable<Exception> Exceptions { get; }
+        public List<Exception> Exceptions { get; }
 
-        public bool IsCancelled { get; }
+        public bool IsCanceled { get; }
 
-        public bool IsSucess => !IsCancelled && (Exceptions == null || !Exceptions.Any());
+        public bool IsSuccess => !IsCanceled && Exceptions.Count == 0;
 
-        public ParallelizedSummary(IEnumerable<Exception> exceptions, bool isCancelled)
+        internal ParallelizedSummary(IEnumerable<Exception> exceptions, bool isCanceled)
         {
-            Exceptions = exceptions;
-            IsCancelled = isCancelled;
+            Exceptions = new List<Exception>(exceptions ?? Enumerable.Empty<Exception>());
+            IsCanceled = isCanceled;
         }
     }
 }

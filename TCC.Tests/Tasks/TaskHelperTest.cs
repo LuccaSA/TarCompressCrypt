@@ -24,7 +24,11 @@ namespace TCC.Tests.Tasks
             var cts = new CancellationTokenSource();
             int count = 0;
             int max = 0;
-
+            var po = new ParallelizeOption()
+            {
+                FailMode = Fail.Smart,
+                MaxDegreeOfParallelism = degree
+            };
             await tasks.ParallelizeAsync(async (i, ct) =>
             {
                 int loopMax = Interlocked.Increment(ref count);
@@ -32,7 +36,7 @@ namespace TCC.Tests.Tasks
                 await Task.Delay(i, ct);
                 Interlocked.Decrement(ref count);
                 Assert.True(count <= degree);
-            }, degree, Fail.Smart, cts.Token);
+            }, po, cts.Token);
 
             Assert.Equal(degree, max);
         }
@@ -48,7 +52,11 @@ namespace TCC.Tests.Tasks
             var cts = new CancellationTokenSource();
 
             int index = 0;
-
+            var po = new ParallelizeOption()
+            {
+                FailMode = failMode,
+                MaxDegreeOfParallelism = 8
+            };
             var pTask = tasks.ParallelizeAsync(async (i, ct) =>
             {
                 int ix = Interlocked.Increment(ref index);
@@ -65,7 +73,7 @@ namespace TCC.Tests.Tasks
                     }
                     Assert.False(true);
                 }
-            }, 8, failMode, cts.Token);
+            }, po, cts.Token);
 
             if (failMode == Fail.Default)
             {
@@ -76,8 +84,8 @@ namespace TCC.Tests.Tasks
             }
             else
             {
-                var result = await pTask; 
-                Assert.True(result.IsCancelled);
+                var result = await pTask;
+                Assert.True(result.IsCanceled);
             }
         }
 
@@ -90,6 +98,11 @@ namespace TCC.Tests.Tasks
             var tasks = Enumerable.Range(0, 10);
             int index = 0;
             bool badBehavior = false;
+            var po = new ParallelizeOption()
+            {
+                FailMode = failMode,
+                MaxDegreeOfParallelism = 8
+            };
             var pTask = tasks.ParallelizeAsync(async (i, ct) =>
             {
                 int ix = Interlocked.Increment(ref index);
@@ -114,7 +127,7 @@ namespace TCC.Tests.Tasks
                 {
                     badBehavior = true;
                 }
-            }, 8, failMode, default(CancellationToken));
+            }, po, default(CancellationToken));
 
             ParallelizedSummary result;
 
@@ -129,8 +142,8 @@ namespace TCC.Tests.Tasks
             else
             {
                 result = await pTask;
-                Assert.False(result.IsSucess);
-                Assert.False(result.IsCancelled);
+                Assert.False(result.IsSuccess);
+                Assert.False(result.IsCanceled);
                 Assert.NotEmpty(result.Exceptions);
             }
 
@@ -140,6 +153,6 @@ namespace TCC.Tests.Tasks
             }
         }
 
-        public sealed class TestException : Exception {}
+        public sealed class TestException : Exception { }
     }
 }

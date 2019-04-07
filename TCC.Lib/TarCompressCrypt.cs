@@ -51,6 +51,11 @@ namespace TCC.Lib
         {
             var operationBlock = new ConcurrentBag<OperationBlock>();
             Stopwatch sw = Stopwatch.StartNew();
+            var po = new ParallelizeOption()
+            {
+                FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
+                MaxDegreeOfParallelism = option.Threads
+            };
             await blocks.ParallelizeAsync(async (b, token) =>
             {
                 CommandResult result = null;
@@ -74,7 +79,7 @@ namespace TCC.Lib
                 {
                     operationBlock.Add(new OperationBlock(b, result));
                 }
-            }, option.Threads, option.FailFast ? Fail.Fast : Fail.Smart, _cancellationTokenSource.Token);
+            }, po, _cancellationTokenSource.Token);
             sw.Stop();
             return new OperationSummary(operationBlock, option.Threads, sw);
         }
