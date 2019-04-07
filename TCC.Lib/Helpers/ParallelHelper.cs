@@ -9,26 +9,41 @@ namespace TCC.Lib.Helpers
 {
     public static class ParallelHelper
     {
-        public static async Task<ParallelizedSummary> ParallelizeAsync<T>(this IEnumerable<T> source,
+        public static Task<ParallelizedSummary> ParallelizeAsync<T>(this IEnumerable<T> source,
             Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option, CancellationToken cancellationToken)
         {
             if (source == null)
             {
                 throw new ArgumentNullException(nameof(source));
             }
+
             if (actionAsync == null)
             {
                 throw new ArgumentNullException(nameof(actionAsync));
             }
 
+            return ParallelizeInternalAsync(source, actionAsync, option, cancellationToken);
+        }
+
+        private static async Task<ParallelizedSummary> ParallelizeInternalAsync<T>(IEnumerable<T> source, Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option,
+            CancellationToken cancellationToken)
+        {
+            Channel<T> channel = EnumerableToChannel(source, out Task feederTask);
+
+            var processingTask = channel.Reader.ParallelizeStreamAsync(null, actionAsync, option, cancellationToken);
+            await Task.WhenAll(feederTask, processingTask);
+            return await processingTask;
+        }
+
+        private static Channel<T> EnumerableToChannel<T>(IEnumerable<T> source, out Task feederTask)
+        {
             var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
             {
                 SingleWriter = true,
                 SingleReader = false,
                 AllowSynchronousContinuations = true
             });
-
-            var feederTask = Task.Run(async () =>
+            feederTask = Task.Run(async () =>
             {
                 foreach (var item in source)
                 {
@@ -36,10 +51,7 @@ namespace TCC.Lib.Helpers
                 }
                 channel.Writer.Complete();
             });
-
-            var processingTask = channel.Reader.ParallelizeStreamAsync(null, actionAsync, option, cancellationToken);
-            await Task.WhenAll(feederTask, processingTask);
-            return await processingTask;
+            return channel;
         }
 
         public static Task<ParallelizedSummary> ParallelizeStreamAsync<T>(this ChannelReader<T> source,
@@ -50,11 +62,18 @@ namespace TCC.Lib.Helpers
             {
                 throw new ArgumentNullException(nameof(source));
             }
+
             if (actionAsync == null)
             {
                 throw new ArgumentNullException(nameof(actionAsync));
             }
 
+            return ParallelizeStreamInternalAsync(source, resultsChannel, actionAsync, option, cancellationToken);
+        }
+
+        private static Task<ParallelizedSummary> ParallelizeStreamInternalAsync<T>(ChannelReader<T> source, ChannelWriter<ParallelResult<T>> resultsChannel,
+            Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option, CancellationToken cancellationToken)
+        {
             var core = new ParallelizeCore(cancellationToken, option);
             var monitor = new ParallelMonitor<T>(option.MaxDegreeOfParallelism);
 
@@ -66,7 +85,7 @@ namespace TCC.Lib.Helpers
                     {
                         var parallelTasks =
                             Enumerable.Range(0, option.MaxDegreeOfParallelism)
-                                .Select(i => ParallelizeCoreStreamAsync(core, actionAsync, source, resultsChannel,i, monitor))
+                                .Select(i => ParallelizeCoreStreamAsync(core, actionAsync, source, resultsChannel, i, monitor))
                                 .ToArray();
 
                         await Task.WhenAll(parallelTasks);
@@ -77,24 +96,34 @@ namespace TCC.Lib.Helpers
                     resultsChannel?.TryComplete(e);
                     throw;
                 }
+
                 resultsChannel?.TryComplete();
-                if (option.FailMode == Fail.Default)
-                {
-                    if (core.IsFaulted)
-                    {
-                        if (core.Exceptions.Count() == 1)
-                        {
-                            throw core.Exceptions.First();
-                        }
-                        throw new AggregateException(core.Exceptions);
-                    }
-                    if (core.IsCanceled)
-                    {
-                        throw new TaskCanceledException();
-                    }
-                }
+                ThrowOnErrors(option, core);
                 return new ParallelizedSummary(core.Exceptions, core.IsCanceled);
             });
+        }
+
+        private static void ThrowOnErrors(ParallelizeOption option, ParallelizeCore core)
+        {
+            if (option.FailMode != Fail.Default)
+            {
+                return;
+            }
+
+            if (core.IsFaulted)
+            {
+                if (core.Exceptions.Count() == 1)
+                {
+                    throw core.Exceptions.First();
+                }
+
+                throw new AggregateException(core.Exceptions);
+            }
+
+            if (core.IsCanceled)
+            {
+                throw new TaskCanceledException();
+            }
         }
 
         private static Task ParallelizeCoreStreamAsync<T>(ParallelizeCore core,
@@ -172,5 +201,6 @@ namespace TCC.Lib.Helpers
                 await resultsChannel.WriteAsync(new ParallelResult<T>(item, ExecutionState.Canceled, tce));
             }
         }
+
     }
 }
