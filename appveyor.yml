@@ -25,8 +25,8 @@ install:
   - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
   - ps: Update-AppveyorBuild -Version $version.Semver
   - dotnet tool install --global dotnet-sonarscanner
-  - nuget install OpenCover -Version 4.6.519 -Verbosity quiet
-  - nuget install Codecov -Version 1.0.5 -Verbosity quiet
+  - nuget install OpenCover -Version 4.7.922 -Verbosity quiet
+  - nuget install Codecov -Version 1.3.0 -Verbosity quiet
 
 before_build:
 - dotnet restore TCC.sln --verbosity m
