@@ -139,11 +139,11 @@ namespace TCC.Lib.Helpers
                 {
                     while (channelReader.TryRead(out T item))
                     {
-                        monitor.ActiveItem[index] = item;
+                        monitor.SetActive(index, item);
                         if (core.IsLoopBreakRequested)
                         {
                             await YieldNotExecutedAsync(resultsChannel, item);
-                            monitor.ActiveItem[index] = default;
+                            monitor.SetInactive(index);
                             if (core.FailMode == Fail.Fast)
                             {
                                 return;
@@ -164,7 +164,7 @@ namespace TCC.Lib.Helpers
                             await YieldFailedAsync(resultsChannel, item, e);
                             core.OnException(e);
                         }
-                        monitor.ActiveItem[index] = default;
+                        monitor.SetInactive(index);
                     }
                 }
             });

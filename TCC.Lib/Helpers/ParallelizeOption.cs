@@ -16,9 +16,18 @@ namespace TCC.Lib.Helpers
             {
                 throw new ArgumentOutOfRangeException(nameof(optionMaxDegreeOfParallelism));
             }
-            ActiveItem = new T[optionMaxDegreeOfParallelism];
+            _activeItem = new T[optionMaxDegreeOfParallelism];
         }
 
-        public T[] ActiveItem { get; }
+        public void SetActive(int index, T item)
+        {
+            _activeItem[index] = item;
+        }
+        public void SetInactive(int index)
+        {
+            _activeItem[index] = default;
+        }
+
+        private readonly T[] _activeItem;
     }
 }
