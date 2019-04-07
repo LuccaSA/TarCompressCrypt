@@ -32,9 +32,9 @@ before_build:
 - dotnet restore TCC.sln --verbosity m
 - cmd: >-
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
-    dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
+    dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /o:rducom-github /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
     ) ELSE (
-    dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:sonar.coverage.exclusions="**/TCC.Tests/**/*" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
+    dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /o:rducom-github /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:sonar.coverage.exclusions="**/TCC.Tests/**/*" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
     )
 
 build_script:
