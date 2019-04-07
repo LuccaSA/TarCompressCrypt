@@ -50,7 +50,6 @@ namespace TCC.Lib
             TccOption option,
             Func<Block, TccOption, Task<CommandResult>> processor)
         {
-            var operationBlock = new ConcurrentBag<OperationBlock>();
             var sw = Stopwatch.StartNew();
             var po = new ParallelizeOption
             {
@@ -58,37 +57,37 @@ namespace TCC.Lib
                 MaxDegreeOfParallelism = option.Threads
             };
 
-            var asyncStream = blocks
-                .AsAsyncStream(_cancellationTokenSource.Token)
-                .CountAsync(out var counter);
-       
-            var pTask = await asyncStream.ParallelizeStreamAsync(async (b, token) =>
-            {
-                CommandResult result = null;
-                try
-                {
-                    _logger.LogInformation($"Starting {b.Source}");
-                    result = await processor(b, option);
-                    _blockListener.Add(new BlockReport(result, b, counter.Count));
-                    _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, $"Error on {b.Source}");
-                    if (result != null)
+            var operationBlocks = await blocks
+                    .AsAsyncStream(_cancellationTokenSource.Token)
+                    .CountAsync(out var counter)
+                    .ParallelizeStreamAsync(async (b, token) =>
                     {
-                        result.Errors += e.Message;
-                    }
-                }
-                if (result != null)
-                {
-                    operationBlock.Add(new OperationBlock(b, result));
-                }
-                return new OperationBlock(b, result);
-            }, po).GetExceptionsAsync();
-             
+                        CommandResult result = null;
+                        try
+                        {
+                            _logger.LogInformation($"Starting {b.Source}");
+                            result = await processor(b, option);
+                            _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogError(e, $"Error on {b.Source}");
+                            if (result != null)
+                            {
+                                result.Errors += e.Message;
+                            }
+                        }
+                        return new OperationBlock(b, result);
+                    }, po)
+                    .ForEachAsync(i =>
+                    {
+                        _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, i.Item.Block, counter.Count));
+                        return Task.CompletedTask;
+                    })
+                    .AsEnumerableAsync();
+
             sw.Stop();
-            return new OperationSummary(operationBlock, option.Threads, sw);
+            return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 
         private async Task<CommandResult> Encrypt(Block block, TccOption option)

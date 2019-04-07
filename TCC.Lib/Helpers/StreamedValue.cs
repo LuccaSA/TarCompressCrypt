@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -38,7 +39,7 @@ namespace TCC.Lib.Helpers
         {
             ItemSource = source;
         }
-        public TSource ItemSource { get; } 
+        public TSource ItemSource { get; }
     }
 
     public struct AsyncStream<T>
@@ -55,7 +56,6 @@ namespace TCC.Lib.Helpers
 
         public ChannelReader<StreamedValue<T>> ChannelReader => _channel.Reader;
         public CancellationToken CancellationToken { get; }
-        internal IReadOnlyCollection<StreamedValue<T>> InternalCollection => _channel.InternalQueue();
         public TaskAwaiter GetAwaiter()
         {
             return _innerTask.GetAwaiter();
@@ -106,6 +106,38 @@ namespace TCC.Lib.Helpers
                 channel.Writer.Complete();
             });
             return new AsyncStream<T>(channel, task, source.CancellationToken);
+        }
+
+        public static AsyncStream<T> ForEachAsync<T>(this AsyncStream<T> source, Func<StreamedValue<T>, Task> action)
+        {
+            var channel = Channel.CreateUnbounded<StreamedValue<T>>(new UnboundedChannelOptions
+            {
+                SingleWriter = false,
+                SingleReader = false,
+                AllowSynchronousContinuations = true
+            });
+            var task = Task.Run(async () =>
+            {
+                while (await source.ChannelReader.WaitToReadAsync())
+                {
+                    var item = await source.ChannelReader.ReadAsync();
+                    await action(item);
+                    await channel.Writer.WriteAsync(item);
+                }
+                channel.Writer.Complete();
+            });
+            return new AsyncStream<T>(channel, task, source.CancellationToken);
+        }
+
+        public static async Task<IEnumerable<T>> AsEnumerableAsync<T>(this AsyncStream<T> source)
+        {
+            var items = new ConcurrentBag<T>();
+            while (await source.ChannelReader.WaitToReadAsync())
+            {
+                var item = await source.ChannelReader.ReadAsync();
+                items.Add(item.Item);
+            }
+            return items;
         }
 
         public class Counter

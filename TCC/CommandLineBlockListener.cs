@@ -9,13 +9,12 @@ namespace TCC
     {
         public CommandLineBlockListener()
         {
-            BlockingCollection = new BlockingCollection<BlockReport>();
-            ThreadPool.QueueUserWorkItem(_ => OnProgress(ref _counter, BlockingCollection));
+            _blockingCollection = new BlockingCollection<BlockReport>();
+            ThreadPool.QueueUserWorkItem(_ => OnProgress(ref _counter, _blockingCollection));
         }
 
         private int _counter;
-
-        public BlockingCollection<BlockReport> BlockingCollection { get; } 
+        private readonly BlockingCollection<BlockReport> _blockingCollection;
 
         private void OnProgress(ref int counter, BlockingCollection<BlockReport> blockingCollection)
         {
@@ -34,10 +33,10 @@ namespace TCC
                 }
             }
         }
-
-        public void Add(BlockReport report)
+        
+        public void OnBlockReport(BlockReport report)
         {
-            BlockingCollection.Add(report);
+            _blockingCollection.Add(report);
         }
     }
 }
