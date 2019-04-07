@@ -1,11 +1,8 @@
 image: Visual Studio 2017
 
 environment:
-  global:
-    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-    DOTNET_CLI_TELEMETRY_OPTOUT: 1
   SONAR_TOKEN:
-    secure: CL0ZiE9bx11SspBai6Hef/TZHeVVeqfJ29bkjHgcSGoKF+XtPqQnlHd6JcwscPdL
+    secure: ZRrEwbfNERZYPsHvMxFC3kHLga6OzFHJQ7MpfUcqLcNCzNI112ZCyew/1zhL2SN1
   GITHUB_ACCESS_TOKEN:
     secure: 33HkOpRzd2oV5gqorwoeU80F3KynRJwjCRIMRTESBBiJYYUW4sG+9jCGCsEyo+VS
 
