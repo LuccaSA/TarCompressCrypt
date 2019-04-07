@@ -15,16 +15,17 @@ namespace TCC.Tests.Tasks
         [InlineData(8)]
         [InlineData(16)]
         [InlineData(32)]
+        [InlineData(128)]
         public async Task ParallelTestAsync(int degree)
         {
-            var tasks = Enumerable.Range(0, 2000).Select(i => 10).ToList();
+            var tasks = Enumerable.Range(0, 2000).Select(i => 2).ToList();
             tasks.Add(200);
             tasks.Add(100);
             tasks.Add(300);
             var cts = new CancellationTokenSource();
             int count = 0;
             int max = 0;
-            var po = new ParallelizeOption()
+            var option = new ParallelizeOption
             {
                 FailMode = Fail.Smart,
                 MaxDegreeOfParallelism = degree
@@ -36,7 +37,7 @@ namespace TCC.Tests.Tasks
                 await Task.Delay(i, ct);
                 Interlocked.Decrement(ref count);
                 Assert.True(count <= degree);
-            }, po, cts.Token);
+            }, option, cts.Token);
 
             Assert.Equal(degree, max);
         }
@@ -48,11 +49,10 @@ namespace TCC.Tests.Tasks
         [InlineData(Fail.Smart)]
         public async Task CancellationAsync(Fail failMode)
         {
-            var tasks = Enumerable.Range(0, 10);
+            var tasks = Enumerable.Range(0, 10).ToList();
             var cts = new CancellationTokenSource();
-
             int index = 0;
-            var po = new ParallelizeOption()
+            var option = new ParallelizeOption
             {
                 FailMode = failMode,
                 MaxDegreeOfParallelism = 8
@@ -73,7 +73,7 @@ namespace TCC.Tests.Tasks
                     }
                     Assert.False(true);
                 }
-            }, po, cts.Token);
+            }, option, cts.Token);
 
             if (failMode == Fail.Default)
             {
@@ -90,15 +90,15 @@ namespace TCC.Tests.Tasks
         }
 
         [Theory]
-        //[InlineData(Fail.Default)]
+        [InlineData(Fail.Default)]
         [InlineData(Fail.Fast)]
-        //[InlineData(Fail.Smart)]
+        [InlineData(Fail.Smart)]
         public async Task ExceptionAsync(Fail failMode)
         {
-            var tasks = Enumerable.Range(0, 10);
+            var tasks = Enumerable.Range(0, 10).ToList();
             int index = 0;
             bool badBehavior = false;
-            var po = new ParallelizeOption()
+            var option = new ParallelizeOption
             {
                 FailMode = failMode,
                 MaxDegreeOfParallelism = 8
@@ -111,14 +111,7 @@ namespace TCC.Tests.Tasks
                     throw new TestException();
                 }
 
-                try
-                {
-                    await Task.Delay(1000, ct);
-                }
-                catch (Exception)
-                {
-                }
-
+                await Task.Delay(1000, ct);
                 if (ct.IsCancellationRequested)
                 {
                     return;
@@ -127,7 +120,7 @@ namespace TCC.Tests.Tasks
                 {
                     badBehavior = true;
                 }
-            }, po, default(CancellationToken));
+            }, option, CancellationToken.None);
 
             ParallelizedSummary result;
 
