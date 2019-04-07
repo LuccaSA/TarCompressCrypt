@@ -1,14 +1,12 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
 using TCC.Lib.Dependencies;
@@ -79,7 +77,7 @@ namespace TCC.Lib
                         }
                         return new OperationBlock(b, result);
                     }, po)
-                    .ForEachAsync(i =>
+                    .ForEachAsync((i,ct) =>
                     {
                         _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, i.Item.Block, counter.Count));
                         return Task.CompletedTask;

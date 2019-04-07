@@ -5,10 +5,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using TCC.Lib.AsyncStreams;
 
 namespace TCC.Lib.Helpers
 {
-    public static class ParallelHelper
+    public static partial class AsyncStreamExtensions
     {
         public static AsyncStream<TResult> ParallelizeAsync<T, TResult>(this IEnumerable<T> source,
             Func<T, CancellationToken, Task<TResult>> actionAsync, ParallelizeOption option, CancellationToken cancellationToken)
@@ -43,7 +44,6 @@ namespace TCC.Lib.Helpers
             var core = new ParallelizeCore(source.CancellationToken, option);
             var monitor = new ParallelMonitor<T>(option.MaxDegreeOfParallelism);
             var channel = Channel.CreateUnbounded<StreamedValue<TResult>>();
-
             var task = Task.Run(async () =>
             {
                 try
@@ -60,13 +60,12 @@ namespace TCC.Lib.Helpers
                 }
                 catch (Exception e)
                 {
-                    channel.Writer.TryComplete(e);
+                    channel.Writer.Complete(e);
                     throw;
                 }
 
-                channel.Writer.TryComplete();
+                channel.Writer.Complete();
                 ThrowOnErrors(option, core);
-                return new ParallelizedSummary(core.Exceptions, core.IsCanceled);
             });
 
             return new AsyncStream<TResult>(channel, task, source.CancellationToken);
@@ -111,16 +110,16 @@ namespace TCC.Lib.Helpers
 
         private static Task ParallelizeCoreStreamAsync<T,TResult>(ParallelizeCore core,
             Func<T, CancellationToken, Task<TResult>> actionAsync,
-            AsyncStream<T> sourceAsyncStream,
+            AsyncStream<T> source,
             ChannelWriter<StreamedValue<TResult>> resultsChannel,
             int index,
             ParallelMonitor<T> monitor)
         {
             return Task.Run(async () =>
             {
-                while (await sourceAsyncStream.ChannelReader.WaitToReadAsync()) //returns false when the channel is completed
+                while (await source.ChannelReader.WaitToReadAsync()) //returns false when the channel is completed
                 {
-                    while (sourceAsyncStream.ChannelReader.TryRead(out StreamedValue<T> streamedValue))
+                    while (source.ChannelReader.TryRead(out StreamedValue<T> streamedValue))
                     {
                         if (streamedValue.Status != ExecutionStatus.Succeeded)
                         {

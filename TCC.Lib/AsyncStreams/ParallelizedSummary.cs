@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TCC.Lib.Helpers
+namespace TCC.Lib.AsyncStreams
 {
     public class ParallelizedSummary
     {
