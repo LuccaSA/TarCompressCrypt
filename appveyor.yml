@@ -6,10 +6,6 @@ environment:
   GITHUB_ACCESS_TOKEN:
     secure: 33HkOpRzd2oV5gqorwoeU80F3KynRJwjCRIMRTESBBiJYYUW4sG+9jCGCsEyo+VS
 
-branches:
-  only:
-    - master
-
 # Do not build feature branch with open Pull Requests
 skip_branch_with_pr: true
 
