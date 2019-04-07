@@ -28,14 +28,14 @@ namespace TCC.Lib.Helpers
         private static async Task<ParallelizedSummary> ParallelizeInternalAsync<T>(IEnumerable<T> source, Func<T, CancellationToken, Task> actionAsync, ParallelizeOption option,
             CancellationToken cancellationToken)
         {
-            Channel<T> channel = EnumerableToChannel(source, out Task feederTask);
+            Channel<T> channel = source.EnumerableToChannel(out Task feederTask);
 
             var processingTask = channel.Reader.ParallelizeStreamAsync(null, actionAsync, option, cancellationToken);
             await Task.WhenAll(feederTask, processingTask);
             return await processingTask;
         }
 
-        private static Channel<T> EnumerableToChannel<T>(IEnumerable<T> source, out Task feederTask)
+        public static Channel<T> EnumerableToChannel<T>(this IEnumerable<T> source, out Task feederTask)
         {
             var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
             {

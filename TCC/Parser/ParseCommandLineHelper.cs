@@ -148,13 +148,13 @@ namespace TCC.Parser
             switch (mode)
             {
                 case Mode.Compress:
-                    option.PasswordOption = new PublicKeyPasswordOption()
+                    option.PasswordOption = new PublicKeyPasswordOption
                     {
                         PublicKeyFile = opts.PasswordKey
                     };
                     break;
                 case Mode.Decompress:
-                    option.PasswordOption = new PrivateKeyPasswordOption()
+                    option.PasswordOption = new PrivateKeyPasswordOption
                     {
                         PrivateKeyFile = opts.PasswordKey
                     };
@@ -175,7 +175,7 @@ namespace TCC.Parser
             if (!File.Exists(opts.PasswordFile))
                 throw new CommandLineException("Password file doesn't exists");
 
-            option.PasswordOption = new PasswordFileOption()
+            option.PasswordOption = new PasswordFileOption
             {
                 PasswordFile = opts.PasswordFile
             };
@@ -189,7 +189,7 @@ namespace TCC.Parser
             if (string.IsNullOrEmpty(opts.Password))
                 throw new CommandLineException("Password must be specified");
 
-            option.PasswordOption = new InlinePasswordOption()
+            option.PasswordOption = new InlinePasswordOption
             {
                 Password = opts.Password
             };

@@ -8,9 +8,9 @@ namespace TCC.Lib.Blocks
 {
     public static class BlockHelper
     {
-        public static List<Block> PreprareCompressBlocks(CompressOption compressOption)
+        public static IEnumerable<Block> PreprareCompressBlocks(CompressOption compressOption)
         {
-            List<Block> blocks;
+            IEnumerable<Block> blocks;
             string extension = ExtensionFromAlgo(compressOption.Algo, compressOption.PasswordOption.PasswordMode != PasswordMode.None);
             var srcDir = new DirectoryInfo(compressOption.SourceDirOrFile);
             var dstDir = new DirectoryInfo(compressOption.DestinationDir);
@@ -33,7 +33,7 @@ namespace TCC.Lib.Blocks
                     throw new NotImplementedException();
             }
 
-            if (blocks.Count > 0 && !dstDir.Exists)
+            if (!dstDir.Exists)
             {
                 dstDir.Create();
             }

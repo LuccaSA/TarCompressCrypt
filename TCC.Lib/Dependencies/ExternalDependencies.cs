@@ -112,7 +112,7 @@ namespace TCC.Lib.Dependencies
             }
         }
 
-        private static readonly ExternalDep _lz4 = new ExternalDep()
+        private static readonly ExternalDep _lz4 = new ExternalDep
         {
             Name = "Lz4",
             Url = @"https://github.com/lz4/lz4/releases/download/v1.8.3/lz4_v1_8_3_win64.zip",
@@ -121,7 +121,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "lz4.exe"
         };
 
-        private static readonly ExternalDep _brotli = new ExternalDep()
+        private static readonly ExternalDep _brotli = new ExternalDep
         {
             Name = "Brotli",
             Url = @"https://github.com/google/brotli/releases/download/v1.0.4/brotli-v1.0.4-win_x86_64.zip",
@@ -130,7 +130,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "brotli.exe"
         };
 
-        private static readonly ExternalDep _zStd = new ExternalDep()
+        private static readonly ExternalDep _zStd = new ExternalDep
         {
             Name = "Zstandard",
             Url = @"https://github.com/facebook/zstd/releases/download/v1.3.5/zstd-v1.3.5-win64.zip",
@@ -141,7 +141,7 @@ namespace TCC.Lib.Dependencies
 
         // From : https://bintray.com/vszakats/generic/openssl
         // referenced from official OpenSSL wiki : https://wiki.openssl.org/index.php/Binaries
-        private static readonly ExternalDep _openSsl = new ExternalDep()
+        private static readonly ExternalDep _openSsl = new ExternalDep
         {
             Name = "OpenSSL",
             Url = @"https://bintray.com/vszakats/generic/download_file?file_path=openssl-1.1.1-win64-mingw.zip",
@@ -150,7 +150,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "openssl-1.1.1-win64-mingw\\openssl.exe"
         };
 
-        private static readonly ExternalDep _tar = new ExternalDep()
+        private static readonly ExternalDep _tar = new ExternalDep
         {
             Name = "Tar",
             Url = @"https://github.com/rducom/TarCompressCrypt/raw/master/Dependencies/tar_msys2_130.zip",

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using TCC.Lib.Blocks;
@@ -33,7 +34,7 @@ namespace TCC.Lib
 
         public Task<OperationSummary> Compress(CompressOption compressOption)
         {
-            List<Block> blocks = BlockHelper.PreprareCompressBlocks(compressOption);
+            IEnumerable<Block> blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
             return ProcessingLoop(blocks, compressOption, Encrypt);
         }
@@ -45,26 +46,27 @@ namespace TCC.Lib
             return ProcessingLoop(blocks, decompressOption, Decrypt);
         }
 
-        private async Task<OperationSummary> ProcessingLoop(IList<Block> blocks,
+        private async Task<OperationSummary> ProcessingLoop(IEnumerable<Block> blocks,
             TccOption option,
             Func<Block, TccOption, Task<CommandResult>> processor)
         {
             var operationBlock = new ConcurrentBag<OperationBlock>();
             Stopwatch sw = Stopwatch.StartNew();
-            var po = new ParallelizeOption()
+            var po = new ParallelizeOption
             {
                 FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
                 MaxDegreeOfParallelism = option.Threads
             };
-            await blocks.ParallelizeAsync(async (b, token) =>
+            Channel<Block> channel = blocks.EnumerableToChannel(out Task feederTask);
+            var internalQueue = channel.InternalQueue();
+            var pTask = channel.Reader.ParallelizeStreamAsync(null, async (b, token) =>
             {
                 CommandResult result = null;
                 try
                 {
-
                     _logger.LogInformation($"Starting {b.Source}");
                     result = await processor(b, option);
-                    _blockListener.Add(new BlockReport(result, b, blocks.Count));
+                    _blockListener.Add(new BlockReport(result, b, internalQueue.Count));
                     _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
                 }
                 catch (Exception e)
@@ -80,6 +82,7 @@ namespace TCC.Lib
                     operationBlock.Add(new OperationBlock(b, result));
                 }
             }, po, _cancellationTokenSource.Token);
+            await Task.WhenAll(pTask, feederTask);
             sw.Stop();
             return new OperationSummary(operationBlock, option.Threads, sw);
         }

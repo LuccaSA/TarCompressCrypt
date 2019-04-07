@@ -25,7 +25,7 @@ namespace TCC.Tests
 
             var op = await provider
                 .GetRequiredService<BenchmarkRunner>()
-                .RunBenchmark(new BenchmarkOption()
+                .RunBenchmark(new BenchmarkOption
                 {
                     Content = BenchmarkContent.Both,
                     Algorithm = BenchmarkCompressionAlgo.All,
@@ -40,7 +40,7 @@ namespace TCC.Tests
         [Fact]
         public void GenerateOptions()
         {
-            var options = new BenchmarkOption()
+            var options = new BenchmarkOption
             {
                 Content = BenchmarkContent.Both,
                 Algorithm = BenchmarkCompressionAlgo.All,
@@ -49,7 +49,7 @@ namespace TCC.Tests
                 Ratios = "1",
                 Cleanup = true
             };
-            var content = new List<BenchmarkTestContent>()
+            var content = new List<BenchmarkTestContent>
             {
                 new BenchmarkTestContent("", true, BenchmarkContent.Ascii),
                 new BenchmarkTestContent("", true, BenchmarkContent.Binary),

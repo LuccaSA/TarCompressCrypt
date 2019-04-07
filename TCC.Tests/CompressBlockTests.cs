@@ -59,7 +59,7 @@ namespace TCC.Tests
         public async Task DiscoverExplicitBlocks()
         {
             await Prepare();
-            var compressOption = new CompressOption()
+            var compressOption = new CompressOption
             {
                 SourceDirOrFile = _root,
                 DestinationDir = _target,
@@ -77,7 +77,7 @@ namespace TCC.Tests
         public async Task DiscoverIndividualBlocks()
         {
             await Prepare();
-            var compressOption = new CompressOption()
+            var compressOption = new CompressOption
             {
                 SourceDirOrFile = _root,
                 DestinationDir = _target,
@@ -86,7 +86,7 @@ namespace TCC.Tests
 
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
-            Assert.Equal(6, blocks.Count);
+            Assert.Equal(6, blocks.Count());
             await Cleanup();
         }
 
@@ -94,7 +94,7 @@ namespace TCC.Tests
         public async Task DiscoverEachFileBlocks()
         {
             await Prepare();
-            var compressOption = new CompressOption()
+            var compressOption = new CompressOption
             {
                 SourceDirOrFile = _root,
                 DestinationDir = _target,
@@ -103,7 +103,7 @@ namespace TCC.Tests
 
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
-            Assert.Equal(3, blocks.Count);
+            Assert.Equal(3, blocks.Count());
             await Cleanup();
         }
 
@@ -112,7 +112,7 @@ namespace TCC.Tests
         {
             await Prepare();
 
-            var compressOption = new CompressOption()
+            var compressOption = new CompressOption
             {
                 SourceDirOrFile = _root,
                 DestinationDir = _target,
@@ -121,7 +121,7 @@ namespace TCC.Tests
 
             var blocks = BlockHelper.PreprareCompressBlocks(compressOption);
 
-            Assert.Equal(6, blocks.Count);
+            Assert.Equal(6, blocks.Count());
             await Cleanup();
         }
 
