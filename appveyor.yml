@@ -25,24 +25,24 @@ install:
   - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
   - ps: Update-AppveyorBuild -Version $version.Semver
   - dotnet tool install --global dotnet-sonarscanner
-  - nuget install OpenCover -Version 4.6.519 -Verbosity quiet
-  - nuget install Codecov -Version 1.0.5 -Verbosity quiet
+  - nuget install OpenCover -Version 4.7.922 -Verbosity quiet
+  - nuget install Codecov -Version 1.3.0 -Verbosity quiet
 
 before_build:
 - dotnet restore TCC.sln --verbosity m
 - cmd: >-
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
-    dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
+    dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=publish" /d:"sonar.host.url=https://sonarcloud.io" /o:rducom-github /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
     ) ELSE (
-    dotnet sonarscanner begin /k:"TCC" /d:"sonar.analysis.mode=preview" /d:"sonar.host.url=https://sonarcloud.io" /d:"sonar.organization=rducom-github" /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:sonar.coverage.exclusions="**/TCC.Tests/**/*" /d:"sonar.github.pullRequest=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.github.repository=rducom/TarCompressCrypt" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
+    dotnet sonarscanner begin /k:"TCC" /d:"sonar.host.url=https://sonarcloud.io" /o:rducom-github /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /d:sonar.coverage.exclusions="**/TCC.Tests/**/*" /d:"sonar.pullrequest.provider=github" /d:"sonar.pullrequest.branch=%APPVEYOR_REPO_BRANCH%" /d:"sonar.pullrequest.key=%APPVEYOR_PULL_REQUEST_NUMBER%" /d:"sonar.pullrequest.github.repository=rducom/TarCompressCrypt" /d:"sonar.pullrequest.github.endpoint=https://api.github.com" /d:"sonar.github.oauth=%GITHUB_ACCESS_TOKEN%"
     )
 
 build_script:
-- OpenCover.4.6.519\tools\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"C:\Program Files\dotnet\dotnet.exe" -targetargs:"test /p:DebugType=full -c Debug TCC.Tests\TCC.Tests.csproj" -excludebyattribute:*.ExcludeFromCodeCoverage* -filter:"+[TCC*]* -[*Tests*]*" -output:coverage-opencover.xml
+- OpenCover.4.7.922\tools\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"C:\Program Files\dotnet\dotnet.exe" -targetargs:"test /p:DebugType=full -c Debug TCC.Tests\TCC.Tests.csproj" -excludebyattribute:*.ExcludeFromCodeCoverage* -filter:"+[TCC*]* -[*Tests*]*" -output:coverage-opencover.xml
 - dotnet sonarscanner end /d:"sonar.login=%SONAR_TOKEN%"
 
 test_script:
-- Codecov.1.0.5\tools\codecov -f coverage-opencover.xml
+- Codecov.1.3.0\tools\codecov -f coverage-opencover.xml
 
 after_test:
   - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$version.Prefix+";VersionSuffix="+$version.Suffix) /p:PackageVersion=$env:APPVEYOR_BUILD_VERSION -o artifacts
