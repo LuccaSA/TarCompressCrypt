@@ -41,7 +41,7 @@ namespace TCC.Lib
 
         public Task<OperationSummary> Decompress(DecompressOption decompressOption)
         {
-            List<Block> blocks = BlockHelper.PreprareDecompressBlocks(decompressOption).ToList();
+            IEnumerable<Block> blocks = BlockHelper.PreprareDecompressBlocks(decompressOption);
 
             return ProcessingLoop(blocks, decompressOption, Decrypt);
         }
@@ -59,7 +59,8 @@ namespace TCC.Lib
             };
             Channel<Block> channel = blocks.EnumerableToChannel(out Task feederTask);
             var internalQueue = channel.InternalQueue();
-            var pTask = channel.Reader.ParallelizeStreamAsync(null, async (b, token) =>
+            Channel<StreamedValue<Block>> results = Channel.CreateUnbounded<StreamedValue<Block>>();
+            var pTask = channel.Reader.ParallelizeStreamAsync(results, async (b, token) =>
             {
                 CommandResult result = null;
                 try

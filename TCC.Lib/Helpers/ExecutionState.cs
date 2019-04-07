@@ -1,10 +1,10 @@
 namespace TCC.Lib.Helpers
 {
-    public enum ExecutionState
+    public enum ExecutionStatus
     {
-        NotExecuted,
-        Executed,
-        Failed,
+        Pending,
+        Succeeded,
+        Faulted,
         Canceled
     }
 }
