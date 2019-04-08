@@ -60,24 +60,25 @@ namespace TCC.Lib
                     .CountAsync(out var counter)
                     .ParallelizeStreamAsync(async (b, token) =>
                     {
-                        CommandResult result = null;
-                        try
-                        {
-                            _logger.LogInformation($"Starting {b.Source}");
-                            result = await processor(b, option);
-                            _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.LogError(e, $"Error on {b.Source}");
-                            if (result != null)
-                            {
-                                result.Errors += e.Message;
-                            }
-                        }
-                        return new OperationBlock(b, result);
+                        _logger.LogInformation($"Starting {b.Source}");
+                        CommandResult result = await processor(b, option);
+                        _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
+                        return result;
                     }, po)
-                    .ForEachAsync((i,ct) =>
+                    .SelectAsync((v, ct) =>
+                    {
+                        if (v is StreamedValue<CommandResult, Block> value)
+                        {
+                            if (value.Exception != null)
+                            {
+                                _logger.LogError(value.Exception, $"Error on {value.ItemSource.Source}");
+                                value.Item.Errors += value.Exception.Message; 
+                            }
+                            return Task.FromResult(new OperationBlock(value.ItemSource, value.Item));
+                        }
+                        return Task.FromException<OperationBlock>(new Exception("TCC internal error"));
+                    })
+                    .ForEachAsync((i, ct) =>
                     {
                         _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, i.Item.Block, counter.Count));
                         return Task.CompletedTask;
