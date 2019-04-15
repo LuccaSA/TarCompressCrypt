@@ -2,10 +2,10 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/9mdd3hlgm234ey38/branch/master?svg=true)](https://ci.appveyor.com/project/Raph/tarcompresscrypt/branch/master)
 [![codecov](https://codecov.io/gh/rducom/TarCompressCrypt/branch/master/graph/badge.svg)](https://codecov.io/gh/rducom/TarCompressCrypt)
-[![Sonarcloud coverage](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=coverage)](https://sonarcloud.io/dashboard?id=TCC)
-[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=alert_status)](https://sonarcloud.io/dashboard?id=TCC)
-[![Sonarcloud Debt](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=sqale_index)](https://sonarcloud.io/dashboard?id=TCC)
-[![Sonarcloud Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=TCC&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=TCC)
+[![Sonarcloud coverage](https://sonarcloud.io/api/project_badges/measure?project=TarCompressCrypt&metric=coverage)](https://sonarcloud.io/dashboard?id=TarCompressCrypt)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=TarCompressCrypt&metric=alert_status)](https://sonarcloud.io/dashboard?id=TarCompressCrypt)
+[![Sonarcloud Debt](https://sonarcloud.io/api/project_badges/measure?project=TarCompressCrypt&metric=sqale_index)](https://sonarcloud.io/dashboard?id=TarCompressCrypt)
+[![Sonarcloud Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=TarCompressCrypt&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=TarCompressCrypt)
 
 TarCompressCrypt (TCC) is a command line tool for blazing fast compression + encryption / decompression + decryption
 - package multiple files / folders with tar
