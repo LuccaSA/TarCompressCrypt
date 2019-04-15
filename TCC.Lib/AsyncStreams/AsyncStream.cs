@@ -19,9 +19,6 @@ namespace TCC.Lib.AsyncStreams
 
         public ChannelReader<StreamedValue<T>> ChannelReader => _channel.Reader;
         public CancellationToken CancellationToken { get; }
-        public TaskAwaiter GetAwaiter()
-        {
-            return _innerTask.GetAwaiter();
-        }
+        public TaskAwaiter GetAwaiter() => _innerTask.GetAwaiter();
     }
 }
