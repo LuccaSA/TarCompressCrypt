@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib.AsyncStreams;
 using TCC.Lib.Helpers;
 using Xunit;
 
@@ -15,16 +16,21 @@ namespace TCC.Tests.Tasks
         [InlineData(8)]
         [InlineData(16)]
         [InlineData(32)]
+        [InlineData(128)]
         public async Task ParallelTestAsync(int degree)
         {
-            var tasks = Enumerable.Range(0, 2000).Select(i => 10).ToList();
+            var tasks = Enumerable.Range(0, 2000).Select(i => 2).ToList();
             tasks.Add(200);
             tasks.Add(100);
             tasks.Add(300);
             var cts = new CancellationTokenSource();
             int count = 0;
             int max = 0;
-
+            var option = new ParallelizeOption
+            {
+                FailMode = Fail.Smart,
+                MaxDegreeOfParallelism = degree
+            };
             await tasks.ParallelizeAsync(async (i, ct) =>
             {
                 int loopMax = Interlocked.Increment(ref count);
@@ -32,7 +38,8 @@ namespace TCC.Tests.Tasks
                 await Task.Delay(i, ct);
                 Interlocked.Decrement(ref count);
                 Assert.True(count <= degree);
-            }, degree, Fail.Smart, cts.Token);
+                return true;
+            }, option, cts.Token);
 
             Assert.Equal(degree, max);
         }
@@ -44,11 +51,14 @@ namespace TCC.Tests.Tasks
         [InlineData(Fail.Smart)]
         public async Task CancellationAsync(Fail failMode)
         {
-            var tasks = Enumerable.Range(0, 10);
+            var tasks = Enumerable.Range(0, 10).ToList();
             var cts = new CancellationTokenSource();
-
             int index = 0;
-
+            var option = new ParallelizeOption
+            {
+                FailMode = failMode,
+                MaxDegreeOfParallelism = 8
+            };
             var pTask = tasks.ParallelizeAsync(async (i, ct) =>
             {
                 int ix = Interlocked.Increment(ref index);
@@ -61,11 +71,12 @@ namespace TCC.Tests.Tasks
                     await Task.Delay(1000, ct);
                     if (ct.IsCancellationRequested)
                     {
-                        return;
+                        return false;
                     }
                     Assert.False(true);
                 }
-            }, 8, failMode, cts.Token);
+                return true;
+            }, option, cts.Token);
 
             if (failMode == Fail.Default)
             {
@@ -76,20 +87,25 @@ namespace TCC.Tests.Tasks
             }
             else
             {
-                var result = await pTask; 
-                Assert.True(result.IsCancelled);
+                var result = await pTask.GetExceptionsAsync();
+                Assert.True(result.IsCanceled);
             }
         }
 
         [Theory]
-        //[InlineData(Fail.Default)]
+        [InlineData(Fail.Default)]
         [InlineData(Fail.Fast)]
-        //[InlineData(Fail.Smart)]
+        [InlineData(Fail.Smart)]
         public async Task ExceptionAsync(Fail failMode)
         {
-            var tasks = Enumerable.Range(0, 10);
+            var tasks = Enumerable.Range(0, 10).ToList();
             int index = 0;
             bool badBehavior = false;
+            var option = new ParallelizeOption
+            {
+                FailMode = failMode,
+                MaxDegreeOfParallelism = 8
+            };
             var pTask = tasks.ParallelizeAsync(async (i, ct) =>
             {
                 int ix = Interlocked.Increment(ref index);
@@ -98,39 +114,31 @@ namespace TCC.Tests.Tasks
                     throw new TestException();
                 }
 
-                try
-                {
-                    await Task.Delay(1000, ct);
-                }
-                catch (Exception)
-                {
-                }
-
+                await Task.Delay(1000, ct);
                 if (ct.IsCancellationRequested)
                 {
-                    return;
+                    return false;
                 }
                 if (failMode == Fail.Fast)
                 {
                     badBehavior = true;
                 }
-            }, 8, failMode, default(CancellationToken));
-
-            ParallelizedSummary result;
+                return true;
+            }, option, CancellationToken.None);
 
             if (failMode == Fail.Default)
             {
                 await Assert.ThrowsAsync<TestException>(async () =>
                 {
-                    result = await pTask;
+                    await pTask;
                 });
                 Assert.Equal(10, index);
             }
             else
             {
-                result = await pTask;
-                Assert.False(result.IsSucess);
-                Assert.False(result.IsCancelled);
+                ParallelizedSummary result = await pTask.GetExceptionsAsync();
+                Assert.False(result.IsSuccess);
+                Assert.False(result.IsCanceled);
                 Assert.NotEmpty(result.Exceptions);
             }
 
@@ -140,6 +148,6 @@ namespace TCC.Tests.Tasks
             }
         }
 
-        public sealed class TestException : Exception {}
+        public sealed class TestException : Exception { }
     }
 }

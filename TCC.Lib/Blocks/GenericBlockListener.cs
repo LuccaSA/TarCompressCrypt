@@ -1,14 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 
 namespace TCC.Lib.Blocks
 {
     public class GenericBlockListener : IBlockListener
     {
-        public void Add(BlockReport report)
+        public ConcurrentBag<BlockReport> BlockReports { get; } = new ConcurrentBag<BlockReport>();
+        public void OnBlockReport(BlockReport report)
         {
             BlockReports.Add(report);
         }
-
-        public List<BlockReport> BlockReports { get; } = new List<BlockReport>();
     }
 }

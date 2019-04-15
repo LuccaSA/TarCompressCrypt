@@ -56,7 +56,7 @@ namespace TCC.Lib.Command
             return output.All(t => t == '.' || t == '+');
         }
 
-        private static readonly HashSet<string> _opensslInfos = new HashSet<string>()
+        private static readonly HashSet<string> _opensslInfos = new HashSet<string>
         {
             "*** WARNING : deprecated key derivation used.",
             "Using -iter or -pbkdf2 would be better.",

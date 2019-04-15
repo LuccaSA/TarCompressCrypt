@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
 using TCC.Lib.Dependencies;
@@ -18,361 +15,126 @@ namespace TCC.Lib
 {
     public class TarCompressCrypt
     {
-        private readonly ExternalDependencies _ext;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly IBlockListener _blockListener;
         private readonly ILogger<TarCompressCrypt> _logger;
+        private readonly EncryptionCommands _encryptionCommands;
+        private readonly CompressionCommands _compressionCommands;
 
-        public TarCompressCrypt(ExternalDependencies externalDependencies, CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands)
         {
-            _ext = externalDependencies;
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
             _logger = logger;
+            _encryptionCommands = encryptionCommands;
+            _compressionCommands = compressionCommands;
         }
 
-        public Task<OperationSummary> Compress(CompressOption compressOption)
+        public async Task<OperationSummary> Compress(CompressOption option)
         {
-            List<Block> blocks = BlockHelper.PreprareCompressBlocks(compressOption);
+            IEnumerable<Block> blocks = BlockHelper.PreprareCompressBlocks(option);
 
-            return ProcessingLoop(blocks, compressOption, Encrypt);
-        }
-
-        public Task<OperationSummary> Decompress(DecompressOption decompressOption)
-        {
-            List<Block> blocks = BlockHelper.PreprareDecompressBlocks(decompressOption).ToList();
-
-            return ProcessingLoop(blocks, decompressOption, Decrypt);
-        }
-
-        private async Task<OperationSummary> ProcessingLoop(IList<Block> blocks,
-            TccOption option,
-            Func<Block, TccOption, Task<CommandResult>> processor)
-        {
-            var operationBlock = new ConcurrentBag<OperationBlock>();
-            Stopwatch sw = Stopwatch.StartNew();
-            await blocks.ParallelizeAsync(async (b, token) =>
+            var sw = Stopwatch.StartNew();
+            var po = new ParallelizeOption
             {
-                CommandResult result = null;
-                try
-                {
+                FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
+                MaxDegreeOfParallelism = option.Threads
+            };
 
-                    _logger.LogInformation($"Starting {b.Source}");
-                    result = await processor(b, option);
-                    _blockListener.Add(new BlockReport(result, b, blocks.Count));
-                    _logger.LogInformation($"Finished {b.Source} on {result.ElapsedMilliseconds} ms");
-                }
-                catch (Exception e)
+            var operationBlocks = await blocks
+                .AsAsyncStream(_cancellationTokenSource.Token)
+                .CountAsync(out var counter)
+                // Prepare encyption
+                .ParallelizeStreamAsync(async (b, token) =>
                 {
-                    _logger.LogError(e, $"Error on {b.Source}");
-                    if (result != null)
+                    await _encryptionCommands.PrepareEncryptionKey(b, option, token);
+                    return b;
+                }, po)
+                // Core loop 
+                .ParallelizeStreamAsync(async (block, token) =>
+                {
+                    _logger.LogInformation($"Starting {block.Source}");
+                    CommandResult result = null;
+                    try
                     {
-                        result.Errors += e.Message;
+                        string cmd = _compressionCommands.CompressCommand(block, option);
+                        result = await cmd.Run(block.OperationFolder, token);
+                        _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
                     }
-                }
-                if (result != null)
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, $"Error on {block.Source}");
+                    }
+                    return new OperationBlock(block, result);
+                }, po)
+                // Cleanup loop
+                .ParallelizeStreamAsync(async (opb, token) =>
                 {
-                    operationBlock.Add(new OperationBlock(b, result));
-                }
-            }, option.Threads, option.FailFast ? Fail.Fast : Fail.Smart, _cancellationTokenSource.Token);
+                    await _encryptionCommands.CleanupKey(opb.Block, option, opb.CommandResult, Mode.Compress);
+                    return opb;
+                }, po)
+                .ForEachAsync((i, ct) =>
+                {
+                    _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, i.Item.Block, counter.Count));
+                    return Task.CompletedTask;
+                })
+                .AsEnumerableAsync();
+
             sw.Stop();
-            return new OperationSummary(operationBlock, option.Threads, sw);
+            return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 
-        private async Task<CommandResult> Encrypt(Block block, TccOption option)
+        public async Task<OperationSummary> Decompress(DecompressOption option)
         {
-            EncryptionKey k = null;
-            CommandResult result = null;
-            try
+            IEnumerable<Block> blocks = BlockHelper.PreprareDecompressBlocks(option);
+            var sw = Stopwatch.StartNew();
+            var po = new ParallelizeOption
             {
-                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-                k = await PrepareEncryptionKey(block, option, _cancellationTokenSource.Token);
+                FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
+                MaxDegreeOfParallelism = option.Threads
+            };
 
-                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-                string cmd = CompressCommand(block, option as CompressOption);
-                result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
-            }
-            finally
-            {
-                await CleanupKey(block, option, k, result, Mode.Compress);
-            }
-            return result;
-        }
-
-        private async Task<CommandResult> Decrypt(Block block, TccOption option)
-        {
-            EncryptionKey k = null;
-            CommandResult result = null;
-            try
-            {
-                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-                k = await PrepareDecryptionKey(block, option, _cancellationTokenSource.Token);
-
-                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-                string cmd = DecompressCommand(block, option);
-                result = await cmd.Run(block.OperationFolder, _cancellationTokenSource.Token);
-            }
-            finally
-            {
-                await CleanupKey(block, option, k, result, Mode.Compress);
-            }
-            return result;
-        }
-
-        private static Task CleanupKey(Block block, TccOption option, EncryptionKey key, CommandResult result, Mode mode)
-        {
-            if (key == null)
-            {
-                return Task.CompletedTask;
-            }
-            if (option.PasswordOption.PasswordMode == PasswordMode.PublicKey)
-            {
-                // delete uncrypted pass
-                if (!String.IsNullOrEmpty(key.KeyCrypted))
+            var operationBlocks = await blocks
+                .AsAsyncStream(_cancellationTokenSource.Token)
+                .CountAsync(out var counter)
+                // Prepare decryption
+                .ParallelizeStreamAsync(async (b, token) =>
                 {
-                    return Path.Combine(block.DestinationFolder, key.Key).TryDeleteFileWithRetryAsync();
-                }
-                // if error in compression, also delete encrypted passfile
-                if (mode == Mode.Compress && (result == null || result.HasError) && !String.IsNullOrEmpty(key.KeyCrypted))
+                    await _encryptionCommands.PrepareDecryptionKey(b, option, token);
+                    return b;
+                }, po)
+                // Core loop 
+                .ParallelizeStreamAsync(async (block, token) =>
                 {
-                    return Path.Combine(block.DestinationFolder, key.KeyCrypted).TryDeleteFileWithRetryAsync();
-                }
-            }
-            return Task.CompletedTask;
-        }
-
-        public class EncryptionKey
-        {
-            public EncryptionKey(string key, string keyCrypted)
-            {
-                Key = key;
-                KeyCrypted = keyCrypted;
-            }
-
-            public string Key { get; }
-            public string KeyCrypted { get; }
-        }
-
-        private async Task<EncryptionKey> PrepareEncryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
-        {
-            string key = null;
-            string keyCrypted = null;
-
-            if (option.PasswordOption.PasswordMode == PasswordMode.PublicKey &&
-                option.PasswordOption is PublicKeyPasswordOption publicKey)
-            {
-                key = block.ArchiveName + ".key";
-                keyCrypted = block.ArchiveName + ".key.encrypted";
-
-                // generate random passfile
-                var passfile = await GenerateRandomKey(_ext.OpenSsl(), key).Run(block.DestinationFolder, cancellationToken);
-                passfile.ThrowOnError();
-                // crypt passfile
-                var cryptPass = await EncryptRandomKey(_ext.OpenSsl(), key, keyCrypted, publicKey.PublicKeyFile).Run(block.DestinationFolder, cancellationToken);
-                cryptPass.ThrowOnError();
-
-                block.BlockPasswordFile = Path.Combine(block.DestinationFolder, key);
-            }
-            else if (option.PasswordOption.PasswordMode == PasswordMode.PasswordFile &&
-                     option.PasswordOption is PasswordFileOption passwordFile)
-            {
-                block.BlockPasswordFile = passwordFile.PasswordFile;
-            }
-
-            return new EncryptionKey(key, keyCrypted);
-        }
-
-        private async Task<EncryptionKey> PrepareDecryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
-        {
-            string key = null;
-            string keyCrypted = null;
-            switch (option.PasswordOption.PasswordMode)
-            {
-                case PasswordMode.PublicKey when option.PasswordOption is PrivateKeyPasswordOption privateKey:
-
-                    var file = new FileInfo(block.ArchiveName);
-                    var dir = file.Directory?.FullName;
-                    var name = file.Name.Substring(0, file.Name.IndexOf(".tar", StringComparison.InvariantCultureIgnoreCase));
-                    keyCrypted = Path.Combine(dir, name + ".key.encrypted");
-                    key = Path.Combine(dir, name + ".key");
-
-                    await DecryptRandomKey(_ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
-                    block.BlockPasswordFile = key;
-
-                    break;
-                case PasswordMode.PasswordFile when option.PasswordOption is PasswordFileOption passwordFile:
-                    block.BlockPasswordFile = passwordFile.PasswordFile;
-                    break;
-            }
-            return new EncryptionKey(key, keyCrypted);
-        }
-
-        private string CompressCommand(Block block, CompressOption option)
-        {
-            var cmd = new StringBuilder();
-            string ratio;
-
-            switch (option.Algo)
-            {
-                case CompressionAlgo.Lz4:
-                    ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
-                    break;
-                case CompressionAlgo.Brotli:
-                    ratio = option.CompressionRatio != 0 ? $"-q {option.CompressionRatio}" : string.Empty;
-                    break;
-                case CompressionAlgo.Zstd:
-                    ratio = option.CompressionRatio != 0 ? $"-{option.CompressionRatio}" : string.Empty;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
-            }
-
-            switch (option.PasswordOption.PasswordMode)
-            {
-                case PasswordMode.None:
-                    // tar -c C:\SourceFolder | lz4.exe -1 - compressed.tar.lz4
-                    cmd.Append($"{_ext.Tar()} -c {block.Source}");
-                    switch (option.Algo)
+                    _logger.LogInformation($"Starting {block.Source}");
+                    CommandResult result = null;
+                    try
                     {
-                        case CompressionAlgo.Lz4:
-                            cmd.Append($" | {_ext.Lz4()} {ratio} -v - {block.DestinationArchive}");
-                            break;
-                        case CompressionAlgo.Brotli:
-                            cmd.Append($" | {_ext.Brotli()} {ratio} - -o {block.DestinationArchive}");
-                            break;
-                        case CompressionAlgo.Zstd:
-                            cmd.Append($" | {_ext.Zstd()} {ratio} - -o {block.DestinationArchive}");
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
+                        string cmd = _compressionCommands.DecompressCommand(block, option);
+                        result = await cmd.Run(block.OperationFolder, token);
+                        _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
                     }
-                    break;
-                case PasswordMode.InlinePassword:
-                case PasswordMode.PasswordFile:
-                case PasswordMode.PublicKey:
-                    string passwdCommand = PasswordCommand(option, block);
-                    // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
-                    cmd.Append($"{_ext.Tar()} -c {block.Source}");
-                    switch (option.Algo)
+                    catch (Exception e)
                     {
-                        case CompressionAlgo.Lz4:
-                            cmd.Append($" | {_ext.Lz4()} {ratio} -v - ");
-                            break;
-                        case CompressionAlgo.Brotli:
-                            cmd.Append($" | {_ext.Brotli()} {ratio} - ");
-                            break;
-                        case CompressionAlgo.Zstd:
-                            cmd.Append($" | {_ext.Zstd()} {ratio} - ");
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
+                        _logger.LogError(e, $"Error on {block.Source}");
                     }
-                    cmd.Append($" | {_ext.OpenSsl()} aes-256-cbc {passwdCommand} -out {block.DestinationArchive}");
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(option));
-            }
-            return cmd.ToString();
-        }
-
-
-        private string DecompressCommand(Block block, TccOption option)
-        {
-            var cmd = new StringBuilder();
-            switch (option.PasswordOption.PasswordMode)
-            {
-                case PasswordMode.None:
-                    //lz4 archive.tar.lz4 -dc --no-sparse | tar xf -
-                    switch (block.Algo)
-                    {
-                        case CompressionAlgo.Lz4:
-                            cmd.Append($"{_ext.Lz4()} {block.Source} -dc --no-sparse ");
-                            break;
-                        case CompressionAlgo.Brotli:
-                            cmd.Append($"{_ext.Brotli()} {block.Source} -d -c ");
-                            break;
-                        case CompressionAlgo.Zstd:
-                            cmd.Append($"{_ext.Zstd()} {block.Source} -d -c ");
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");
-                    }
-                    cmd.Append($" | {_ext.Tar()} xf - ");
-                    break;
-                case PasswordMode.InlinePassword:
-                case PasswordMode.PasswordFile:
-                case PasswordMode.PublicKey:
-                    string passwdCommand = PasswordCommand(option, block);
-                    //openssl aes-256-cbc -d -k "test" -in crypted.tar.lz4.aes | lz4 -dc --no-sparse - | tar xf -
-                    cmd.Append($"{_ext.OpenSsl()} aes-256-cbc -d {passwdCommand} -in {block.Source}");
-                    switch (block.Algo)
-                    {
-                        case CompressionAlgo.Lz4:
-                            cmd.Append($" | {_ext.Lz4()} -dc --no-sparse - ");
-                            break;
-                        case CompressionAlgo.Brotli:
-                            cmd.Append($" | {_ext.Brotli()} - -d ");
-                            break;
-                        case CompressionAlgo.Zstd:
-                            cmd.Append($" | {_ext.Zstd()} - -d ");
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");
-                    }
-                    cmd.Append($" | {_ext.Tar()} xf - ");
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(option));
-            }
-            return cmd.ToString();
-        }
-
-        private static string PasswordCommand(TccOption option, Block block)
-        {
-            string passwdCommand;
-            if (option.PasswordOption.PasswordMode == PasswordMode.InlinePassword
-                && option.PasswordOption is InlinePasswordOption inlinePassword)
-            {
-                if (String.IsNullOrWhiteSpace(inlinePassword.Password))
+                    return new OperationBlock(block, result);
+                }, po)
+                // Cleanup loop
+                .ParallelizeStreamAsync(async (opb, token) =>
                 {
-                    throw new CommandLineException("Password missing");
-                }
-                passwdCommand = "-k " + inlinePassword.Password;
-            }
-            else
-            {
-                if (String.IsNullOrWhiteSpace(block.BlockPasswordFile))
+                    await _encryptionCommands.CleanupKey(opb.Block, option, opb.CommandResult, Mode.Compress);
+                    return opb;
+                }, po)
+                .ForEachAsync((i, ct) =>
                 {
-                    throw new CommandLineException("Password file missing");
-                }
-                passwdCommand = "-kfile " + block.BlockPasswordFile.Escape();
-            }
+                    _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, i.Item.Block, counter.Count));
+                    return Task.CompletedTask;
+                })
+                .AsEnumerableAsync();
 
-            return passwdCommand;
-        }
-
-        private static string EncryptRandomKey(string openSslPath, string keyPath, string keyCryptedPath, string publicKey)
-        {
-            if (String.IsNullOrWhiteSpace(publicKey))
-            {
-                throw new CommandLineException("Asymmetric public key file missing");
-            }
-            return $"{openSslPath} rsautl -encrypt -inkey {publicKey.Escape()} -pubin -in {keyPath.Escape()} -out {keyCryptedPath.Escape()}";
-        }
-
-        private static string DecryptRandomKey(string openSslPath, string keyPath, string keyCryptedPath, string privateKey)
-        {
-            if (String.IsNullOrWhiteSpace(privateKey))
-            {
-                throw new CommandLineException("Asymmetric private key file missing");
-            }
-            return $"{openSslPath} rsautl -decrypt -inkey {privateKey.Escape()} -in {keyCryptedPath.Escape()} -out {keyPath.Escape()}";
-        }
-
-        private static string GenerateRandomKey(string openSslPath, string filename)
-        {
-            // 512 byte == 4096 bit
-            return $"{openSslPath} rand -base64 256 > {filename.Escape()}";
+            sw.Stop();
+            return new OperationSummary(operationBlocks, option.Threads, sw);
         }
     }
 }

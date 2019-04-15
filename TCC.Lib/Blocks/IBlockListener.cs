@@ -2,6 +2,6 @@
 {
     public interface IBlockListener
     {
-        void Add(BlockReport report);
+        void OnBlockReport(BlockReport report);
     }
 }

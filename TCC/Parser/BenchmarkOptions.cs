@@ -40,7 +40,8 @@ namespace TCC.Parser
         [Option('x', "cleanup", HelpText = "Cleanup compressed / decompressed data between each pass. Valid values are : 'true','false'", Default = false)]
         public bool Cleanup { get; set; }
 
-        internal static readonly HashSet<string> AutoTestDataOptions = new HashSet<string>() { "-c", "--content", "-n", "--number", "-s", "--size" };
+        internal static readonly HashSet<string> AutoTestDataOptions = new HashSet<string>
+            { "-c", "--content", "-n", "--number", "-s", "--size" };
     }
 
 
