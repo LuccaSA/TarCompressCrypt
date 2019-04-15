@@ -1,6 +1,6 @@
 using System;
 
-namespace TCC.Lib.Helpers
+namespace TCC.Lib.AsyncStreams
 {
     public class ParallelizeOption
     {

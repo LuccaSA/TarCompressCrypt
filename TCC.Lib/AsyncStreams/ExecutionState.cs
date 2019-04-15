@@ -1,4 +1,4 @@
-namespace TCC.Lib.Helpers
+namespace TCC.Lib.AsyncStreams
 {
     public enum ExecutionStatus
     {

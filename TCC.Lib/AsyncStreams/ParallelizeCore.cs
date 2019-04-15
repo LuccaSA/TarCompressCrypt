@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace TCC.Lib.Helpers
+namespace TCC.Lib.AsyncStreams
 {
     internal sealed class ParallelizeCore : IDisposable
     { 

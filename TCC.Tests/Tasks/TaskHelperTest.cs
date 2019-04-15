@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib.AsyncStreams;
 using TCC.Lib.Helpers;
 using Xunit;
 
@@ -37,6 +38,7 @@ namespace TCC.Tests.Tasks
                 await Task.Delay(i, ct);
                 Interlocked.Decrement(ref count);
                 Assert.True(count <= degree);
+                return true;
             }, option, cts.Token);
 
             Assert.Equal(degree, max);
@@ -69,10 +71,11 @@ namespace TCC.Tests.Tasks
                     await Task.Delay(1000, ct);
                     if (ct.IsCancellationRequested)
                     {
-                        return;
+                        return false;
                     }
                     Assert.False(true);
                 }
+                return true;
             }, option, cts.Token);
 
             if (failMode == Fail.Default)
@@ -84,7 +87,7 @@ namespace TCC.Tests.Tasks
             }
             else
             {
-                var result = await pTask;
+                var result = await pTask.GetExceptionsAsync();
                 Assert.True(result.IsCanceled);
             }
         }
@@ -114,27 +117,26 @@ namespace TCC.Tests.Tasks
                 await Task.Delay(1000, ct);
                 if (ct.IsCancellationRequested)
                 {
-                    return;
+                    return false;
                 }
                 if (failMode == Fail.Fast)
                 {
                     badBehavior = true;
                 }
+                return true;
             }, option, CancellationToken.None);
-
-            ParallelizedSummary result;
 
             if (failMode == Fail.Default)
             {
                 await Assert.ThrowsAsync<TestException>(async () =>
                 {
-                    result = await pTask;
+                    await pTask;
                 });
                 Assert.Equal(10, index);
             }
             else
             {
-                result = await pTask;
+                ParallelizedSummary result = await pTask.GetExceptionsAsync();
                 Assert.False(result.IsSuccess);
                 Assert.False(result.IsCanceled);
                 Assert.NotEmpty(result.Exceptions);
