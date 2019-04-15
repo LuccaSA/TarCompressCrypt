@@ -17,6 +17,8 @@ namespace TCC.Lib.Helpers
             serviceCollection.TryAddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
             serviceCollection.AddSingleton<ExternalDependencies>();
             serviceCollection.AddSingleton<TarCompressCrypt>();
+            serviceCollection.AddSingleton<EncryptionCommands>();
+            serviceCollection.AddSingleton<CompressionCommands>();
             serviceCollection.AddSingleton<BenchmarkRunner>();
             serviceCollection.AddSingleton<BenchmarkOptionHelper>();
             serviceCollection.AddSingleton<BenchmarkIterationGenerator>();

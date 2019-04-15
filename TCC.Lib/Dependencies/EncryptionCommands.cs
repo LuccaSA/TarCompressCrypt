@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib.Blocks;
@@ -14,85 +12,38 @@ namespace TCC.Lib.Dependencies
     public class EncryptionCommands
     {
         private readonly ExternalDependencies _ext;
-        private CompressionCommands _compressionCommands;
 
-        public EncryptionCommands(ExternalDependencies externalDependencies, CompressionCommands compressionCommands)
+        public EncryptionCommands(ExternalDependencies externalDependencies)
         {
             _ext = externalDependencies;
-            _compressionCommands = compressionCommands;
         }
 
-        public async Task<CommandResult> Encrypt(Block block, TccOption option, CancellationToken cancellationToken)
+        public Task CleanupKey(Block block, TccOption option, CommandResult result, Mode mode)
         {
-            EncryptionKey k = null;
-            CommandResult result = null;
-            try
-            { 
-                k = await PrepareEncryptionKey(block, option, cancellationToken);
-                 
-                string cmd = _compressionCommands.CompressCommand(block, option as CompressOption);
-                result = await cmd.Run(block.OperationFolder, cancellationToken);
-            }
-            finally
-            {
-                await CleanupKey(block, option, k, result, Mode.Compress);
-            }
-            return result;
-        }
-
-        public async Task<CommandResult> Decrypt(Block block, TccOption option, CancellationToken cancellationToken)
-        {
-            EncryptionKey k = null;
-            CommandResult result = null;
-            try
-            { 
-                k = await PrepareDecryptionKey(block, option, cancellationToken);
-                 
-                string cmd = _compressionCommands.DecompressCommand(block, option);
-                result = await cmd.Run(block.OperationFolder, cancellationToken);
-            }
-            finally
-            {
-                await CleanupKey(block, option, k, result, Mode.Compress);
-            }
-            return result;
-        }
-
-        private static Task CleanupKey(Block block, TccOption option, EncryptionKey key, CommandResult result, Mode mode)
-        {
-            if (key == null)
+            if (block.EncryptionKey?.Key == null || block.EncryptionKey?.KeyCrypted == null)
             {
                 return Task.CompletedTask;
             }
-            if (option.PasswordOption.PasswordMode == PasswordMode.PublicKey)
+
+            if (option.PasswordOption.PasswordMode != PasswordMode.PublicKey)
             {
-                // delete uncrypted pass
-                if (!String.IsNullOrEmpty(key.KeyCrypted))
-                {
-                    return Path.Combine(block.DestinationFolder, key.Key).TryDeleteFileWithRetryAsync();
-                }
-                // if error in compression, also delete encrypted passfile
-                if (mode == Mode.Compress && (result == null || result.HasError) && !String.IsNullOrEmpty(key.KeyCrypted))
-                {
-                    return Path.Combine(block.DestinationFolder, key.KeyCrypted).TryDeleteFileWithRetryAsync();
-                }
+                return Task.CompletedTask;
+            }
+
+            // delete uncrypted pass
+            if (!String.IsNullOrEmpty(block.EncryptionKey.KeyCrypted))
+            {
+                return Path.Combine(block.DestinationFolder, block.EncryptionKey.Key).TryDeleteFileWithRetryAsync();
+            }
+            // if error in compression, also delete encrypted passfile
+            if (mode == Mode.Compress && (result == null || result.HasError) && !String.IsNullOrEmpty(block.EncryptionKey.KeyCrypted))
+            {
+                return Path.Combine(block.DestinationFolder, block.EncryptionKey.KeyCrypted).TryDeleteFileWithRetryAsync();
             }
             return Task.CompletedTask;
         }
 
-        public class EncryptionKey
-        {
-            public EncryptionKey(string key, string keyCrypted)
-            {
-                Key = key;
-                KeyCrypted = keyCrypted;
-            }
-
-            public string Key { get; }
-            public string KeyCrypted { get; }
-        }
-
-        private async Task<EncryptionKey> PrepareEncryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
+        public async Task PrepareEncryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
         {
             string key = null;
             string keyCrypted = null;
@@ -118,10 +69,10 @@ namespace TCC.Lib.Dependencies
                 block.BlockPasswordFile = passwordFile.PasswordFile;
             }
 
-            return new EncryptionKey(key, keyCrypted);
+            block.EncryptionKey = new EncryptionKey(key, keyCrypted);
         }
 
-        private async Task<EncryptionKey> PrepareDecryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
+        public async Task PrepareDecryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
         {
             string key = null;
             string keyCrypted = null;
@@ -143,7 +94,7 @@ namespace TCC.Lib.Dependencies
                     block.BlockPasswordFile = passwordFile.PasswordFile;
                     break;
             }
-            return new EncryptionKey(key, keyCrypted);
+            block.EncryptionKey = new EncryptionKey(key, keyCrypted);
         }
 
         private static string EncryptRandomKey(string openSslPath, string keyPath, string keyCryptedPath, string publicKey)
