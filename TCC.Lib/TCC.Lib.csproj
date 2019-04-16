@@ -1,16 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework> 
+    <TargetFramework>netcoreapp2.2</TargetFramework> 
     <ProjectGuid>{0ECB049B-34A2-40EA-8011-6A1FB6767336}</ProjectGuid>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="2.1.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="2.1.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="2.1.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="2.1.8" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="2.2.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="2.2.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="2.2.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="2.2.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.2.0" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
     <PackageReference Include="System.Management" Version="4.5.0" />
     <PackageReference Include="System.Threading.Channels" Version="4.5.0" />

@@ -14,8 +14,7 @@ namespace TCC.Lib.AsyncStreams
             var channel = Channel.CreateUnbounded<StreamedValue<T>>(new UnboundedChannelOptions
             {
                 SingleWriter = true,
-                SingleReader = false,
-                AllowSynchronousContinuations = true
+                SingleReader = false
             });
             var task = Task.Run(async () =>
             {
@@ -35,8 +34,7 @@ namespace TCC.Lib.AsyncStreams
             var channel = Channel.CreateUnbounded<StreamedValue<T>>(new UnboundedChannelOptions
             {
                 SingleWriter = false,
-                SingleReader = false,
-                AllowSynchronousContinuations = true
+                SingleReader = false
             });
             var task = Task.Run(async () =>
             {
@@ -56,8 +54,7 @@ namespace TCC.Lib.AsyncStreams
             var channel = Channel.CreateUnbounded<StreamedValue<T>>(new UnboundedChannelOptions
             {
                 SingleWriter = false,
-                SingleReader = false,
-                AllowSynchronousContinuations = true
+                SingleReader = false
             });
             var task = Task.Run(async () =>
             {
