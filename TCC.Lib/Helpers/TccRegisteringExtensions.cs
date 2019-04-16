@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿using System;
+using System.ComponentModel;
+using System.Threading;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,10 +32,23 @@ namespace TCC.Lib.Helpers
 
             services.AddDbContext<TccDbContext>((s,options) =>
             {
-                var cs = s.GetRequiredService<IOptions<TccSettings>>().Value.ConnectionString;
-                var sqlite = new SqliteConnection(cs);
-                sqlite.Open();
-                options.UseSqlite(sqlite);
+                var setting = s.GetRequiredService<IOptions<TccSettings>>().Value;
+                switch (setting.Provider)
+                {
+                    case Provider.InMemory:
+                        options.UseInMemoryDatabase(Guid.NewGuid().ToString());
+                        break;
+                    case Provider.SqlServer:
+                        options.UseSqlServer(setting.ConnectionString);
+                        break;
+                    case Provider.SqLite:
+                        var sqlite = new SqliteConnection(setting.ConnectionString);
+                        sqlite.Open();
+                        options.UseSqlite(sqlite);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             });
         }
     }
@@ -41,5 +56,14 @@ namespace TCC.Lib.Helpers
     public class TccSettings
     {
         public string ConnectionString { get; set; }
+        public Provider Provider { get; set; } = Provider.SqLite;
+    }
+
+    [DefaultValue(SqLite)]
+    public enum Provider
+    {
+        SqLite,
+        InMemory,
+        SqlServer
     }
 }

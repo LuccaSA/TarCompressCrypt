@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using CommandLine;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
