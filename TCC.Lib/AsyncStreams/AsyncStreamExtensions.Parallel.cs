@@ -63,8 +63,10 @@ namespace TCC.Lib.Helpers
                     channel.Writer.Complete(e);
                     throw;
                 }
-
-                channel.Writer.Complete();
+                finally
+                {
+                    channel.Writer.Complete();
+                }
                 ThrowOnErrors(option, core);
             });
 

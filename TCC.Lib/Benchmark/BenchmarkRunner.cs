@@ -48,13 +48,13 @@ namespace TCC.Lib.Benchmark
                     SourceDirOrFile = iteration.Content.Source,
                     DestinationDir = compressedFolder,
                     Threads = threads,
-                    PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder).ConfigureAwait(false)
+                    PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder)
                 };
-                OperationSummary resultCompress = await _tarCompressCrypt.Compress(compressOption).ConfigureAwait(false);
+                OperationSummary resultCompress = await _tarCompressCrypt.Compress(compressOption);
 
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
-                    await Cleanup().ConfigureAwait(false);
+                    await Cleanup();
                     return null;
                 }
                 operationSummaries.Add(resultCompress);
