@@ -18,23 +18,24 @@ namespace TCC.Tests
         {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddTcc();
-
             IServiceProvider provider = serviceCollection.BuildServiceProvider();
+            using (var scope = provider.CreateScope())
+            {
+                await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
 
-            await provider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
-
-            var op = await provider
-                .GetRequiredService<BenchmarkRunner>()
-                .RunBenchmark(new BenchmarkOption
-                {
-                    Content = BenchmarkContent.Both,
-                    Algorithm = BenchmarkCompressionAlgo.All,
-                    FileSize = 2048,
-                    NumberOfFiles = 2,
-                    Ratios = "1",
-                    Cleanup = true
-                });
-            op.ThrowOnError();
+                var op = await scope.ServiceProvider
+                    .GetRequiredService<BenchmarkRunner>()
+                    .RunBenchmark(new BenchmarkOption
+                    {
+                        Content = BenchmarkContent.Both,
+                        Algorithm = BenchmarkCompressionAlgo.All,
+                        FileSize = 2048,
+                        NumberOfFiles = 2,
+                        Ratios = "1",
+                        Cleanup = true
+                    });
+                op.ThrowOnError();
+            }
         }
 
         [Fact]

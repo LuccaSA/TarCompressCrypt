@@ -39,6 +39,20 @@ namespace TCC.Lib.Blocks
                 return _sourceSize;
             }
         }
+
+        private long _targetSize;
+        public long TargetSize
+        {
+            get
+            {
+                if (_targetSize == 0)
+                {
+                    _targetSize = _destinationArchive.GetDirectoryOrFileSize();
+                }
+                return _targetSize;
+            }
+        }
+
     }
 
     public class EncryptionKey
