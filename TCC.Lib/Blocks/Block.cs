@@ -53,6 +53,7 @@ namespace TCC.Lib.Blocks
             }
         }
 
+        public BackupMode? BackupMode { get; set; }
     }
 
     public class EncryptionKey

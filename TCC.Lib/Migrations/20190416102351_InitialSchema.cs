@@ -29,7 +29,7 @@ namespace TCC.Lib.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     JobId = table.Column<int>(nullable: false),
                     JobId1 = table.Column<int>(nullable: true),
-                    BackupType = table.Column<int>(nullable: false),
+                    BackupMode = table.Column<int>(nullable: false),
                     Source = table.Column<string>(nullable: true),
                     StartTime = table.Column<DateTime>(nullable: false),
                     Duration = table.Column<TimeSpan>(nullable: false),

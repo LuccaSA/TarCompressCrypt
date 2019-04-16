@@ -9,7 +9,7 @@ using TCC.Lib.Helpers;
 namespace TCC.Lib.Migrations
 {
     [DbContext(typeof(TccDbContext))]
-    [Migration("20190416084947_InitialSchema")]
+    [Migration("20190416102351_InitialSchema")]
     partial class InitialSchema
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,7 +23,7 @@ namespace TCC.Lib.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<int>("BackupType");
+                    b.Property<int>("BackupMode");
 
                     b.Property<TimeSpan>("Duration");
 

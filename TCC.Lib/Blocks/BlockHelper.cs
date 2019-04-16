@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Lib.Blocks
@@ -36,6 +37,11 @@ namespace TCC.Lib.Blocks
             if (!dstDir.Exists)
             {
                 dstDir.Create();
+            }
+
+            if (compressOption.BackupMode == BackupMode.Full)
+            {
+                return blocks.Foreach(b => { b.BackupMode = BackupMode.Full; });
             }
 
             return blocks;

@@ -1,64 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace TCC.Lib.Helpers
 {
-    public static class IEnumerableExtensions
-    {
-        public static IEnumerable<T> OrderBySequence<T, TId>(this IEnumerable<T> source, IEnumerable<TId> order, Func<T, TId> idSelector)
-        {
-            var dic = new Dictionary<TId, List<T>>();
-            var queue = new Queue<TId>(order);
-
-            var current = queue.Dequeue();
-            foreach (var item in source)
-            {
-                var id = idSelector(item);
-                if (Equals(current, id))
-                {
-                    yield return item;
-                    current = queue.Dequeue();
-                }
-                else
-                {
-                    if (dic.ContainsKey(id))
-                    {
-                        dic[id].Add(item);
-                    }
-                    else
-                    {
-                        dic[id] = new List<T> { item };
-                    }
-                }
-            }
-
-            while (true)
-            {
-                if (dic.ContainsKey(current))
-                {
-                    foreach (var t in dic[current])
-                    {
-                        yield return t;
-                    }
-                    dic.Remove(current);
-                }
-
-                if (queue.Count == 0)
-                {
-                    break;
-                }
-
-                current = queue.Dequeue();
-            }
-
-            foreach (var remaining in dic.Values.SelectMany(i => i))
-            {
-                yield return remaining;
-            }
-        }
-
-    }
     public static class StringExtensions
     {
         public static string Escape(this string str)
