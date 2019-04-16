@@ -1,12 +1,38 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Nito.AsyncEx;
 
 namespace TCC.Lib.Helpers
 {
+    public class Database
+    {  
+        private readonly AsyncLazy<TccDbContext> _lazy;
+
+        public Database(TccDbContext tccDbContext, IOptions<TccSettings> options)
+        {  
+            _lazy = new AsyncLazy<TccDbContext>(async () =>
+            {
+                if (options.Value.Provider == Provider.InMemory)
+                {
+                    await tccDbContext.Database.EnsureCreatedAsync();
+                }
+                else
+                {
+                    await tccDbContext.Database.MigrateAsync();
+                }
+                return tccDbContext;
+            });
+        }
+
+        public async Task<TccDbContext> GetDbAsync() => await _lazy;
+    }
+
     public class TccDbContext : DbContext
     {
         public TccDbContext(DbContextOptions options) : base(options) { }

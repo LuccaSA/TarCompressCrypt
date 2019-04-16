@@ -34,13 +34,14 @@ namespace TCC.Lib.Benchmark
 
             var iterations = await _iterationGenerator.PrepareIteration(benchmarkOption);
             var threads = benchmarkOption.Threads == 0 ? Environment.ProcessorCount : benchmarkOption.Threads;
-
+            Console.Out.WriteLine("t00");
             foreach (var iteration in iterations)
             {
+                Console.Out.WriteLine("t07");
                 PasswordMode pm = iteration.Encryption ? PasswordMode.PublicKey : PasswordMode.None;
                 var compressedFolder = TestFileHelper.NewFolder(benchmarkOption.OutputCompressed);
                 var outputFolder = TestFileHelper.NewFolder(benchmarkOption.OutputDecompressed);
-
+                Console.Out.WriteLine("t08");
                 // compress
                 var compressOption = new CompressOption
                 {
@@ -52,16 +53,19 @@ namespace TCC.Lib.Benchmark
                     Threads = threads,
                     PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder)
                 };
-         
+                Console.Out.WriteLine("t09");
                 OperationSummary resultCompress = await _tarCompressCrypt.Compress(compressOption);
+                Console.Out.WriteLine("t10");
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
                     await Cleanup();
+                    Console.Out.WriteLine("t11");
                     return null;
                 }
+                Console.Out.WriteLine("t12");
                 operationSummaries.Add(resultCompress);
                 resultCompress.ThrowOnError();
-
+                Console.Out.WriteLine("t13");
                 // decompress
                 var decompressOption = new DecompressOption
                 {
@@ -70,35 +74,45 @@ namespace TCC.Lib.Benchmark
                     Threads = threads,
                     PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)
                 };
-             
+                Console.Out.WriteLine("t14");
                 OperationSummary resultDecompress = await _tarCompressCrypt.Decompress(decompressOption);
+                Console.Out.WriteLine("t15");
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
+                    Console.Out.WriteLine("t16");
                     await Cleanup();
+                    Console.Out.WriteLine("t17");
                     return null;
                 }
-
+                Console.Out.WriteLine("t18");
                 operationSummaries.Add(resultDecompress);
                 resultDecompress.ThrowOnError();
-
+                Console.Out.WriteLine("t19");
                 StringBuilder sb = FormatResultSummary(iteration, resultCompress, resultDecompress);
-
+                Console.Out.WriteLine("t20");
                 Console.Out.WriteLine(sb.ToString());
 
                 async Task Cleanup()
                 {
+                    Console.Out.WriteLine("t01");
                     if (benchmarkOption.Cleanup)
                     {
+                        Console.Out.WriteLine("t02");
                         await "del /f /s /q * > NUL".Run(compressedFolder, CancellationToken.None);
+                        Console.Out.WriteLine("t03");
                         Directory.Delete(compressedFolder, true);
+                        Console.Out.WriteLine("t04");
                         await "del /f /s /q * > NUL".Run(outputFolder, CancellationToken.None);
+                        Console.Out.WriteLine("t05");
                         Directory.Delete(outputFolder, true);
+                        Console.Out.WriteLine("t06");
                     }
                 }
-
+                Console.Out.WriteLine("t21");
                 await Cleanup();
+                Console.Out.WriteLine("t22");
             }
-
+            Console.Out.WriteLine("t23");
             return new OperationSummary(operationSummaries.SelectMany(i => i.OperationBlocks), 0, default);
         }
 

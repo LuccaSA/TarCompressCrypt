@@ -13,7 +13,7 @@ namespace TCC.Tests
 {
     public class Benchmark
     {
-        [Fact(Skip ="block")]
+        [Fact]
         public async Task SimpleBench()
         {
             var services = new ServiceCollection();
