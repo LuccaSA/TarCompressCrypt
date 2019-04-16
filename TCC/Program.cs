@@ -31,12 +31,15 @@ namespace TCC
                 serviceCollection.AddSingleton<IBlockListener, CommandLineBlockListener>();
             }
 
+            OperationSummary op;
             IServiceProvider provider = serviceCollection.BuildServiceProvider();
+            using (var scope = provider.CreateScope())
+            {
+                scope.ServiceProvider.GetRequiredService<CancellationTokenSource>().HookTermination();
+                await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
 
-            provider.GetRequiredService<CancellationTokenSource>().HookTermination();
-            await provider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
-
-            OperationSummary op = await RunTcc(provider, parsed);
+                op = await RunTcc(scope.ServiceProvider, parsed);
+            }
 
             if(op == null || !op.IsSuccess)
             {

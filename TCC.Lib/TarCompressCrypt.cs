@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
@@ -20,28 +22,33 @@ namespace TCC.Lib
         private readonly ILogger<TarCompressCrypt> _logger;
         private readonly EncryptionCommands _encryptionCommands;
         private readonly CompressionCommands _compressionCommands;
+        private readonly TccDbContext _tccDbContext;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, TccDbContext tccDbContext)
         {
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
             _logger = logger;
             _encryptionCommands = encryptionCommands;
             _compressionCommands = compressionCommands;
+            _tccDbContext = tccDbContext;
         }
 
         public async Task<OperationSummary> Compress(CompressOption option)
         {
-            IEnumerable<Block> blocks = BlockHelper.PreprareCompressBlocks(option);
-
             var sw = Stopwatch.StartNew();
-            var po = new ParallelizeOption
+
+            var po = ParallelizeOption(option);
+            IEnumerable<Block> blocks = BlockHelper.PreprareCompressBlocks(option);
+            IEnumerable<Block> ordered = await OrderBlocksAsync(blocks);
+
+            var job = new Job
             {
-                FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
-                MaxDegreeOfParallelism = option.Threads
+                StartTime = DateTime.UtcNow,
+                BlockJobs = new List<BlockJob>()
             };
 
-            var operationBlocks = await blocks
+            var operationBlocks = await ordered
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
                 // Prepare encyption
@@ -80,19 +87,43 @@ namespace TCC.Lib
                 })
                 .AsEnumerableAsync();
 
+            job.BlockJobs = operationBlocks.Select(i => new BlockJob
+            {
+                Source = i.Block.Source,
+                Duration = TimeSpan.FromMilliseconds(i.CommandResult.ElapsedMilliseconds),
+                Size = i.Block.TargetSize,
+                Exception = i.CommandResult.Errors,
+                Success = i.CommandResult.IsSuccess
+            }).ToList();
+
             sw.Stop();
+            job.Duration = sw.Elapsed;
+            _tccDbContext.Jobs.Add(job);
+            _tccDbContext.BlockJobs.AddRange(job.BlockJobs);
+
+            await _tccDbContext.SaveChangesAsync();
+
             return new OperationSummary(operationBlocks, option.Threads, sw);
+        }
+
+        private async Task<IEnumerable<Block>> OrderBlocksAsync(IEnumerable<Block> blocks)
+        {
+            //await _tccDbContext.Database.EnsureCreatedAsync();
+            await _tccDbContext.Database.MigrateAsync();
+            var jobs = await _tccDbContext.Jobs.Include(i => i.BlockJobs).LastOrDefaultAsync();
+            if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
+            {
+                return blocks;
+            }
+            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size).Select(i => i.Source);
+            return blocks.OrderBySequence(sequence, b => b.Source);
         }
 
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
             IEnumerable<Block> blocks = BlockHelper.PreprareDecompressBlocks(option);
             var sw = Stopwatch.StartNew();
-            var po = new ParallelizeOption
-            {
-                FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
-                MaxDegreeOfParallelism = option.Threads
-            };
+            var po = ParallelizeOption(option);
 
             var operationBlocks = await blocks
                 .AsAsyncStream(_cancellationTokenSource.Token)
@@ -136,5 +167,17 @@ namespace TCC.Lib
             sw.Stop();
             return new OperationSummary(operationBlocks, option.Threads, sw);
         }
+
+
+        private static ParallelizeOption ParallelizeOption(TccOption option)
+        {
+            var po = new ParallelizeOption
+            {
+                FailMode = option.FailFast ? Fail.Fast : Fail.Smart,
+                MaxDegreeOfParallelism = option.Threads
+            };
+            return po;
+        }
+
     }
 }
