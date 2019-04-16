@@ -39,7 +39,7 @@ namespace TCC.Tests.Tasks
                 Interlocked.Decrement(ref count);
                 Assert.True(count <= degree);
                 return true;
-            }, option, cts.Token);
+            }, option, cts.Token).Task;
 
             Assert.Equal(degree, max);
         }
@@ -82,7 +82,7 @@ namespace TCC.Tests.Tasks
             {
                 await Assert.ThrowsAsync<TaskCanceledException>(async () =>
                 {
-                    await pTask;
+                    await pTask.Task;
                 });
             }
             else
@@ -130,7 +130,7 @@ namespace TCC.Tests.Tasks
             {
                 await Assert.ThrowsAsync<TestException>(async () =>
                 {
-                    await pTask;
+                    await pTask.Task;
                 });
                 Assert.Equal(10, index);
             }

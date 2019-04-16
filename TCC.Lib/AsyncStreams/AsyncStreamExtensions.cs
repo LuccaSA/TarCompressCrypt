@@ -18,11 +18,17 @@ namespace TCC.Lib.AsyncStreams
             });
             var task = Task.Run(async () =>
             {
-                foreach (var item in source)
+                try
                 {
-                    await channel.Writer.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded), cancellationToken);
+                    foreach (var item in source)
+                    {
+                        await channel.Writer.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded), cancellationToken);
+                    }
                 }
-                channel.Writer.Complete();
+                finally
+                {
+                    channel.Writer.Complete();
+                }
             });
             return new AsyncStream<T>(channel, task, cancellationToken);
         }
@@ -38,13 +44,19 @@ namespace TCC.Lib.AsyncStreams
             });
             var task = Task.Run(async () =>
             {
-                while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+                try
                 {
-                    var item = await source.ChannelReader.ReadAsync(source.CancellationToken);
-                    localCounter.Increment();
-                    await channel.Writer.WriteAsync(item, source.CancellationToken);
+                    while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+                    {
+                        var item = await source.ChannelReader.ReadAsync(source.CancellationToken);
+                        localCounter.Increment();
+                        await channel.Writer.WriteAsync(item, source.CancellationToken);
+                    }
                 }
-                channel.Writer.Complete();
+                finally
+                {
+                    channel.Writer.Complete();
+                }
             });
             return new AsyncStream<T>(channel, task, source.CancellationToken);
         }
@@ -58,13 +70,19 @@ namespace TCC.Lib.AsyncStreams
             });
             var task = Task.Run(async () =>
             {
-                while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+                try
                 {
-                    var item = await source.ChannelReader.ReadAsync(source.CancellationToken);
-                    await action(item,source.CancellationToken);
-                    await channel.Writer.WriteAsync(item, source.CancellationToken);
+                    while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+                    {
+                        var item = await source.ChannelReader.ReadAsync(source.CancellationToken);
+                        await action(item, source.CancellationToken);
+                        await channel.Writer.WriteAsync(item, source.CancellationToken);
+                    }
                 }
-                channel.Writer.Complete();
+                finally
+                {
+                    channel.Writer.Complete();
+                }
             });
             return new AsyncStream<T>(channel, task, source.CancellationToken);
         }
@@ -96,15 +114,15 @@ namespace TCC.Lib.AsyncStreams
             return new AsyncStream<TResult>(channel, task, source.CancellationToken);
         }
 
-        private static async Task ExecuteAndStreamAsync<TSource, TResult>(this StreamedValue<TSource> sourceValue, 
-            Func<StreamedValue<TSource>, CancellationToken, Task<TResult>> action, 
+        private static async Task ExecuteAndStreamAsync<TSource, TResult>(this StreamedValue<TSource> sourceValue,
+            Func<StreamedValue<TSource>, CancellationToken, Task<TResult>> action,
             ChannelWriter<StreamedValue<TResult>> writer,
             CancellationToken cancellationToken)
         {
             TResult result;
             try
             {
-                result = await action(sourceValue,cancellationToken);
+                result = await action(sourceValue, cancellationToken);
             }
             catch (TaskCanceledException tce)
             {
