@@ -9,7 +9,7 @@ namespace TCC.Lib.Helpers
         public static IEnumerable<T> OrderBySequence<T, TOrder, TProperty>(this IEnumerable<T> source, IEnumerable<TOrder> order,
             Func<T, TProperty> sourcePropertySelector,
             Func<TOrder, TProperty> orderPropertySelector,
-            Action<T,TOrder> itemMatch)
+            Action<T, TOrder> itemMatch)
             where T : class
             where TOrder : class
         {
@@ -19,16 +19,26 @@ namespace TCC.Lib.Helpers
             var current = queue.Dequeue();
             var currentProperty = orderPropertySelector(current);
 
+            bool queueEmpty = false;
+
             foreach (var item in source)
             {
                 var sourceProperty = sourcePropertySelector(item);
 
-                if (Equals(currentProperty, sourceProperty))
+                if (!queueEmpty && Equals(currentProperty, sourceProperty))
                 {
                     itemMatch(item, current);
                     yield return item;
-                    current = queue.Dequeue();
-                    currentProperty = orderPropertySelector(current);
+
+                    if (queue.Count != 0)
+                    {
+                        current = queue.Dequeue();
+                        currentProperty = orderPropertySelector(current);
+                    }
+                    else
+                    {
+                        queueEmpty = true;
+                    }
                 }
                 else
                 {
@@ -45,7 +55,7 @@ namespace TCC.Lib.Helpers
 
             while (true)
             {
-                if (dic.ContainsKey(currentProperty))
+                if (!queueEmpty && dic.ContainsKey(currentProperty))
                 {
                     foreach (var item in dic[currentProperty])
                     {

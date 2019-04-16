@@ -41,7 +41,6 @@ namespace TCC.Lib
             var po = ParallelizeOption(option);
             IEnumerable<Block> blocks = BlockHelper.PreprareCompressBlocks(option);
             IEnumerable<Block> ordered = await PrepareCompressionBlocksAsync(blocks);
-
             var job = new Job
             {
                 StartTime = DateTime.UtcNow,
@@ -95,17 +94,14 @@ namespace TCC.Lib
                 Exception = i.CommandResult.Errors,
                 Success = i.CommandResult.IsSuccess
             }).ToList();
-
             sw.Stop();
             job.Duration = sw.Elapsed;
-
             var db = await _db.GetDbAsync();
             db.Jobs.Add(job);
             db.BlockJobs.AddRange(job.BlockJobs);
-
             await db.SaveChangesAsync();
-
-            return new OperationSummary(operationBlocks, option.Threads, sw);
+            var ops = new OperationSummary(operationBlocks, option.Threads, sw);
+            return ops;
         }
 
         private async Task<IEnumerable<Block>> PrepareCompressionBlocksAsync(IEnumerable<Block> blocks)
