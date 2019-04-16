@@ -39,7 +39,7 @@ namespace TCC.Lib
             var sw = Stopwatch.StartNew();
 
             var po = ParallelizeOption(option);
-            IEnumerable<Block> blocks = BlockHelper.PreprareCompressBlocks(option);
+            IEnumerable<Block> blocks = BlockHelper.PrepareCompressBlocks(option);
             IEnumerable<Block> ordered = await PrepareCompressionBlocksAsync(blocks);
             var job = new Job
             {
@@ -137,7 +137,7 @@ namespace TCC.Lib
 
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
-            IEnumerable<Block> blocks = BlockHelper.PreprareDecompressBlocks(option);
+            IEnumerable<Block> blocks = BlockHelper.PrepareDecompressBlocks(option);
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
 
