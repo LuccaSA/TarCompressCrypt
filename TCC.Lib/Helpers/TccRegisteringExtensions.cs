@@ -29,6 +29,7 @@ namespace TCC.Lib.Helpers
             services.AddScoped<BenchmarkOptionHelper>();
             services.AddScoped<BenchmarkIterationGenerator>();
             services.AddScoped(_ => new CancellationTokenSource());
+            services.AddSingleton<Database>();
 
             services.AddDbContext<TccDbContext>((s,options) =>
             {

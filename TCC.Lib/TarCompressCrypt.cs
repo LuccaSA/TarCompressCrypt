@@ -22,16 +22,16 @@ namespace TCC.Lib
         private readonly ILogger<TarCompressCrypt> _logger;
         private readonly EncryptionCommands _encryptionCommands;
         private readonly CompressionCommands _compressionCommands;
-        private readonly TccDbContext _tccDbContext;
+        private readonly Database _db;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, TccDbContext tccDbContext)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, Database db)
         {
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
             _logger = logger;
             _encryptionCommands = encryptionCommands;
             _compressionCommands = compressionCommands;
-            _tccDbContext = tccDbContext;
+            _db = db;
         }
 
         public async Task<OperationSummary> Compress(CompressOption option)
@@ -98,18 +98,20 @@ namespace TCC.Lib
 
             sw.Stop();
             job.Duration = sw.Elapsed;
-            _tccDbContext.Jobs.Add(job);
-            _tccDbContext.BlockJobs.AddRange(job.BlockJobs);
 
-            await _tccDbContext.SaveChangesAsync();
+            var db = await _db.GetDbAsync();
+            db.Jobs.Add(job);
+            db.BlockJobs.AddRange(job.BlockJobs);
+
+            await db.SaveChangesAsync();
 
             return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 
         private async Task<IEnumerable<Block>> PrepareCompressionBlocksAsync(IEnumerable<Block> blocks)
         {
-            await _tccDbContext.Database.MigrateAsync();
-            var jobs = await _tccDbContext.Jobs
+            var db = await _db.GetDbAsync();
+            var jobs = await db.Jobs
                 .Include(i => i.BlockJobs)
                 .LastOrDefaultAsync();
 
