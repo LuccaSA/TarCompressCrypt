@@ -40,7 +40,7 @@ namespace TCC.Lib
 
             var po = ParallelizeOption(option);
             IEnumerable<Block> blocks = BlockHelper.PreprareCompressBlocks(option);
-            IEnumerable<Block> ordered = await OrderBlocksAsync(blocks);
+            IEnumerable<Block> ordered = await PrepareCompressionBlocksAsync(blocks);
 
             var job = new Job
             {
@@ -106,17 +106,35 @@ namespace TCC.Lib
             return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 
-        private async Task<IEnumerable<Block>> OrderBlocksAsync(IEnumerable<Block> blocks)
+        private async Task<IEnumerable<Block>> PrepareCompressionBlocksAsync(IEnumerable<Block> blocks)
         {
-            //await _tccDbContext.Database.EnsureCreatedAsync();
             await _tccDbContext.Database.MigrateAsync();
-            var jobs = await _tccDbContext.Jobs.Include(i => i.BlockJobs).LastOrDefaultAsync();
+            var jobs = await _tccDbContext.Jobs
+                .Include(i => i.BlockJobs)
+                .LastOrDefaultAsync();
+
             if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
             {
                 return blocks;
             }
-            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size).Select(i => i.Source);
-            return blocks.OrderBySequence(sequence, b => b.Source);
+
+            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
+
+            return blocks.OrderBySequence(sequence,
+                b => b.Source,
+                p => p.Source,
+                (b, p) =>
+            {
+                // If already Full here, it's a request from command line
+                if (b.BackupMode.HasValue && b.BackupMode.Value == BackupMode.Full)
+                {
+                    return; // we respect command line
+                }
+
+                // If previous backup exists, then we will do a backup diff
+                // If no previous backup, we do a backup full
+                b.BackupMode = p != null ? BackupMode.Diff : BackupMode.Full;
+            });
         }
 
         public async Task<OperationSummary> Decompress(DecompressOption option)

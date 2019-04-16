@@ -29,7 +29,8 @@ namespace TCC.Parser
                             Verbose = opts.Verbose,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
                             BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
-                            Threads = ExtractThreads(opts)
+                            Threads = ExtractThreads(opts),
+                            BackupMode = opts.BackupMode
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Compress);

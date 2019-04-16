@@ -21,7 +21,7 @@ namespace TCC.Lib.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<int>("BackupType");
+                    b.Property<int>("BackupMode");
 
                     b.Property<TimeSpan>("Duration");
 

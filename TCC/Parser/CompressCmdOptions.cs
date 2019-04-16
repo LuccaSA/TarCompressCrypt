@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using CommandLine;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Parser
@@ -18,5 +20,10 @@ namespace TCC.Parser
 
         [Option('r', "ratio", HelpText = "Compression ratio. Valid values are : lz4 [1,9], brotli [1,11], zstd [1,19] ")]
         public int Ratio { get; set; }
+
+        [Option('m', "mode", HelpText = "Backup mode : Full or Diff. (Default = Diff)\n" +
+                                        "                      Full : force a full backup for all sources.\n" +
+                                        "                      Diff : Archive delta since last full")]
+        public BackupMode BackupMode { get; set; }
     }
 }

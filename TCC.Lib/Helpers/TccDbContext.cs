@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,7 +51,7 @@ namespace TCC.Lib.Helpers
         public int Id { get; set; }
         public int JobId { get; set; }
         public Job Job { get; set; }
-        public BlockBackupType BackupType { get; set; }
+        public BackupMode BackupMode { get; set; }
         public String Source { get; set; }
         public DateTime StartTime { get; set; }
         public TimeSpan Duration { get; set; }
@@ -59,10 +60,11 @@ namespace TCC.Lib.Helpers
         public string Exception { get; set; }
     }
 
-    public enum BlockBackupType
+    [DefaultValue(Diff)]
+    public enum BackupMode
     {
+        Diff,
         Full,
-        Diff
     }
 
 }

@@ -13,12 +13,17 @@ namespace TCC.Tests
 {
     public class Benchmark
     {
-        [Fact]
+        [Fact(Skip ="block")]
         public async Task SimpleBench()
         {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddTcc();
-            IServiceProvider provider = serviceCollection.BuildServiceProvider();
+            var services = new ServiceCollection();
+            services.AddTcc();
+            services.PostConfigure<TccSettings>(i =>
+            {
+                i.ConnectionString = "Data Source=:memory:";
+            });
+
+            IServiceProvider provider = services.BuildServiceProvider();
             using (var scope = provider.CreateScope())
             {
                 await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();

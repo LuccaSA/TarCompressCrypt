@@ -16,10 +16,16 @@ namespace TCC.Tests
     {
         public CompressTest()
         {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddTcc();
+            var services = new ServiceCollection();
+            services.AddTcc();
+            services.PostConfigure<TccSettings>(i =>
+            {
+                i.ConnectionString = "Data Source=:memory:";
+            });
+            var builder = services.BuildServiceProvider();
 
-            var provider = serviceCollection.BuildServiceProvider();
+            var provider = builder.CreateScope().ServiceProvider;
+
             _tarCompressCrypt = provider.GetRequiredService<TarCompressCrypt>();
             _externalDependencies = provider.GetRequiredService<ExternalDependencies>();
             _benchmarkOptionHelper = provider.GetRequiredService<BenchmarkOptionHelper>();
