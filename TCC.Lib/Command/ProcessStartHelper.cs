@@ -153,22 +153,21 @@ namespace TCC.Lib.Command
             {
                 standardOutput.Add(e.Data);
             }
-        }
+        }   
 
         private static Process CreateProcess(string command, string workingDirectory)
         {
+            var psInfo = new ProcessStartInfo("cmd.exe", " /c \"" + command + "\"")
+            {
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
             return new Process
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = " /c \"" + command + "\"",
-                    WorkingDirectory = workingDirectory,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                },
+                StartInfo = psInfo,
                 EnableRaisingEvents = true
             };
         }

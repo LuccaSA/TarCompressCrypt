@@ -14,7 +14,7 @@ namespace TCC.Lib.Dependencies
             _ext = externalDependencies;
         }
 
-        public string CompressCommand(Block block, CompressOption option)
+        public string CompressCommand(CompressionBlock block, CompressOption option)
         {
             var cmd = new StringBuilder();
             string ratio;
@@ -82,7 +82,7 @@ namespace TCC.Lib.Dependencies
             return cmd.ToString();
         }
 
-        public string DecompressCommand(Block block, TccOption option)
+        public string DecompressCommand(DecompressionBlock block, TccOption option)
         {
             var cmd = new StringBuilder();
             switch (option.PasswordOption.PasswordMode)

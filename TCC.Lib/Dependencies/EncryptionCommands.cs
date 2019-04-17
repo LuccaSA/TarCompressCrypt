@@ -33,17 +33,17 @@ namespace TCC.Lib.Dependencies
             // delete uncrypted pass
             if (!String.IsNullOrEmpty(block.EncryptionKey.KeyCrypted))
             {
-                return Path.Combine(block.DestinationFolder, block.EncryptionKey.Key).TryDeleteFileWithRetryAsync();
+                return Path.Combine(block.ArchiveFolder.FullName, block.EncryptionKey.Key).TryDeleteFileWithRetryAsync();
             }
             // if error in compression, also delete encrypted passfile
             if (mode == Mode.Compress && (result == null || result.HasError) && !String.IsNullOrEmpty(block.EncryptionKey.KeyCrypted))
             {
-                return Path.Combine(block.DestinationFolder, block.EncryptionKey.KeyCrypted).TryDeleteFileWithRetryAsync();
+                return Path.Combine(block.ArchiveFolder.FullName, block.EncryptionKey.KeyCrypted).TryDeleteFileWithRetryAsync();
             }
             return Task.CompletedTask;
         }
 
-        public async Task PrepareEncryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
+        public async Task PrepareEncryptionKey(CompressionBlock block, TccOption option, CancellationToken cancellationToken)
         {
             string key = null;
             string keyCrypted = null;
@@ -51,17 +51,17 @@ namespace TCC.Lib.Dependencies
             if (option.PasswordOption.PasswordMode == PasswordMode.PublicKey &&
                 option.PasswordOption is PublicKeyPasswordOption publicKey)
             {
-                key = block.ArchiveName + ".key";
-                keyCrypted = block.ArchiveName + ".key.encrypted";
+                key = block.DestinationArchiveName + ".key";
+                keyCrypted = block.DestinationArchiveName + ".key.encrypted";
 
                 // generate random passfile
-                var passfile = await GenerateRandomKey(_ext.OpenSsl(), key).Run(block.DestinationFolder, cancellationToken);
+                var passfile = await GenerateRandomKey(_ext.OpenSsl(), key).Run(block.DestinationArchiveFolder.FullName, cancellationToken);
                 passfile.ThrowOnError();
                 // crypt passfile
-                var cryptPass = await EncryptRandomKey(_ext.OpenSsl(), key, keyCrypted, publicKey.PublicKeyFile).Run(block.DestinationFolder, cancellationToken);
+                var cryptPass = await EncryptRandomKey(_ext.OpenSsl(), key, keyCrypted, publicKey.PublicKeyFile).Run(block.DestinationArchiveFolder.FullName, cancellationToken);
                 cryptPass.ThrowOnError();
 
-                block.BlockPasswordFile = Path.Combine(block.DestinationFolder, key);
+                block.BlockPasswordFile = Path.Combine(block.DestinationArchiveFolder.FullName, key);
             }
             else if (option.PasswordOption.PasswordMode == PasswordMode.PasswordFile &&
                      option.PasswordOption is PasswordFileOption passwordFile)
@@ -72,7 +72,7 @@ namespace TCC.Lib.Dependencies
             block.EncryptionKey = new EncryptionKey(key, keyCrypted);
         }
 
-        public async Task PrepareDecryptionKey(Block block, TccOption option, CancellationToken cancellationToken)
+        public async Task PrepareDecryptionKey(DecompressionBlock block, TccOption option, CancellationToken cancellationToken)
         {
             string key = null;
             string keyCrypted = null;
@@ -80,13 +80,13 @@ namespace TCC.Lib.Dependencies
             {
                 case PasswordMode.PublicKey when option.PasswordOption is PrivateKeyPasswordOption privateKey:
 
-                    var file = new FileInfo(block.ArchiveName);
+                    var file = block.Archive;
                     var dir = file.Directory?.FullName;
                     var name = file.Name.Substring(0, file.Name.IndexOf(".tar", StringComparison.InvariantCultureIgnoreCase));
                     keyCrypted = Path.Combine(dir, name + ".key.encrypted");
                     key = Path.Combine(dir, name + ".key");
 
-                    await DecryptRandomKey(_ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.DestinationFolder, cancellationToken);
+                    await DecryptRandomKey(_ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.ArchiveFolder.FullName, cancellationToken);
                     block.BlockPasswordFile = key;
 
                     break;

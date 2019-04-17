@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
+using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 
 namespace TCC.Lib.Helpers
@@ -29,7 +30,7 @@ namespace TCC.Lib.Helpers
             services.AddScoped<BenchmarkOptionHelper>();
             services.AddScoped<BenchmarkIterationGenerator>();
             services.AddScoped(_ => new CancellationTokenSource());
-            services.AddSingleton<Database>();
+            services.AddSingleton<Database.Database>();
 
             services.AddDbContext<TccDbContext>((s,options) =>
             {

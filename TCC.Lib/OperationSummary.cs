@@ -56,8 +56,9 @@ namespace TCC.Lib
             OperationBlocks.Sum(o => o.CommandResult.ElapsedMilliseconds) /
             (double) Math.Min(_threads, OperationBlocks.Count()));
 
-        public long UncompressedSize => OperationBlocks.Sum(o => o.Block.SourceSize);
-        public long CompressedSize => OperationBlocks.Sum(i => new FileInfo(i.Block.DestinationArchive.Trim('"')).Length);
+        public long UncompressedSize => OperationBlocks.Sum(o => o.Block.UncompressedSize);
+
+        public long CompressedSize => OperationBlocks.Sum(o => o.Block.CompressedSize);
 
         public double CompressionRatio
         {

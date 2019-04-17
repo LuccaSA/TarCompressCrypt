@@ -4,67 +4,30 @@ using TCC.Lib.Options;
 
 namespace TCC.Lib.Blocks
 {
-    public class Block
+    public abstract class Block
     {
-        private string _source;
-        private string _destinationArchive;
+        public abstract string BlockName { get; }
+        public DirectoryInfo ArchiveFolder => Archive.Directory;
+        public abstract FileInfo Archive { get; }
 
-        public string Source
+        private long _compressedSize;
+        public long CompressedSize
         {
-            get => _source.Escape();
-            set => _source = value;
+            get
+            {
+                if (_compressedSize == 0)
+                {
+                    _compressedSize = Archive.FullName.GetDirectoryOrFileSize();
+                }
+                return _compressedSize;
+            }
         }
 
-        public string DestinationArchive
-        {
-            get => _destinationArchive.Escape();
-            set => _destinationArchive = value;
-        }
-        public string OperationFolder { get; set; }
-        public string DestinationFolder { get; set; }
-        public string ArchiveName { get; set; }
+        public abstract long UncompressedSize { get; }
+         
+       
         public string BlockPasswordFile { get; set; }
         public CompressionAlgo Algo { get; set; }
         public EncryptionKey EncryptionKey { get; set; }
-
-        private long _sourceSize;
-        public long SourceSize
-        {
-            get
-            {
-                if (_sourceSize == 0)
-                {
-                    _sourceSize = Path.Combine(OperationFolder, _source).GetDirectoryOrFileSize();
-                }
-                return _sourceSize;
-            }
-        }
-
-        private long _targetSize;
-        public long TargetSize
-        {
-            get
-            {
-                if (_targetSize == 0)
-                {
-                    _targetSize = _destinationArchive.GetDirectoryOrFileSize();
-                }
-                return _targetSize;
-            }
-        }
-
-        public BackupMode? BackupMode { get; set; }
-    }
-
-    public class EncryptionKey
-    {
-        public EncryptionKey(string key, string keyCrypted)
-        {
-            Key = key;
-            KeyCrypted = keyCrypted;
-        }
-
-        public string Key { get; }
-        public string KeyCrypted { get; }
     }
 }

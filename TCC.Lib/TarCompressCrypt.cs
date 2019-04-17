@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
+using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
@@ -22,9 +23,9 @@ namespace TCC.Lib
         private readonly ILogger<TarCompressCrypt> _logger;
         private readonly EncryptionCommands _encryptionCommands;
         private readonly CompressionCommands _compressionCommands;
-        private readonly Database _db;
+        private readonly Database.Database _db;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, Database db)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, Database.Database db)
         {
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
@@ -39,8 +40,8 @@ namespace TCC.Lib
             var sw = Stopwatch.StartNew();
 
             var po = ParallelizeOption(option);
-            IEnumerable<Block> blocks = BlockHelper.PrepareCompressBlocks(option);
-            IEnumerable<Block> ordered = await PrepareCompressionBlocksAsync(blocks);
+            IEnumerable<CompressionBlock> blocks = BlockHelper.PrepareCompressBlocks(option);
+            IEnumerable<CompressionBlock> ordered = await PrepareCompressionBlocksAsync(blocks);
             var job = new Job
             {
                 StartTime = DateTime.UtcNow,
@@ -71,7 +72,7 @@ namespace TCC.Lib
                     {
                         _logger.LogError(e, $"Error on {block.Source}");
                     }
-                    return new OperationBlock(block, result);
+                    return new OperationCompressionBlock(block, result);
                 }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
@@ -81,19 +82,20 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync((i, ct) =>
                 {
-                    _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, i.Item.Block, counter.Count));
+                    _blockListener.OnBlockReport(new CompressionBlockReport(i.Item.CommandResult, i.Item.CompressionBlock, counter.Count));
                     return Task.CompletedTask;
                 })
                 .AsEnumerableAsync();
 
             job.BlockJobs = operationBlocks.Select(i => new BlockJob
             {
-                Source = i.Block.Source,
+                Source = i.CompressionBlock.Source,
                 Duration = TimeSpan.FromMilliseconds(i.CommandResult.ElapsedMilliseconds),
-                Size = i.Block.TargetSize,
+                Size = i.CompressionBlock.CompressedSize,
                 Exception = i.CommandResult.Errors,
                 Success = i.CommandResult.IsSuccess
             }).ToList();
+
             sw.Stop();
             job.Duration = sw.Elapsed;
             var db = await _db.GetDbAsync();
@@ -104,7 +106,7 @@ namespace TCC.Lib
             return ops;
         }
 
-        private async Task<IEnumerable<Block>> PrepareCompressionBlocksAsync(IEnumerable<Block> blocks)
+        private async Task<IEnumerable<CompressionBlock>> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
         {
             var db = await _db.GetDbAsync();
             var jobs = await db.Jobs
@@ -137,7 +139,7 @@ namespace TCC.Lib
 
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
-            IEnumerable<Block> blocks = BlockHelper.PrepareDecompressBlocks(option);
+            IEnumerable<DecompressionBlock> blocks = BlockHelper.PrepareDecompressBlocks(option);
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
 
@@ -165,7 +167,7 @@ namespace TCC.Lib
                     {
                         _logger.LogError(e, $"Error on {block.Source}");
                     }
-                    return new OperationBlock(block, result);
+                    return new OperationDecompressionsBlock(block, result);
                 }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
@@ -175,7 +177,7 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync((i, ct) =>
                 {
-                    _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, i.Item.Block, counter.Count));
+                    _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, counter.Count, i.Item.Block));
                     return Task.CompletedTask;
                 })
                 .AsEnumerableAsync();
