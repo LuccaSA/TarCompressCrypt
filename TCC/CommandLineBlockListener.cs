@@ -21,7 +21,7 @@ namespace TCC
             foreach (var r in blockingCollection.GetConsumingEnumerable())
             {
                 int count = Interlocked.Increment(ref counter);
-                Console.WriteLine(count + "/" + r.Total + " : " + r.Block.ArchiveName);
+                Console.WriteLine(count + "/" + r.Total + " : " + r.Block.BlockName);
                 if (r.Cmd.HasError)
                 {
                     Console.Error.WriteLine("Error : " + r.Cmd.Errors);

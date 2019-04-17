@@ -2,52 +2,57 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TCC.Lib.Helpers;
+using TCC.Lib.Database;
 using TCC.Lib.Options;
 
 namespace TCC.Lib.Blocks
 {
     public static class BlockHelper
     {
-        public static IEnumerable<Block> PrepareCompressBlocks(CompressOption compressOption)
+        public static IEnumerable<CompressionBlock> PrepareCompressBlocks(CompressOption compressOption)
         {
-            IEnumerable<Block> blocks;
+            IEnumerable<CompressionBlock> blocks;
             string extension = ExtensionFromAlgo(compressOption.Algo, compressOption.PasswordOption.PasswordMode != PasswordMode.None);
-            var srcDir = new DirectoryInfo(compressOption.SourceDirOrFile);
-            var dstDir = new DirectoryInfo(compressOption.DestinationDir);
+
+            DirectoryInfo srcDir;
+            if (File.Exists(compressOption.SourceDirOrFile))
+            {
+                srcDir = new FileInfo(compressOption.SourceDirOrFile).Directory;
+            }
+            else
+            {
+                srcDir = new DirectoryInfo(compressOption.SourceDirOrFile);
+            }
+
+            var compFolder = new CompressionFolderProvider(new DirectoryInfo(compressOption.DestinationDir));
 
             switch (compressOption.BlockMode)
             {
                 case BlockMode.Individual:
-                    blocks = PrepareCompressBlockIndividual(extension, srcDir, dstDir).ToList();
+                    blocks = PrepareCompressBlockIndividual(srcDir);
                     break;
                 case BlockMode.Explicit:
-                    blocks = PrepareCompressBlockExplicit(extension, compressOption.SourceDirOrFile, dstDir).ToList();
-                    break;
-                case BlockMode.EachFile:
-                    blocks = PrepareCompressBlockEachFile(extension, srcDir, dstDir).ToList();
-                    break;
-                case BlockMode.EachFileRecursive:
-                    blocks = PrepareCompressBlockEachFileRecursive(extension, srcDir, dstDir).ToList();
+                    blocks = PrepareCompressBlockExplicit(compressOption.SourceDirOrFile);
                     break;
                 default:
                     throw new NotImplementedException();
             }
-
-            if (!dstDir.Exists)
+             
+            foreach (var block in blocks)
             {
-                dstDir.Create();
-            }
+                if (compressOption.BackupMode == BackupMode.Full)
+                {
+                    block.BackupMode = BackupMode.Full;
+                }
 
-            if (compressOption.BackupMode == BackupMode.Full)
-            {
-                return blocks.Foreach(b => { b.BackupMode = BackupMode.Full; });
+                block.DestinationArchiveExtension = extension;
+                block.FolderProvider = compFolder;
+                block.SourceOperationFolder = srcDir;
+                yield return block;
             }
-
-            return blocks;
         }
 
-        public static IEnumerable<Block> PrepareDecompressBlocks(DecompressOption decompressOption)
+        public static IEnumerable<DecompressionBlock> PrepareDecompressBlocks(DecompressOption decompressOption)
         {
             bool yielded = false;
             var dstDir = new DirectoryInfo(decompressOption.DestinationDir);
@@ -58,20 +63,52 @@ namespace TCC.Lib.Blocks
             {
                 var srcDir = new DirectoryInfo(decompressOption.SourceDirOrFile);
 
-                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + ExtensionFromAlgo(CompressionAlgo.Lz4, crypted)))
+                var diff = srcDir.EnumerateDirectories("Diff").FirstOrDefault();
+                var full = srcDir.EnumerateDirectories("Full").FirstOrDefault();
+
+                if (diff == null && full == null)
                 {
-                    yielded = true;
-                    yield return GenerateDecompressBlock(fi, dstDir, CompressionAlgo.Lz4);
+                    foreach (FileInfo fi in srcDir.EnumerateArchives())
+                    {
+                        yielded = true;
+                        yield return GenerateDecompressBlock(fi, dstDir, AlgoFromExtension(fi.Extension));
+                    }
                 }
-                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + ExtensionFromAlgo(CompressionAlgo.Brotli, crypted)))
+                else
                 {
-                    yielded = true;
-                    yield return GenerateDecompressBlock(fi, dstDir, CompressionAlgo.Brotli);
-                }
-                foreach (FileInfo fi in srcDir.EnumerateFiles("*" + ExtensionFromAlgo(CompressionAlgo.Zstd, crypted)))
-                {
-                    yielded = true;
-                    yield return GenerateDecompressBlock(fi, dstDir, CompressionAlgo.Zstd);
+                    var fullBackups = new Dictionary<string, DateTime>();
+                    if (full != null)
+                    {
+                        foreach (var dir in full.EnumerateDirectories())
+                        {
+                            var lastFull = dir.EnumerateArchives().OrderByDescending(i => i.LastWriteTimeUtc).FirstOrDefault();
+                            if (lastFull != null)
+                            {
+                                fullBackups.Add(dir.Name, lastFull.LastWriteTimeUtc);
+                                yielded = true;
+                                yield return GenerateDecompressBlock(lastFull, dstDir, AlgoFromExtension(lastFull.Extension));
+                            }
+                        }
+                    }
+
+                    if (diff != null)
+                    {
+                        foreach (var dir in diff.EnumerateDirectories())
+                        {
+                            if (fullBackups.TryGetValue(dir.Name, out var dateUtc))
+                            {
+                                foreach (var diffArchive in dir.EnumerateArchives().OrderBy(i => i.LastWriteTimeUtc).Where(i => i.LastWriteTimeUtc >= dateUtc))
+                                {
+                                    yielded = true;
+                                    yield return GenerateDecompressBlock(diffArchive, dstDir, AlgoFromExtension(diff.Extension));
+                                }
+                            }
+                            else
+                            {
+                                // cannot uncompress backup diff without backup full
+                            }
+                        }
+                    }
                 }
             }
             else if (File.Exists(decompressOption.SourceDirOrFile))
@@ -84,17 +121,32 @@ namespace TCC.Lib.Blocks
             if (yielded && !dstDir.Exists)
                 dstDir.Create();
         }
+         
 
-        private static Block GenerateDecompressBlock(FileInfo sourceFile, DirectoryInfo targetDirectory, CompressionAlgo algo)
+        private static DecompressionBlock GenerateDecompressBlock(FileInfo sourceFile, DirectoryInfo targetDirectory, CompressionAlgo algo)
         {
-            return new Block
+            return new DecompressionBlock
             {
                 OperationFolder = targetDirectory.FullName,
-                Source = sourceFile.FullName,
-                DestinationFolder = targetDirectory.FullName,
-                ArchiveName = sourceFile.FullName,
+                SourceArchiveFileInfo = sourceFile,
                 Algo = algo
             };
+        }
+
+        private static IEnumerable<FileInfo> EnumerateArchives(this DirectoryInfo directoryInfo)
+        {
+            foreach (CompressionAlgo algo in Enum.GetValues(typeof(CompressionAlgo)))
+            {
+                foreach (FileInfo fi in directoryInfo.EnumerateFiles("*" + ExtensionFromAlgo(algo, true)))
+                {
+                    yield return fi;
+                }
+
+                foreach (FileInfo fi in directoryInfo.EnumerateFiles("*" + ExtensionFromAlgo(algo, false)))
+                {
+                    yield return fi;
+                }
+            }
         }
 
         private static string ExtensionFromAlgo(CompressionAlgo algo, bool crypted)
@@ -135,96 +187,34 @@ namespace TCC.Lib.Blocks
                     throw new ArgumentOutOfRangeException(nameof(extension), extension, null);
             }
         }
-
-
-        private static IEnumerable<Block> PrepareCompressBlockIndividual(string extension, DirectoryInfo srcDir, DirectoryInfo dstDir)
+        
+        private static IEnumerable<CompressionBlock> PrepareCompressBlockIndividual(DirectoryInfo srcDir)
         {
             // for each directory in sourceDir we create an archive
             foreach (DirectoryInfo di in srcDir.EnumerateDirectories())
             {
-                yield return new Block
+                yield return new CompressionBlock
                 {
-                    OperationFolder = srcDir.FullName,
-                    Source = di.Name,
-                    DestinationArchive = Path.Combine(dstDir.FullName, di.Name + extension),
-                    DestinationFolder = dstDir.FullName,
-                    ArchiveName = di.Name
+                    SourceFileOrDirectory = new FileOrDirectoryInfo(di),
                 };
             }
 
             // for each file in sourceDir we create an archive
             foreach (FileInfo fi in srcDir.EnumerateFiles())
             {
-                yield return new Block
+                yield return new CompressionBlock
                 {
-                    OperationFolder = srcDir.FullName,
-                    Source = fi.Name,
-                    DestinationArchive = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension),
-                    DestinationFolder = dstDir.FullName,
-                    ArchiveName = Path.GetFileNameWithoutExtension(fi.Name)
+                    SourceFileOrDirectory = new FileOrDirectoryInfo(fi),
                 };
             }
         }
 
-        private static IEnumerable<Block> PrepareCompressBlockExplicit(string extension, string sourceDir, DirectoryInfo dstDir)
-        {
-            string path;
-            string operationFolder;
-            string name;
-
-            if (File.Exists(sourceDir))
+        private static IEnumerable<CompressionBlock> PrepareCompressBlockExplicit(string sourceDir)
+        { 
+            yield return new CompressionBlock
             {
-                var fi = new FileInfo(sourceDir);
-                path = fi.Name;
-                operationFolder = fi.Directory?.FullName;
-                name = Path.GetFileNameWithoutExtension(fi.Name);
-            }
-            else if (Directory.Exists(sourceDir))
-            {
-                var di = new DirectoryInfo(sourceDir);
-                path = di.Name;
-                operationFolder = di.Parent?.FullName;
-                name = di.Name;
-            }
-            else
-            {
-                throw new FileNotFoundException(nameof(sourceDir), sourceDir);
-            }
-
-            yield return new Block
-            {
-                OperationFolder = operationFolder,
-                Source = path,
-                DestinationArchive = Path.Combine(dstDir.FullName, name + extension),
-                DestinationFolder = dstDir.FullName,
-                ArchiveName = name
+                SourceFileOrDirectory = new FileOrDirectoryInfo(sourceDir),
             };
-        }
-
-        private static IEnumerable<Block> PrepareCompressBlockEachFile(string extension, DirectoryInfo srcDir, DirectoryInfo dstDir)
-        {
-            return BlockFiles(extension, srcDir, dstDir, SearchOption.TopDirectoryOnly);
-        }
-
-        private static IEnumerable<Block> PrepareCompressBlockEachFileRecursive(string extension, DirectoryInfo srcDir, DirectoryInfo dstDir)
-        {
-            return BlockFiles(extension, srcDir, dstDir, SearchOption.AllDirectories);
-        }
-
-        private static IEnumerable<Block> BlockFiles(string extension, DirectoryInfo srcDir, DirectoryInfo dstDir, SearchOption option)
-        {
-            // for each file in sourceDir we create an archive
-            foreach (FileInfo fi in srcDir.EnumerateFiles("*", option))
-            {
-                yield return new Block
-                {
-                    OperationFolder = fi.Directory?.FullName,
-                    Source = fi.Name,
-                    DestinationArchive = Path.Combine(dstDir.FullName, Path.GetFileNameWithoutExtension(fi.Name) + extension),
-                    DestinationFolder = dstDir.FullName,
-                    ArchiveName = Path.GetFileNameWithoutExtension(fi.Name)
-                };
-            }
         }
     }
 }

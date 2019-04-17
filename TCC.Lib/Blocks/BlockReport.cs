@@ -4,15 +4,15 @@ namespace TCC.Lib.Blocks
 {
     public class BlockReport
     {
-        public BlockReport(CommandResult result, Block block, int blocksCount)
+        public BlockReport(CommandResult result, int blocksCount, Block block)
         {
             Cmd = result;
-            Block = block;
             Total = blocksCount;
+            Block = block;
         }
 
         public CommandResult Cmd { get; }
-        public Block Block { get; }
         public int Total { get; }
+        public Block Block { get; }
     }
 }

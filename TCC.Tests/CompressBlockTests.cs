@@ -89,41 +89,8 @@ namespace TCC.Tests
             Assert.Equal(6, blocks.Count());
             await Cleanup();
         }
-
-        [Fact]
-        public async Task DiscoverEachFileBlocks()
-        {
-            await Prepare();
-            var compressOption = new CompressOption
-            {
-                SourceDirOrFile = _root,
-                DestinationDir = _target,
-                BlockMode = BlockMode.EachFile
-            };
-
-            var blocks = BlockHelper.PrepareCompressBlocks(compressOption);
-
-            Assert.Equal(3, blocks.Count());
-            await Cleanup();
-        }
-
-        [Fact]
-        public async Task DiscoverEachFileRecursiveBlocks()
-        {
-            await Prepare();
-
-            var compressOption = new CompressOption
-            {
-                SourceDirOrFile = _root,
-                DestinationDir = _target,
-                BlockMode = BlockMode.EachFileRecursive
-            };
-
-            var blocks = BlockHelper.PrepareCompressBlocks(compressOption);
-
-            Assert.Equal(6, blocks.Count());
-            await Cleanup();
-        }
+         
+         
 
         public void Dispose()
         {
