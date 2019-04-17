@@ -115,7 +115,8 @@ namespace TCC.Lib
 
             if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
             {
-                return blocks;
+                // no history ATM, we consider a backup full for each block
+                return blocks.Foreach(b => { b.BackupMode = BackupMode.Full; });
             }
 
             var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
@@ -142,6 +143,11 @@ namespace TCC.Lib
             IEnumerable<DecompressionBlock> blocks = BlockHelper.PrepareDecompressBlocks(option);
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
+
+            if (!blocks.Any())
+            {
+                ;
+            }
 
             var operationBlocks = await blocks
                 .AsAsyncStream(_cancellationTokenSource.Token)

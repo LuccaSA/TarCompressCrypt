@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
+using TCC.Lib.Database;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
@@ -48,7 +49,8 @@ namespace TCC.Lib.Benchmark
                     SourceDirOrFile = iteration.Content.Source,
                     DestinationDir = compressedFolder,
                     Threads = threads,
-                    PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder)
+                    PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder),
+                    BackupMode = BackupMode.Full
                 };
                 OperationSummary resultCompress = await _tarCompressCrypt.Compress(compressOption);
 

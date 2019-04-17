@@ -17,6 +17,10 @@ namespace TCC.Lib
             _threads = threads;
             Stopwatch = stopwatch;
             OperationBlocks = operationBlocks ?? throw new ArgumentNullException(nameof(operationBlocks));
+            if (!operationBlocks.Any())
+            {
+                throw new ArgumentNullException(nameof(operationBlocks));
+            }
         }
 
         public IEnumerable<OperationBlock> OperationBlocks { get; }

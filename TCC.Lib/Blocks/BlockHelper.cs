@@ -105,6 +105,7 @@ namespace TCC.Lib.Blocks
                             }
                             else
                             {
+                                throw new Exception("no full found for diff");
                                 // cannot uncompress backup diff without backup full
                             }
                         }
