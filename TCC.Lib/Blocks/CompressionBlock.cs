@@ -31,15 +31,16 @@ namespace TCC.Lib.Blocks
         {
             get
             {
+                // todo : direct target root ?
                 //return FolderProvider.DestinationRootFolder;
                 return FolderProvider.GetDirectory(BackupMode ?? Database.BackupMode.Diff)
-                    .CreateSubDirectoryIfNotExists(DestinationArchiveName);
+                    .CreateSubDirectoryIfNotExists(SourceFileOrDirectory.Name);
             }
         }
 
         public BackupMode? BackupMode { get; set; }
 
-        public override string BlockName => DestinationArchiveName;
+        public override string BlockName => SourceFileOrDirectory.Name;
         public override FileInfo Archive => DestinationArchiveFileInfo;
 
 

@@ -57,14 +57,12 @@ namespace TCC.Lib.Blocks
             bool yielded = false;
             var dstDir = new DirectoryInfo(decompressOption.DestinationDir);
 
-            bool crypted = decompressOption.PasswordOption.PasswordMode != PasswordMode.None;
-
             if (Directory.Exists(decompressOption.SourceDirOrFile))
             {
                 var srcDir = new DirectoryInfo(decompressOption.SourceDirOrFile);
 
-                var diff = srcDir.EnumerateDirectories("Diff").FirstOrDefault();
-                var full = srcDir.EnumerateDirectories("Full").FirstOrDefault();
+                var diff = srcDir.EnumerateDirectories(TccConst.Diff).FirstOrDefault();
+                var full = srcDir.EnumerateDirectories(TccConst.Full).FirstOrDefault();
 
                 if (diff == null && full == null)
                 {

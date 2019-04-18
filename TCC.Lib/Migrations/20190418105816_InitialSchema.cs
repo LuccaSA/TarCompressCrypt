@@ -30,7 +30,7 @@ namespace TCC.Lib.Migrations
                     JobId = table.Column<int>(nullable: false),
                     JobId1 = table.Column<int>(nullable: true),
                     BackupMode = table.Column<int>(nullable: false),
-                    Source = table.Column<string>(nullable: true),
+                    FullSourcePath = table.Column<string>(nullable: true),
                     StartTime = table.Column<DateTime>(nullable: false),
                     Duration = table.Column<TimeSpan>(nullable: false),
                     Size = table.Column<long>(nullable: false),
