@@ -98,13 +98,12 @@ namespace TCC.Lib.Blocks
                                 foreach (var diffArchive in dir.EnumerateArchives().OrderBy(i => i.LastWriteTimeUtc).Where(i => i.LastWriteTimeUtc >= dateUtc))
                                 {
                                     yielded = true;
-                                    yield return GenerateDecompressBlock(diffArchive, dstDir, AlgoFromExtension(diff.Extension));
+                                    yield return GenerateDecompressBlock(diffArchive, dstDir, AlgoFromExtension(diffArchive.Extension));
                                 }
                             }
                             else
                             {
                                 throw new Exception("no full found for diff");
-                                // cannot uncompress backup diff without backup full
                             }
                         }
                     }
