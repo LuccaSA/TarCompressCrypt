@@ -42,6 +42,7 @@ namespace TCC.Lib
             var po = ParallelizeOption(option);
             IEnumerable<CompressionBlock> blocks = BlockHelper.PrepareCompressBlocks(option);
             IEnumerable<CompressionBlock> ordered = await PrepareCompressionBlocksAsync(blocks);
+
             var job = new Job
             {
                 StartTime = DateTime.UtcNow,
@@ -145,12 +146,7 @@ namespace TCC.Lib
             IEnumerable<DecompressionBlock> blocks = BlockHelper.PrepareDecompressBlocks(option);
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
-
-            if (!blocks.Any())
-            {
-                ;
-            }
-
+            
             var operationBlocks = await blocks
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
