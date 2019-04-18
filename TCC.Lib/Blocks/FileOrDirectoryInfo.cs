@@ -46,26 +46,22 @@ namespace TCC.Lib.Blocks
             Directory
         }
 
-        private long _sourceSize;
-        public long SourceSize
+        private long? _sourceSize;
+        public long SourceSize => (_sourceSize ?? (_sourceSize = FullPath.GetDirectoryOrFileSize())).Value;
+
+        public string FullPath
         {
             get
             {
-                if (_sourceSize == 0)
+                switch (_kind)
                 {
-                    switch (_kind)
-                    {
-                        case SourceKind.File:
-                            _sourceSize = _fileInfo.FullName.GetDirectoryOrFileSize();
-                            break;
-                        case SourceKind.Directory:
-                            _sourceSize = _directoryInfo.FullName.GetDirectoryOrFileSize();
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
+                    case SourceKind.File:
+                        return _fileInfo.FullName;
+                    case SourceKind.Directory:
+                        return _directoryInfo.FullName;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
-                return _sourceSize;
             }
         }
 

@@ -38,8 +38,8 @@ namespace TCC.Tests
                 Duration = TimeSpan.FromMinutes(2),
                 BlockJobs = new List<BlockJob>
                 {
-                    new BlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), Source = "one", Success = true},
-                    new BlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), Source = "two", Success = true}
+                    new BlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "one", Success = true},
+                    new BlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "two", Success = true}
                 }
             });
             await db.SaveChangesAsync();

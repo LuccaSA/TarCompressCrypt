@@ -87,7 +87,7 @@ namespace TCC.Lib.AsyncStreams
             return new AsyncStream<T>(channel, task, source.CancellationToken);
         }
 
-        public static async Task<IEnumerable<T>> AsEnumerableAsync<T>(this AsyncStream<T> source)
+        public static async Task<IReadOnlyCollection<T>> AsReadOnlyCollection<T>(this AsyncStream<T> source)
         {
             var items = new ConcurrentBag<T>();
             while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))

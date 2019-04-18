@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using TCC.Lib.Database;
 using TCC.Lib.Helpers;
 
@@ -18,8 +19,7 @@ namespace TCC.Lib.Blocks
         public string Source
             => SourceFileOrDirectory.SourceName;
 
-        public string DestinationArchiveName
-            => SourceFileOrDirectory.Name;
+        public string DestinationArchiveName => $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}";
 
         public string DestinationArchive
             => DestinationArchiveFileInfo.FullName.Escape();
@@ -44,5 +44,8 @@ namespace TCC.Lib.Blocks
 
 
         public override long UncompressedSize => SourceFileOrDirectory.SourceSize;
+
+        public DateTime? DiffDate { get; set; }
+        public DateTime StartTime { get; } = DateTime.UtcNow;
     }
 }
