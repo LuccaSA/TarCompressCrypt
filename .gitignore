@@ -1,11 +1,9 @@
-﻿################################################################################
-# Ce fichier .gitignore a été automatiquement créé par Microsoft(R) Visual Studio.
-################################################################################
-
-.vs/*
+﻿.vs/*
 */obj/*
 */bin/*
 packages 
 *.user
 /coverage-opencover.xml
-/TCC/Properties/launchSettings.json
+launchSettings.json
+*/logs/*
+*.db

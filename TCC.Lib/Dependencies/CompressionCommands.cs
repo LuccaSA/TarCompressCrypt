@@ -34,11 +34,20 @@ namespace TCC.Lib.Dependencies
                     throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
             }
 
+            cmd.Append($"{_ext.Tar()} -c {block.Source}");
+            if (block.BackupMode == Database.BackupMode.Diff)
+            {
+                if (!block.DiffDate.HasValue)
+                {
+                    throw new Exception("todo ex msg");
+                }
+                cmd.Append($" -N {block.DiffDate.Value:u}");
+            }
+
             switch (option.PasswordOption.PasswordMode)
             {
                 case PasswordMode.None:
                     // tar -c C:\SourceFolder | lz4.exe -1 - compressed.tar.lz4
-                    cmd.Append($"{_ext.Tar()} -c {block.Source}");
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:
@@ -59,7 +68,6 @@ namespace TCC.Lib.Dependencies
                 case PasswordMode.PublicKey:
                     string passwdCommand = PasswordCommand(option, block);
                     // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
-                    cmd.Append($"{_ext.Tar()} -c {block.Source}");
                     switch (option.Algo)
                     {
                         case CompressionAlgo.Lz4:

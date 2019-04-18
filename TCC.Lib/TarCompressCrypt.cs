@@ -85,11 +85,12 @@ namespace TCC.Lib
                     _blockListener.OnBlockReport(new CompressionBlockReport(i.Item.CommandResult, i.Item.CompressionBlock, counter.Count));
                     return Task.CompletedTask;
                 })
-                .AsEnumerableAsync();
+                .AsReadOnlyCollection();
 
             job.BlockJobs = operationBlocks.Select(i => new BlockJob
             {
-                Source = i.CompressionBlock.Source,
+                StartTime = i.CompressionBlock.StartTime,
+                FullSourcePath = i.CompressionBlock.SourceFileOrDirectory.FullPath,
                 Duration = TimeSpan.FromMilliseconds(i.CommandResult.ElapsedMilliseconds),
                 Size = i.CompressionBlock.CompressedSize,
                 Exception = i.CommandResult.Errors,
@@ -122,8 +123,8 @@ namespace TCC.Lib
             var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
 
             return blocks.OrderBySequence(sequence,
-                b => b.Source,
-                p => p.Source,
+                b => b.SourceFileOrDirectory.FullPath,
+                p => p.FullSourcePath,
                 (b, p) =>
             {
                 // If already Full here, it's a request from command line
@@ -135,6 +136,7 @@ namespace TCC.Lib
                 // If previous backup exists, then we will do a backup diff
                 // If no previous backup, we do a backup full
                 b.BackupMode = p != null ? BackupMode.Diff : BackupMode.Full;
+                b.DiffDate = p.StartTime; // diff since the last full or diff
             });
         }
 
@@ -186,7 +188,7 @@ namespace TCC.Lib
                     _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, counter.Count, i.Item.Block));
                     return Task.CompletedTask;
                 })
-                .AsEnumerableAsync();
+                .AsReadOnlyCollection();
 
             sw.Stop();
             return new OperationSummary(operationBlocks, option.Threads, sw);

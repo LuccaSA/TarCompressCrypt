@@ -23,7 +23,7 @@ namespace TCC.Tests.Tasks
 
             var asyncStream = list.AsAsyncStream(CancellationToken.None);
 
-            var result = await asyncStream.AsEnumerableAsync();
+            var result = await asyncStream.AsReadOnlyCollection();
 
             Assert.NotEmpty(result);
         }
