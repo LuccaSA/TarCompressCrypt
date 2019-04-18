@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TCC.Lib.Database;
-using TCC.Lib.Helpers;
 
 namespace TCC.Lib.Migrations
 {
@@ -15,9 +14,9 @@ namespace TCC.Lib.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.1.8-servicing-32085");
+                .HasAnnotation("ProductVersion", "2.2.4-servicing-10062");
 
-            modelBuilder.Entity("TCC.Lib.Helpers.BlockJob", b =>
+            modelBuilder.Entity("TCC.Lib.Database.BlockJob", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
@@ -28,13 +27,13 @@ namespace TCC.Lib.Migrations
 
                     b.Property<string>("Exception");
 
+                    b.Property<string>("FullSourcePath");
+
                     b.Property<int>("JobId");
 
                     b.Property<int?>("JobId1");
 
                     b.Property<long>("Size");
-
-                    b.Property<string>("Source");
 
                     b.Property<DateTime>("StartTime");
 
@@ -51,7 +50,7 @@ namespace TCC.Lib.Migrations
                     b.ToTable("BlockJobs");
                 });
 
-            modelBuilder.Entity("TCC.Lib.Helpers.Job", b =>
+            modelBuilder.Entity("TCC.Lib.Database.Job", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
@@ -65,14 +64,14 @@ namespace TCC.Lib.Migrations
                     b.ToTable("Jobs");
                 });
 
-            modelBuilder.Entity("TCC.Lib.Helpers.BlockJob", b =>
+            modelBuilder.Entity("TCC.Lib.Database.BlockJob", b =>
                 {
-                    b.HasOne("TCC.Lib.Helpers.Job")
+                    b.HasOne("TCC.Lib.Database.Job")
                         .WithMany("BlockJobs")
                         .HasForeignKey("JobId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("TCC.Lib.Helpers.Job", "Job")
+                    b.HasOne("TCC.Lib.Database.Job", "Job")
                         .WithMany()
                         .HasForeignKey("JobId1");
                 });

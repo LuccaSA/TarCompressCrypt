@@ -30,7 +30,7 @@ namespace TCC.Lib.Blocks
                 lock (_sync)
                 {
                     DestinationRootFolder.CreateIfNotExists();
-                    _diffFolder = DestinationRootFolder.CreateSubDirectoryIfNotExists("DIFF");
+                    _diffFolder = DestinationRootFolder.CreateSubDirectoryIfNotExists(TccConst.Diff);
                 }
                 return _diffFolder;
             }
@@ -47,7 +47,7 @@ namespace TCC.Lib.Blocks
                 lock (_sync)
                 {
                     DestinationRootFolder.CreateIfNotExists();
-                    _fullFolder = DestinationRootFolder.CreateSubDirectoryIfNotExists("FULL");
+                    _fullFolder = DestinationRootFolder.CreateSubDirectoryIfNotExists(TccConst.Full);
                 }
                 return _fullFolder;
             }
