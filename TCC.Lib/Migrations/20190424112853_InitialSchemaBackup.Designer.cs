@@ -8,9 +8,9 @@ using TCC.Lib.Database;
 
 namespace TCC.Lib.Migrations
 {
-    [DbContext(typeof(TccDbContext))]
-    [Migration("20190418105816_InitialSchema")]
-    partial class InitialSchema
+    [DbContext(typeof(TccBackupDbContext))]
+    [Migration("20190424112853_InitialSchemaBackup")]
+    partial class InitialSchemaBackup
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -18,7 +18,7 @@ namespace TCC.Lib.Migrations
             modelBuilder
                 .HasAnnotation("ProductVersion", "2.2.4-servicing-10062");
 
-            modelBuilder.Entity("TCC.Lib.Database.BlockJob", b =>
+            modelBuilder.Entity("TCC.Lib.Database.BackupBlockJob", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
@@ -49,10 +49,10 @@ namespace TCC.Lib.Migrations
 
                     b.HasIndex("StartTime");
 
-                    b.ToTable("BlockJobs");
+                    b.ToTable("BackupBlockJobs");
                 });
 
-            modelBuilder.Entity("TCC.Lib.Database.Job", b =>
+            modelBuilder.Entity("TCC.Lib.Database.BackupJob", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
@@ -63,17 +63,17 @@ namespace TCC.Lib.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Jobs");
+                    b.ToTable("BackupJobs");
                 });
 
-            modelBuilder.Entity("TCC.Lib.Database.BlockJob", b =>
+            modelBuilder.Entity("TCC.Lib.Database.BackupBlockJob", b =>
                 {
-                    b.HasOne("TCC.Lib.Database.Job")
+                    b.HasOne("TCC.Lib.Database.BackupJob")
                         .WithMany("BlockJobs")
                         .HasForeignKey("JobId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("TCC.Lib.Database.Job", "Job")
+                    b.HasOne("TCC.Lib.Database.BackupJob", "Job")
                         .WithMany()
                         .HasForeignKey("JobId1");
                 });
