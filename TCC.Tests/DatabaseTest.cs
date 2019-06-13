@@ -32,18 +32,18 @@ namespace TCC.Tests
             var db = await _db.GetDbAsync();
             await db.Database.EnsureCreatedAsync();
 
-            db.Jobs.Add(new Job
+            db.BackupJobs.Add(new BackupJob
             {
                 StartTime = DateTime.UtcNow,
                 Duration = TimeSpan.FromMinutes(2),
-                BlockJobs = new List<BlockJob>
+                BlockJobs = new List<BackupBlockJob>
                 {
-                    new BlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "one", Success = true},
-                    new BlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "two", Success = true}
+                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "one", Success = true},
+                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "two", Success = true}
                 }
             });
             await db.SaveChangesAsync();
-            var found = await db.Jobs.LastOrDefaultAsync();
+            var found = await db.BackupJobs.LastOrDefaultAsync();
             Assert.NotNull(found);
             Assert.Equal(2, found.BlockJobs.Count);
         }

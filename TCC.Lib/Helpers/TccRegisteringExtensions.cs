@@ -19,7 +19,7 @@ namespace TCC.Lib.Helpers
     {
         public static void AddTcc(this IServiceCollection services)
         {
-            services.Configure<TccSettings>(i => { i.ConnectionString = "Data Source=tcc.db"; });
+            services.Configure<TccSettings>(i => { i.BackupConnectionString = "Data Source=tcc.db"; });
             services.TryAddScoped<IBlockListener, GenericBlockListener>();
             services.TryAddScoped(typeof(ILogger<>), typeof(NullLogger<>));
             services.AddScoped<ExternalDependencies>();
@@ -32,21 +32,29 @@ namespace TCC.Lib.Helpers
             services.AddScoped(_ => new CancellationTokenSource());
             services.AddSingleton<Database.Database>();
 
-            services.AddDbContext<TccDbContext>((s,options) =>
+            services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString);
+            services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString);
+        }
+
+        private static void RegisterDbContext<TDbContext>(this IServiceCollection services, Func<TccSettings, string> connectionString)
+            where TDbContext : DbContext
+        {
+            services.AddDbContext<TDbContext>((s, options) =>
             {
                 var setting = s.GetRequiredService<IOptions<TccSettings>>().Value;
+                var cs = connectionString(setting);
                 switch (setting.Provider)
                 {
                     case Provider.InMemory:
                         options.UseInMemoryDatabase(Guid.NewGuid().ToString());
                         break;
                     case Provider.SqlServer:
-                        options.UseSqlServer(setting.ConnectionString);
+                        options.UseSqlServer(cs);
                         break;
                     case Provider.SqLite:
-                        var sqlite = new SqliteConnection(setting.ConnectionString);
-                        sqlite.Open();
-                        options.UseSqlite(sqlite);
+                        var sqLite = new SqliteConnection(cs);
+                        sqLite.Open();
+                        options.UseSqlite(sqLite);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -57,7 +65,8 @@ namespace TCC.Lib.Helpers
 
     public class TccSettings
     {
-        public string ConnectionString { get; set; }
+        public string BackupConnectionString { get; set; }
+        public string RestoreConnectionString { get; set; }
         public Provider Provider { get; set; } = Provider.SqLite;
     }
 

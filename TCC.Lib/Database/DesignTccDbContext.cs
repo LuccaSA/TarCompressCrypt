@@ -4,18 +4,33 @@ using TCC.Lib.Helpers;
 
 namespace TCC.Lib.Database
 {
-    public class DesignTccDbContext : IDesignTimeDbContextFactory<TccDbContext>
+    public class DesignTccBackupDbContext : IDesignTimeDbContextFactory<TccBackupDbContext>
     {
-        public TccDbContext CreateDbContext(string[] args)
+        public TccBackupDbContext CreateDbContext(string[] args)
         {
             var services = new ServiceCollection();
             services.AddTcc();
             services.PostConfigure<TccSettings>(i =>
             {
-                i.ConnectionString = "Data Source=:memory:";
+                i.BackupConnectionString = "Data Source=:memory:";
             });
             var provider = services.BuildServiceProvider();
-            return provider.GetRequiredService<TccDbContext>();
+            return provider.GetRequiredService<TccBackupDbContext>();
+        }
+    }
+
+    public class DesignTccRestoreDbContext : IDesignTimeDbContextFactory<TccRestoreDbContext>
+    {
+        public TccRestoreDbContext CreateDbContext(string[] args)
+        {
+            var services = new ServiceCollection();
+            services.AddTcc();
+            services.PostConfigure<TccSettings>(i =>
+            {
+                i.RestoreConnectionString = "Data Source=:memory:";
+            });
+            var provider = services.BuildServiceProvider();
+            return provider.GetRequiredService<TccRestoreDbContext>();
         }
     }
 }

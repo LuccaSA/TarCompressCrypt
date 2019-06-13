@@ -43,10 +43,10 @@ namespace TCC.Lib
             IEnumerable<CompressionBlock> blocks = BlockHelper.PrepareCompressBlocks(option);
             IEnumerable<CompressionBlock> ordered = await PrepareCompressionBlocksAsync(blocks);
 
-            var job = new Job
+            var job = new BackupJob
             {
                 StartTime = DateTime.UtcNow,
-                BlockJobs = new List<BlockJob>()
+                BlockJobs = new List<BackupBlockJob>()
             };
 
             var operationBlocks = await ordered
@@ -88,7 +88,7 @@ namespace TCC.Lib
                 })
                 .AsReadOnlyCollection();
 
-            job.BlockJobs = operationBlocks.Select(i => new BlockJob
+            job.BlockJobs = operationBlocks.Select(i => new BackupBlockJob
             {
                 StartTime = i.CompressionBlock.StartTime,
                 FullSourcePath = i.CompressionBlock.SourceFileOrDirectory.FullPath,
@@ -101,8 +101,8 @@ namespace TCC.Lib
             sw.Stop();
             job.Duration = sw.Elapsed;
             var db = await _db.GetDbAsync();
-            db.Jobs.Add(job);
-            db.BlockJobs.AddRange(job.BlockJobs);
+            db.BackupJobs.Add(job);
+            db.BackupBlockJobs.AddRange(job.BlockJobs);
             await db.SaveChangesAsync();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
@@ -111,7 +111,7 @@ namespace TCC.Lib
         private async Task<IEnumerable<CompressionBlock>> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
         {
             var db = await _db.GetDbAsync();
-            var jobs = await db.Jobs
+            var jobs = await db.BackupJobs
                 .Include(i => i.BlockJobs)
                 .LastOrDefaultAsync();
 

@@ -8,11 +8,11 @@ namespace TCC.Lib.Database
 {
     public class Database
     {  
-        private readonly AsyncLazy<TccDbContext> _lazy;
+        private readonly AsyncLazy<TccBackupDbContext> _lazy;
 
-        public Database(TccDbContext tccDbContext, IOptions<TccSettings> options)
+        public Database(TccBackupDbContext tccDbContext, IOptions<TccSettings> options)
         {  
-            _lazy = new AsyncLazy<TccDbContext>(async () =>
+            _lazy = new AsyncLazy<TccBackupDbContext>(async () =>
             {
                 if (options.Value.Provider == Provider.InMemory)
                 {
@@ -26,6 +26,6 @@ namespace TCC.Lib.Database
             });
         }
 
-        public async Task<TccDbContext> GetDbAsync() => await _lazy;
+        public async Task<TccBackupDbContext> GetDbAsync() => await _lazy;
     }
 }

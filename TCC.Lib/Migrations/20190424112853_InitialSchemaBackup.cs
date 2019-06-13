@@ -3,12 +3,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace TCC.Lib.Migrations
 {
-    public partial class InitialSchema : Migration
+    public partial class InitialSchemaBackup : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Jobs",
+                name: "BackupJobs",
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
@@ -18,11 +18,11 @@ namespace TCC.Lib.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Jobs", x => x.Id);
+                    table.PrimaryKey("PK_BackupJobs", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "BlockJobs",
+                name: "BackupBlockJobs",
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
@@ -39,44 +39,44 @@ namespace TCC.Lib.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BlockJobs", x => x.Id);
+                    table.PrimaryKey("PK_BackupBlockJobs", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_BlockJobs_Jobs_JobId",
+                        name: "FK_BackupBlockJobs_BackupJobs_JobId",
                         column: x => x.JobId,
-                        principalTable: "Jobs",
+                        principalTable: "BackupJobs",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_BlockJobs_Jobs_JobId1",
+                        name: "FK_BackupBlockJobs_BackupJobs_JobId1",
                         column: x => x.JobId1,
-                        principalTable: "Jobs",
+                        principalTable: "BackupJobs",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_BlockJobs_JobId",
-                table: "BlockJobs",
+                name: "IX_BackupBlockJobs_JobId",
+                table: "BackupBlockJobs",
                 column: "JobId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_BlockJobs_JobId1",
-                table: "BlockJobs",
+                name: "IX_BackupBlockJobs_JobId1",
+                table: "BackupBlockJobs",
                 column: "JobId1");
 
             migrationBuilder.CreateIndex(
-                name: "IX_BlockJobs_StartTime",
-                table: "BlockJobs",
+                name: "IX_BackupBlockJobs_StartTime",
+                table: "BackupBlockJobs",
                 column: "StartTime");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "BlockJobs");
+                name: "BackupBlockJobs");
 
             migrationBuilder.DropTable(
-                name: "Jobs");
+                name: "BackupJobs");
         }
     }
 }
