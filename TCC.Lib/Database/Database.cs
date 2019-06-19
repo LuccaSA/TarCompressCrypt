@@ -8,24 +8,39 @@ namespace TCC.Lib.Database
 {
     public class Database
     {  
-        private readonly AsyncLazy<TccBackupDbContext> _lazy;
+        private readonly AsyncLazy<TccBackupDbContext> _lazyBackup;
+        private readonly AsyncLazy<TccRestoreDbContext> _lazyRestore;
 
-        public Database(TccBackupDbContext tccDbContext, IOptions<TccSettings> options)
+        public Database(TccBackupDbContext tccBackupDbContext, TccRestoreDbContext tccRestoreDbContext, IOptions<TccSettings> options)
         {  
-            _lazy = new AsyncLazy<TccBackupDbContext>(async () =>
+            _lazyBackup = new AsyncLazy<TccBackupDbContext>(async () =>
             {
                 if (options.Value.Provider == Provider.InMemory)
                 {
-                    await tccDbContext.Database.EnsureCreatedAsync();
+                    await tccBackupDbContext.Database.EnsureCreatedAsync();
                 }
                 else
                 {
-                    await tccDbContext.Database.MigrateAsync();
+                    await tccBackupDbContext.Database.MigrateAsync();
                 }
-                return tccDbContext;
+                return tccBackupDbContext;
+            });
+
+            _lazyRestore = new AsyncLazy<TccRestoreDbContext>(async () =>
+            {
+                if (options.Value.Provider == Provider.InMemory)
+                {
+                    await tccRestoreDbContext.Database.EnsureCreatedAsync();
+                }
+                else
+                {
+                    await tccRestoreDbContext.Database.MigrateAsync();
+                }
+                return tccRestoreDbContext;
             });
         }
 
-        public async Task<TccBackupDbContext> GetDbAsync() => await _lazy;
+        public async Task<TccBackupDbContext> BackupDbAsync() => await _lazyBackup;
+        public async Task<TccRestoreDbContext> RestoreDbAsync() => await _lazyRestore;
     }
 }

@@ -40,7 +40,7 @@ namespace TCC.Lib
             var sw = Stopwatch.StartNew();
 
             var po = ParallelizeOption(option);
-            IEnumerable<CompressionBlock> blocks = BlockHelper.PrepareCompressBlocks(option);
+            IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
             IEnumerable<CompressionBlock> ordered = await PrepareCompressionBlocksAsync(blocks);
 
             var job = new BackupJob
@@ -100,7 +100,7 @@ namespace TCC.Lib
 
             sw.Stop();
             job.Duration = sw.Elapsed;
-            var db = await _db.GetDbAsync();
+            var db = await _db.BackupDbAsync();
             db.BackupJobs.Add(job);
             db.BackupBlockJobs.AddRange(job.BlockJobs);
             await db.SaveChangesAsync();
@@ -108,42 +108,11 @@ namespace TCC.Lib
             return ops;
         }
 
-        private async Task<IEnumerable<CompressionBlock>> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
-        {
-            var db = await _db.GetDbAsync();
-            var jobs = await db.BackupJobs
-                .Include(i => i.BlockJobs)
-                .LastOrDefaultAsync();
-
-            if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
-            {
-                // no history ATM, we consider a backup full for each block
-                return blocks.Foreach(b => { b.BackupMode = BackupMode.Full; });
-            }
-
-            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
-
-            return blocks.OrderBySequence(sequence,
-                b => b.SourceFileOrDirectory.FullPath,
-                p => p.FullSourcePath,
-                (b, p) =>
-            {
-                // If already Full here, it's a request from command line
-                if (b.BackupMode.HasValue && b.BackupMode.Value == BackupMode.Full)
-                {
-                    return; // we respect command line
-                }
-
-                // If previous backup exists, then we will do a backup diff
-                // If no previous backup, we do a backup full
-                b.BackupMode = p != null ? BackupMode.Diff : BackupMode.Full;
-                b.DiffDate = p.StartTime; // diff since the last full or diff
-            });
-        }
-
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
-            IEnumerable<DecompressionBlock> blocks = BlockHelper.PrepareDecompressBlocks(option);
+            IEnumerable<DecompressionBlock> blocks = option.GenerateDecompressBlocks();
+            IEnumerable<DecompressionBlock> ordered = await PrepareDecompressionBlocksAsync(blocks);
+
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
             
@@ -188,6 +157,59 @@ namespace TCC.Lib
 
             sw.Stop();
             return new OperationSummary(operationBlocks, option.Threads, sw);
+        }
+
+        private async Task<IEnumerable<CompressionBlock>> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
+        {
+            var db = await _db.BackupDbAsync();
+            var jobs = await db.BackupJobs
+                .Include(i => i.BlockJobs)
+                .LastOrDefaultAsync();
+
+            if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
+            {
+                // no history ATM, we consider a backup full for each block
+                return blocks.Foreach(b => { b.BackupMode = BackupMode.Full; });
+            }
+
+            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
+
+            return blocks.OrderBySequence(sequence,
+                b => b.SourceFileOrDirectory.FullPath,
+                p => p.FullSourcePath,
+                (b, p) =>
+                {
+                    // If already Full here, it's a request from command line
+                    if (b.BackupMode.HasValue && b.BackupMode.Value == BackupMode.Full)
+                    {
+                        return; // we respect command line
+                    }
+
+                    // If previous backup exists, then we will do a backup diff
+                    // If no previous backup, we do a backup full
+                    b.BackupMode = p != null ? BackupMode.Diff : BackupMode.Full;
+                    b.DiffDate = p.StartTime; // diff since the last full or diff
+                });
+        }
+
+        private async Task<IEnumerable<DecompressionBlock>> PrepareDecompressionBlocksAsync(IEnumerable<DecompressionBlock> blocks)
+        {
+            var db = await _db.RestoreDbAsync();
+            var jobs = await db.RestoreJobs
+                .Include(i => i.BlockJobs)
+                .LastOrDefaultAsync();
+
+            if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
+            {
+                // no history ATM, we consider a restore full for each block
+                return blocks.Foreach(b => { b.RestoreMode = RestoreMode.Full; });
+            }
+
+            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
+
+            // TODO
+
+            return null;
         }
 
 

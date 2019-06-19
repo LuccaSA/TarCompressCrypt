@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using TCC.Lib.Database;
 using TCC.Lib.Helpers;
 
 namespace TCC.Lib.Blocks
@@ -39,6 +40,8 @@ namespace TCC.Lib.Blocks
                 return name.Substring(0, sep);
             }
         }
+
+        public RestoreMode? RestoreMode { get; set; }
 
         public override FileInfo Archive => SourceArchiveFileInfo;
 

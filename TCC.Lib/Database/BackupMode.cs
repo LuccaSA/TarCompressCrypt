@@ -8,4 +8,11 @@ namespace TCC.Lib.Database
         Diff,
         Full,
     }
+
+    [DefaultValue(Diff)]
+    public enum RestoreMode
+    {
+        Diff,
+        Full,
+    }
 }
