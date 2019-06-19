@@ -29,7 +29,7 @@ namespace TCC.Tests
         [Fact]
         public async Task SimpleCrud()
         {
-            var db = await _db.GetDbAsync();
+            var db = await _db.BackupDbAsync();
             await db.Database.EnsureCreatedAsync();
 
             db.BackupJobs.Add(new BackupJob

@@ -9,7 +9,7 @@ namespace TCC.Lib.Blocks
 {
     public static class BlockHelper
     {
-        public static IEnumerable<CompressionBlock> PrepareCompressBlocks(CompressOption compressOption)
+        public static IEnumerable<CompressionBlock> GenerateCompressBlocks(this CompressOption compressOption)
         {
             IEnumerable<CompressionBlock> blocks;
             string extension = ExtensionFromAlgo(compressOption.Algo, compressOption.PasswordOption.PasswordMode != PasswordMode.None);
@@ -52,7 +52,7 @@ namespace TCC.Lib.Blocks
             }
         }
 
-        public static IEnumerable<DecompressionBlock> PrepareDecompressBlocks(DecompressOption decompressOption)
+        public static IEnumerable<DecompressionBlock> GenerateDecompressBlocks(this DecompressOption decompressOption)
         {
             bool yielded = false;
             var dstDir = new DirectoryInfo(decompressOption.DestinationDir);

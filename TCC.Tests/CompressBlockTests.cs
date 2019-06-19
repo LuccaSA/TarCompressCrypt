@@ -66,7 +66,7 @@ namespace TCC.Tests
                 BlockMode = BlockMode.Explicit
             };
 
-            var blocks = BlockHelper.PrepareCompressBlocks(compressOption);
+            var blocks = compressOption.GenerateCompressBlocks();
             var fi = new FileInfo(_root);
             Assert.Single(blocks);
             Assert.Equal(fi.Name, blocks.First().Source.Trim('"'));
@@ -84,7 +84,7 @@ namespace TCC.Tests
                 BlockMode = BlockMode.Individual
             };
 
-            var blocks = BlockHelper.PrepareCompressBlocks(compressOption);
+            var blocks = compressOption.GenerateCompressBlocks();
 
             Assert.Equal(6, blocks.Count());
             await Cleanup();
