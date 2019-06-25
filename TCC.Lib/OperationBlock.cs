@@ -1,53 +1,71 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
+using TCC.Lib.Helpers;
 
 namespace TCC.Lib
 {
-    public class OperationBlock 
+    public class OperationBlock
     {
-        public OperationBlock(Block block, CommandResult commandResult)
+        public OperationBlock(IEnumerable<BlockResult> blockResults)
         {
-            Block = block ?? throw new ArgumentNullException(nameof(block));
-            CommandResult = commandResult ?? throw new ArgumentNullException(nameof(commandResult));
+            BlockResults = blockResults ?? throw new ArgumentNullException(nameof(blockResults));
         }
 
-        public Block Block { get; }
-        public CommandResult CommandResult { get; }
+        //public IEnumerable<Block> Block { get; }
+
+        //public IEnumerable<CommandResult> CommandResult { get; }
+
+        public IEnumerable<BlockResult> BlockResults { get; }
 
         public double BlockThroughputMbps()
         {
-            if (Block.CompressedSize == 0 || CommandResult.ElapsedMilliseconds == 0)
+            if (BlockResults.Sum(b => b.Block.CompressedSize) == 0 || BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds) == 0)
             {
                 throw new TccException("Block operation not finished yet");
             }
-            if (!CommandResult.IsSuccess)
+            if (BlockResults.Any(p => !p.CommandResult.IsSuccess))
             {
                 return 0;
             }
-            return (double)Block.CompressedSize * 1000 / CommandResult.ElapsedMilliseconds;
-        } 
+            return (double)BlockResults.Sum(b => b.Block.CompressedSize) * 1000 / BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds);
+        }
+    }
+
+    public class BlockResult
+    {
+        public BlockResult(Block block, CommandResult commandResult)
+        {
+            Block = block;
+            CommandResult = commandResult;
+        }
+
+        public Block Block { get; }
+        public CommandResult CommandResult { get;  }
     }
 
     public class OperationCompressionBlock : OperationBlock
     {
         public CompressionBlock CompressionBlock { get; }
 
-        public OperationCompressionBlock(CompressionBlock block, CommandResult commandResult) 
-            : base(block, commandResult)
+        public OperationCompressionBlock(CompressionBlock compressionBlock, CommandResult commandResult)
+            : base(new BlockResult(compressionBlock,commandResult).Yield())
         {
-            CompressionBlock = block;
+            CompressionBlock = compressionBlock;
         }
     }
 
     public class OperationDecompressionsBlock : OperationBlock
     {
-        public DecompressionBlock DecompressionBlock { get; }
+        public IEnumerable<DecompressionBlock> DecompressionBlock { get; }
 
-        public OperationDecompressionsBlock(DecompressionBlock block, CommandResult commandResult)
-            : base(block, commandResult)
+        public OperationDecompressionsBlock(IEnumerable<BlockResult> blockResults)
+            : base(blockResults)
         {
-            DecompressionBlock = block;
+            if (blockResults == null) throw new ArgumentNullException(nameof(blockResults));
+            DecompressionBlock = blockResults.Select(i => i.Block as DecompressionBlock);
         }
     }
 

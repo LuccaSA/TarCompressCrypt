@@ -16,10 +16,25 @@ namespace TCC.Lib.Blocks
 
         public FileOrDirectoryInfo SourceFileOrDirectory { get; set; }
 
-        public string Source
-            => SourceFileOrDirectory.SourceName;
+        public string Source => SourceFileOrDirectory.SourceName;
 
-        public string DestinationArchiveName => $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}";
+        public string DestinationArchiveName
+        {
+            get
+            {
+                switch (BackupMode)
+                {
+                    case Database.BackupMode.Diff:
+                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.diff";
+                    case Database.BackupMode.Full:
+                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.full";
+                    case null:
+                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}";
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
 
         public string DestinationArchive
             => DestinationArchiveFileInfo.FullName.Escape();

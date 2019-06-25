@@ -24,12 +24,12 @@ namespace TCC.Lib
         }
 
         public IEnumerable<OperationBlock> OperationBlocks { get; }
-        public bool IsSuccess => OperationBlocks.All(c => c.CommandResult.IsSuccess);
+        public bool IsSuccess => OperationBlocks.All(c => c.BlockResults.All(b => b.CommandResult.IsSuccess));
         public Stopwatch Stopwatch { get; }
 
         public void ThrowOnError()
         {
-            foreach (var result in OperationBlocks.Select(o => o.CommandResult))
+            foreach (var result in OperationBlocks.SelectMany(o => o.BlockResults.Select(b => b.CommandResult)))
             {
                 result.ThrowOnError();
             }
@@ -57,12 +57,12 @@ namespace TCC.Lib
         }
 
         public TimeSpan MeanTime => TimeSpan.FromMilliseconds(
-            OperationBlocks.Sum(o => o.CommandResult.ElapsedMilliseconds) /
-            (double) Math.Min(_threads, OperationBlocks.Count()));
+            OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds)) /
+            (double)Math.Min(_threads, OperationBlocks.Count()));
 
-        public long UncompressedSize => OperationBlocks.Sum(o => o.Block.UncompressedSize);
+        public long UncompressedSize => OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.Block.UncompressedSize));
 
-        public long CompressedSize => OperationBlocks.Sum(o => o.Block.CompressedSize);
+        public long CompressedSize => OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.Block.CompressedSize));
 
         public double CompressionRatio
         {

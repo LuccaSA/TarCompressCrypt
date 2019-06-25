@@ -52,7 +52,7 @@ namespace TCC.Lib.Blocks
             }
         }
 
-        public static IEnumerable<DecompressionBlock> GenerateDecompressBlocks(this DecompressOption decompressOption)
+        public static IEnumerable<DecompressionBatch> GenerateDecompressBlocks(this DecompressOption decompressOption)
         {
             bool yielded = false;
             var dstDir = new DirectoryInfo(decompressOption.DestinationDir);
@@ -69,12 +69,16 @@ namespace TCC.Lib.Blocks
                     foreach (FileInfo fi in srcDir.EnumerateArchives())
                     {
                         yielded = true;
-                        yield return GenerateDecompressBlock(fi, dstDir, AlgoFromExtension(fi.Extension));
+                        yield return new DecompressionBatch
+                        {
+                            BackupFull = GenerateDecompressBlock(fi, dstDir, AlgoFromExtension(fi.Extension))
+                        };
                     }
                 }
                 else
                 {
-                    var fullBackups = new Dictionary<string, DateTime>();
+                    var fullBackups = new Dictionary<string, (DateTime fullDate, DecompressionBatch batch, long fullsize)>();
+                    //
                     if (full != null)
                     {
                         foreach (var dir in full.EnumerateDirectories())
@@ -82,9 +86,10 @@ namespace TCC.Lib.Blocks
                             var lastFull = dir.EnumerateArchives().OrderByDescending(i => i.LastWriteTimeUtc).FirstOrDefault();
                             if (lastFull != null)
                             {
-                                fullBackups.Add(dir.Name, lastFull.LastWriteTimeUtc);
+                                var batch = new DecompressionBatch();
+                                fullBackups.Add(dir.Name, (lastFull.LastWriteTimeUtc, batch, lastFull.Length));
                                 yielded = true;
-                                yield return GenerateDecompressBlock(lastFull, dstDir, AlgoFromExtension(lastFull.Extension));
+                                batch.BackupFull = GenerateDecompressBlock(lastFull, dstDir, AlgoFromExtension(lastFull.Extension));
                             }
                         }
                     }
@@ -93,12 +98,15 @@ namespace TCC.Lib.Blocks
                     {
                         foreach (var dir in diff.EnumerateDirectories())
                         {
-                            if (fullBackups.TryGetValue(dir.Name, out var dateUtc))
+                            if (fullBackups.TryGetValue(dir.Name, out var datedBatch))
                             {
-                                foreach (var diffArchive in dir.EnumerateArchives().OrderBy(i => i.LastWriteTimeUtc).Where(i => i.LastWriteTimeUtc >= dateUtc))
+                                datedBatch.batch.BackupsDiff = new List<DecompressionBlock>();
+                                foreach (var diffArchive in dir.EnumerateArchives()
+                                    .Where(i => i.LastWriteTimeUtc >= datedBatch.fullDate)
+                                    .OrderBy(i => i.LastWriteTimeUtc))
                                 {
                                     yielded = true;
-                                    yield return GenerateDecompressBlock(diffArchive, dstDir, AlgoFromExtension(diffArchive.Extension));
+                                    datedBatch.batch.BackupsDiff.Add(GenerateDecompressBlock(diffArchive, dstDir, AlgoFromExtension(diffArchive.Extension)));
                                 }
                             }
                             else
@@ -107,13 +115,22 @@ namespace TCC.Lib.Blocks
                             }
                         }
                     }
+
+                    foreach(var found in fullBackups.Values.OrderByDescending(i => i.fullsize))
+                    {
+                        yield return found.batch;
+                    }
+
                 }
             }
             else if (File.Exists(decompressOption.SourceDirOrFile))
             {
                 var file = new FileInfo(decompressOption.SourceDirOrFile);
                 yielded = true;
-                yield return GenerateDecompressBlock(file, dstDir, AlgoFromExtension(file.Extension));
+                yield return new DecompressionBatch
+                {
+                    BackupFull = GenerateDecompressBlock(file, dstDir, AlgoFromExtension(file.Extension))
+                };
             }
 
             if (yielded && !dstDir.Exists)

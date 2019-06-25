@@ -4,7 +4,7 @@ namespace TCC.Lib.Database
 {
     public class TccBackupDbContext : DbContext
     {
-        public TccBackupDbContext(DbContextOptions options) : base(options) { }
+        public TccBackupDbContext(DbContextOptions<TccBackupDbContext> options) : base(options) { }
 
         public DbSet<BackupBlockJob> BackupBlockJobs { get; set; }
         public DbSet<BackupJob> BackupJobs { get; set; }
@@ -26,7 +26,7 @@ namespace TCC.Lib.Database
 
     public class TccRestoreDbContext : DbContext
     {
-        public TccRestoreDbContext(DbContextOptions options) : base(options) { }
+        public TccRestoreDbContext(DbContextOptions<TccRestoreDbContext> options) : base(options) { }
 
         public DbSet<RestoreBlockJob> RestoreBlockJobs { get; set; }
         public DbSet<RestoreJob> RestoreJobs { get; set; }

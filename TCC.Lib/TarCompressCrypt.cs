@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -78,12 +79,12 @@ namespace TCC.Lib
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
-                    await _encryptionCommands.CleanupKey(opb.Block, option, opb.CommandResult, Mode.Compress);
+                    await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, opb.BlockResults.First().CommandResult, Mode.Compress);
                     return opb;
                 }, po)
                 .ForEachAsync((i, ct) =>
                 {
-                    _blockListener.OnBlockReport(new CompressionBlockReport(i.Item.CommandResult, i.Item.CompressionBlock, counter.Count));
+                    _blockListener.OnBlockReport(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                     return Task.CompletedTask;
                 })
                 .AsReadOnlyCollection();
@@ -92,10 +93,10 @@ namespace TCC.Lib
             {
                 StartTime = i.CompressionBlock.StartTime,
                 FullSourcePath = i.CompressionBlock.SourceFileOrDirectory.FullPath,
-                Duration = TimeSpan.FromMilliseconds(i.CommandResult.ElapsedMilliseconds),
+                Duration = TimeSpan.FromMilliseconds(i.BlockResults.First().CommandResult.ElapsedMilliseconds),
                 Size = i.CompressionBlock.CompressedSize,
-                Exception = i.CommandResult.Errors,
-                Success = i.CommandResult.IsSuccess
+                Exception = i.BlockResults.First().CommandResult.Errors,
+                Success = i.BlockResults.First().CommandResult.IsSuccess
             }).ToList();
 
             sw.Stop();
@@ -110,53 +111,80 @@ namespace TCC.Lib
 
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
-            IEnumerable<DecompressionBlock> blocks = option.GenerateDecompressBlocks();
-            IEnumerable<DecompressionBlock> ordered = await PrepareDecompressionBlocksAsync(blocks);
+            IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks();
+            IEnumerable<DecompressionBatch> ordered = await PrepareDecompressionBlocksAsync(blocks);
 
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
-            
+
             var operationBlocks = await blocks
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
                 // Prepare decryption
                 .ParallelizeStreamAsync(async (b, token) =>
                 {
-                    await _encryptionCommands.PrepareDecryptionKey(b, option, token);
+                    await _encryptionCommands.PrepareDecryptionKey(b.BackupFull, option, token);
                     return b;
                 }, po)
                 // Core loop 
-                .ParallelizeStreamAsync(async (block, token) =>
+                .ParallelizeStreamAsync(async (batch, token) =>
                 {
-                    _logger.LogInformation($"Starting {block.Source}");
-                    CommandResult result = null;
-                    try
+                    var blockResults = new List<BlockResult>();
+                    if (batch.BackupFull != null)
                     {
-                        string cmd = _compressionCommands.DecompressCommand(block, option);
-                        result = await cmd.Run(block.OperationFolder, token);
-                        _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
+                        var dblock = await DecompressBlock(option, batch.BackupFull, token);
+                        blockResults.Add(new BlockResult(batch.BackupFull, dblock));
                     }
-                    catch (Exception e)
+                    if (batch.BackupsDiff != null)
                     {
-                        _logger.LogError(e, $"Error on {block.Source}");
+                        foreach (var block in batch.BackupsDiff)
+                        {
+                            var dblock = await DecompressBlock(option, block, token);
+                            blockResults.Add(new BlockResult(block, dblock));
+                        }
                     }
-                    return new OperationDecompressionsBlock(block, result);
+
+                    return new OperationDecompressionsBlock(blockResults);
                 }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
-                    await _encryptionCommands.CleanupKey(opb.Block, option, opb.CommandResult, Mode.Compress);
+                    foreach (var b in opb.BlockResults)
+                    {
+                        await _encryptionCommands.CleanupKey(b.Block, option, b.CommandResult, Mode.Compress);
+                    }
                     return opb;
                 }, po)
                 .ForEachAsync((i, ct) =>
                 {
-                    _blockListener.OnBlockReport(new BlockReport(i.Item.CommandResult, counter.Count, i.Item.Block));
+                    foreach (var b in i.Item.BlockResults)
+                    {
+                        _blockListener.OnBlockReport(new BlockReport(b.CommandResult, counter.Count, b.Block));
+                    }
+
                     return Task.CompletedTask;
                 })
                 .AsReadOnlyCollection();
 
             sw.Stop();
             return new OperationSummary(operationBlocks, option.Threads, sw);
+        }
+
+        private async Task<CommandResult> DecompressBlock(DecompressOption option, DecompressionBlock block, CancellationToken token)
+        {
+            _logger.LogInformation($"Starting {block.Source}");
+            CommandResult result = null;
+            try
+            {
+                string cmd = _compressionCommands.DecompressCommand(block, option);
+                result = await cmd.Run(block.OperationFolder, token);
+                _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"Error on {block.Source}");
+            }
+            return result;
         }
 
         private async Task<IEnumerable<CompressionBlock>> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
@@ -192,7 +220,7 @@ namespace TCC.Lib
                 });
         }
 
-        private async Task<IEnumerable<DecompressionBlock>> PrepareDecompressionBlocksAsync(IEnumerable<DecompressionBlock> blocks)
+        private async Task<IEnumerable<DecompressionBatch>> PrepareDecompressionBlocksAsync(IEnumerable<DecompressionBatch> blocks)
         {
             var db = await _db.RestoreDbAsync();
             var jobs = await db.RestoreJobs
@@ -201,15 +229,76 @@ namespace TCC.Lib
 
             if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
             {
-                // no history ATM, we consider a restore full for each block
-                return blocks.Foreach(b => { b.RestoreMode = RestoreMode.Full; });
+                // no history ATM, we consider a restore FULL + DIFF for each block
+                return blocks;
             }
 
-            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
+            var result = new List<DecompressionBatch>();
 
-            // TODO
+            foreach (DecompressionBatch decompBlock in blocks)
+            {
+                var opFolder = (decompBlock.BackupFull ?? decompBlock.BackupsDiff.First()).OperationFolder;
 
-            return null;
+                var lastFull = await db.RestoreBlockJobs
+                    .Where(i => i.FullDestinationPath == opFolder && i.BackupMode == BackupMode.Full)
+                    .OrderByDescending(i => i.StartTime)
+                    .FirstOrDefaultAsync();
+
+                if (lastFull == null)
+                {
+                    if (decompBlock.BackupFull == null)
+                    {
+                        throw new Exception("missing backup full");
+                    }
+
+                    // no backup full in history : we decompress the FULL + DIFF
+                    result.Add(decompBlock);
+                    continue;
+                }
+                else
+                {
+                    var dir = new DirectoryInfo(decompBlock.BackupFull.OperationFolder);
+                    if (!dir.Exists || !dir.EnumerateFiles().Any())
+                    {
+                        // we have a backup full, but we need to check if target folder complies :
+                        // - check if exists
+                        // - check if empty
+                        result.Add(decompBlock);
+                        continue;
+                    }
+                }
+
+                var lastDiffSinceFull = await db.RestoreBlockJobs
+                    .Where(i => i.FullDestinationPath == opFolder && i.BackupMode == BackupMode.Diff && i.StartTime > lastFull.StartTime)
+                    .OrderByDescending(i => i.StartTime)
+                    .FirstOrDefaultAsync();
+
+                if (lastDiffSinceFull == null)
+                {
+                    // No diff in history, we send all the existing diff EXCEPT the full
+
+                    result.Add(new DecompressionBatch
+                    {
+                        BackupsDiff = decompBlock.BackupsDiff
+                    });
+                    continue;
+                }
+                else
+                {
+                    // at least a DIFF in history, since the last FULL
+                    // we decompress the DIFF delta (since the last DIFF)
+                    result.Add(new DecompressionBatch
+                    {
+                        BackupsDiff = decompBlock.BackupsDiff.Where(i => i.BackupDate >= lastDiffSinceFull.StartTime).ToList()
+                    });
+                    continue;
+                }
+            }
+
+            return result.OrderByDescending(b => b.Size);
+            
+            // TODO next
+            // - si on déclenche un restore d'un FULL sur un dossier ou y'a deja des données, faut cleaner avant
         }
 
 
