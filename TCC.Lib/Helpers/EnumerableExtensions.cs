@@ -99,5 +99,10 @@ namespace TCC.Lib.Helpers
                 yield return item;
             }
         }
+
+        public static IEnumerable<T> Yield<T>(this T source)
+        {
+            yield return source;
+        }
     }
 }

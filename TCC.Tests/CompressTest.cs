@@ -64,8 +64,8 @@ namespace TCC.Tests
             resultCompress.ThrowOnError();
              
             Assert.True(resultCompress.IsSuccess);
-            Assert.NotEmpty(resultCompress.OperationBlocks.Select(i => i.Block));
-            Assert.NotEmpty(resultCompress.OperationBlocks.Select(i => i.CommandResult));
+            Assert.NotEmpty(resultCompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b=>b.Block)));
+            Assert.NotEmpty(resultCompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b=>b.CommandResult)));
 
             var decomp = new TestData { Directories = new List<DirectoryInfo> { new DirectoryInfo(compressedFolder) } };
 
@@ -73,8 +73,8 @@ namespace TCC.Tests
             resultDecompress.ThrowOnError();
             
             Assert.True(resultDecompress.IsSuccess);
-            Assert.NotEmpty(resultDecompress.OperationBlocks.Select(i => i.Block));
-            Assert.NotEmpty(resultDecompress.OperationBlocks.Select(i => i.CommandResult));
+            Assert.NotEmpty(resultDecompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b => b.Block)));
+            Assert.NotEmpty(resultDecompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b => b.CommandResult)));
 
             FileInfo src = new DirectoryInfo(toCompressFolder).EnumerateFiles().FirstOrDefault();
             FileInfo dst = new DirectoryInfo(decompressedFolder).EnumerateFiles().FirstOrDefault();

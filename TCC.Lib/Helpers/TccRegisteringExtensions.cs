@@ -19,7 +19,12 @@ namespace TCC.Lib.Helpers
     {
         public static void AddTcc(this IServiceCollection services)
         {
-            services.Configure<TccSettings>(i => { i.BackupConnectionString = "Data Source=tcc.db"; });
+            services.Configure<TccSettings>(i =>
+                {
+                    i.BackupConnectionString = "Data Source=tcc.db";
+                    i.RestoreConnectionString = "Data Source=tcc.db";
+                });
+
             services.TryAddScoped<IBlockListener, GenericBlockListener>();
             services.TryAddScoped(typeof(ILogger<>), typeof(NullLogger<>));
             services.AddScoped<ExternalDependencies>();
@@ -42,20 +47,26 @@ namespace TCC.Lib.Helpers
             services.AddDbContext<TDbContext>((s, options) =>
             {
                 var setting = s.GetRequiredService<IOptions<TccSettings>>().Value;
-                var cs = connectionString(setting);
+
                 switch (setting.Provider)
                 {
                     case Provider.InMemory:
                         options.UseInMemoryDatabase(Guid.NewGuid().ToString());
                         break;
                     case Provider.SqlServer:
-                        options.UseSqlServer(cs);
-                        break;
+                        {
+                            var cs = connectionString(setting);
+                            options.UseSqlServer(cs);
+                            break;
+                        }
                     case Provider.SqLite:
-                        var sqLite = new SqliteConnection(cs);
-                        sqLite.Open();
-                        options.UseSqlite(sqLite);
-                        break;
+                        {
+                            var cs = connectionString(setting);
+                            var sqLite = new SqliteConnection(cs);
+                            sqLite.Open();
+                            options.UseSqlite(sqLite);
+                            break;
+                        }
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
