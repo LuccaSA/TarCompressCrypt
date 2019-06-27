@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,8 +21,9 @@ namespace TCC.Tests
             services.AddTcc();
             services.PostConfigure<TccSettings>(i =>
             {
-                //i.ConnectionString = "Data Source=:memory:";
-                i.Provider = Provider.InMemory;
+                i.BackupConnectionString = "Data Source=:memory:";
+                i.RestoreConnectionString = "Data Source=:memory:";
+                i.Provider = Provider.SqLite;
             });
             var builder = services.BuildServiceProvider();
 
@@ -67,7 +69,12 @@ namespace TCC.Tests
             Assert.NotEmpty(resultCompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b=>b.Block)));
             Assert.NotEmpty(resultCompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b=>b.CommandResult)));
 
-            var decomp = new TestData { Directories = new List<DirectoryInfo> { new DirectoryInfo(compressedFolder) } };
+            var decomp = new TestData { Directories = new List<DirectoryInfo>
+            {
+                new DirectoryInfo(compressedFolder)
+                    .EnumerateDirectories(Environment.MachineName,SearchOption.TopDirectoryOnly)
+                    .First()
+            } };
 
             OperationSummary resultDecompress = await Decompress(mode, decompressedFolder, keysFolder, decomp);
             resultDecompress.ThrowOnError();

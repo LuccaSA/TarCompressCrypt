@@ -68,7 +68,14 @@ namespace TCC.Tests.Tasks
                 }
                 else
                 {
-                    await Task.Delay(1000, ct);
+                    try
+                    {
+                        await Task.Delay(1000, ct);
+                    }
+                    catch (Exception)
+                    {
+                    }
+
                     if (ct.IsCancellationRequested)
                     {
                         return false;
