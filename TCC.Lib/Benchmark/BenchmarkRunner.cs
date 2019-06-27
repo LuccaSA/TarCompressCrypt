@@ -61,10 +61,14 @@ namespace TCC.Lib.Benchmark
                 }
                 operationSummaries.Add(resultCompress);
                 resultCompress.ThrowOnError();
+
                 // decompress
+                var rootForDecompression = new DirectoryInfo(compressedFolder)
+                    .EnumerateDirectories(Environment.MachineName, SearchOption.TopDirectoryOnly)
+                    .First();
                 var decompressOption = new DecompressOption
                 {
-                    SourceDirOrFile = compressedFolder,
+                    SourceDirOrFile = rootForDecompression.FullName,
                     DestinationDir = outputFolder,
                     Threads = threads,
                     PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)

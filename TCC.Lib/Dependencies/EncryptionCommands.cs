@@ -58,7 +58,9 @@ namespace TCC.Lib.Dependencies
                 var passfile = await GenerateRandomKey(_ext.OpenSsl(), key).Run(block.DestinationArchiveFolder.FullName, cancellationToken);
                 passfile.ThrowOnError();
                 // crypt passfile
-                var cryptPass = await EncryptRandomKey(_ext.OpenSsl(), key, keyCrypted, publicKey.PublicKeyFile).Run(block.DestinationArchiveFolder.FullName, cancellationToken);
+                var cryptPass = await EncryptRandomKey(_ext.OpenSsl(), key, keyCrypted, publicKey.PublicKeyFile)
+                    .Run(block.DestinationArchiveFolder.FullName, cancellationToken);
+
                 cryptPass.ThrowOnError();
 
                 block.BlockPasswordFile = Path.Combine(block.DestinationArchiveFolder.FullName, key);
@@ -86,7 +88,11 @@ namespace TCC.Lib.Dependencies
                     keyCrypted = Path.Combine(dir, name + ".key.encrypted");
                     key = Path.Combine(dir, name + ".key");
 
-                    await DecryptRandomKey(_ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile).Run(block.ArchiveFolder.FullName, cancellationToken);
+                    var result = await DecryptRandomKey(_ext.OpenSsl(), key, keyCrypted, privateKey.PrivateKeyFile)
+                        .Run(block.ArchiveFolder.FullName, cancellationToken);
+
+                    result.ThrowOnError();
+
                     block.BlockPasswordFile = key;
 
                     break;

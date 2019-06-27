@@ -7,6 +7,7 @@ namespace TCC.Lib.Blocks
 {
     public class CompressionBlock : Block
     {
+        private DateTime? _startTime;
         internal CompressionFolderProvider FolderProvider { get; set; }
 
         public string DestinationArchiveExtension { get; set; }
@@ -54,6 +55,11 @@ namespace TCC.Lib.Blocks
         public override long UncompressedSize => SourceFileOrDirectory.SourceSize;
 
         public DateTime? DiffDate { get; set; }
-        public DateTime StartTime { get; set; }
+
+        public DateTime StartTime
+        {
+            get => _startTime ?? throw new ArgumentOutOfRangeException("CompressionBlock StartTime undefined");
+            set => _startTime = value;
+        }
     }
 }

@@ -56,6 +56,7 @@ namespace TCC.Lib
                 // Prepare encyption
                 .ParallelizeStreamAsync(async (b, token) =>
                 {
+                    b.StartTime = DateTime.UtcNow;
                     await _encryptionCommands.PrepareEncryptionKey(b, option, token);
                     return b;
                 }, po)
@@ -66,7 +67,6 @@ namespace TCC.Lib
                     CommandResult result = null;
                     try
                     {
-                        block.StartTime = DateTime.UtcNow;
                         string cmd = _compressionCommands.CompressCommand(block, option);
                         result = await cmd.Run(block.OperationFolder, token);
                         _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
@@ -193,8 +193,8 @@ namespace TCC.Lib
         {
             var db = await _db.BackupDbAsync();
             var jobs = await db.BackupJobs
-                .Include(i => i.BlockJobs)
                 .OrderByDescending(i => i.StartTime)
+                .Include(i => i.BlockJobs)
                 .FirstOrDefaultAsync();
 
             if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)

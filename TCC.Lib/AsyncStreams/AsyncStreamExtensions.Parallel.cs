@@ -76,7 +76,7 @@ namespace TCC.Lib.Helpers
         public static async Task<ParallelizedSummary> GetExceptionsAsync<T>(this AsyncStream<T> source)
         {
             var exceptions = new ConcurrentBag<Exception>();
-            await foreach (var sourceValue in source.ChannelReader.ReadAllAsync(source.CancellationToken))
+            await foreach (var sourceValue in source.ChannelReader.ReadAllAsync())
             {
                 if (sourceValue.Status == ExecutionStatus.Faulted && sourceValue.Exception != null)
                 {
