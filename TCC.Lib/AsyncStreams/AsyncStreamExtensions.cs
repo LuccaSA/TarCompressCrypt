@@ -70,9 +70,8 @@ namespace TCC.Lib.AsyncStreams
             {
                 try
                 {
-                    while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+                    await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))
                     {
-                        var item = await source.ChannelReader.ReadAsync(source.CancellationToken);
                         localCounter.Increment();
                         await channel.Writer.WriteAsync(item, source.CancellationToken);
                     }
@@ -96,9 +95,8 @@ namespace TCC.Lib.AsyncStreams
             {
                 try
                 {
-                    while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+                    await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))
                     {
-                        var item = await source.ChannelReader.ReadAsync(source.CancellationToken);
                         await action(item, source.CancellationToken);
                         await channel.Writer.WriteAsync(item, source.CancellationToken);
                     }
@@ -114,9 +112,8 @@ namespace TCC.Lib.AsyncStreams
         public static async Task<IReadOnlyCollection<T>> AsReadOnlyCollection<T>(this AsyncStream<T> source)
         {
             var items = new ConcurrentBag<T>();
-            while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+            await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))
             {
-                var item = await source.ChannelReader.ReadAsync(source.CancellationToken);
                 items.Add(item.Item);
             }
             return items;
@@ -128,9 +125,8 @@ namespace TCC.Lib.AsyncStreams
             var writer = channel.Writer;
             var task = Task.Run(async () =>
             {
-                while (await source.ChannelReader.WaitToReadAsync(source.CancellationToken))
+                await foreach (var sourceValue in source.ChannelReader.ReadAllAsync(source.CancellationToken))
                 {
-                    var sourceValue = await source.ChannelReader.ReadAsync(source.CancellationToken);
                     await sourceValue.ExecuteAndStreamAsync(action, writer, source.CancellationToken);
                 }
                 channel.Writer.Complete();
