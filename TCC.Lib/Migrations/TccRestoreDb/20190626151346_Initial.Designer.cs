@@ -6,19 +6,19 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TCC.Lib.Database;
 
-namespace TCC.Lib.Migrations
+namespace TCC.Lib.Migrations.TccRestoreDb
 {
-    [DbContext(typeof(TccBackupDbContext))]
-    [Migration("20190424112853_InitialSchemaBackup")]
-    partial class InitialSchemaBackup
+    [DbContext(typeof(TccRestoreDbContext))]
+    [Migration("20190626151346_Initial")]
+    partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.2.4-servicing-10062");
+                .HasAnnotation("ProductVersion", "3.0.0-preview6.19304.10");
 
-            modelBuilder.Entity("TCC.Lib.Database.BackupBlockJob", b =>
+            modelBuilder.Entity("TCC.Lib.Database.RestoreBlockJob", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
@@ -29,7 +29,7 @@ namespace TCC.Lib.Migrations
 
                     b.Property<string>("Exception");
 
-                    b.Property<string>("FullSourcePath");
+                    b.Property<string>("FullDestinationPath");
 
                     b.Property<int>("JobId");
 
@@ -49,10 +49,10 @@ namespace TCC.Lib.Migrations
 
                     b.HasIndex("StartTime");
 
-                    b.ToTable("BackupBlockJobs");
+                    b.ToTable("RestoreBlockJobs");
                 });
 
-            modelBuilder.Entity("TCC.Lib.Database.BackupJob", b =>
+            modelBuilder.Entity("TCC.Lib.Database.RestoreJob", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
@@ -63,17 +63,18 @@ namespace TCC.Lib.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BackupJobs");
+                    b.ToTable("RestoreJobs");
                 });
 
-            modelBuilder.Entity("TCC.Lib.Database.BackupBlockJob", b =>
+            modelBuilder.Entity("TCC.Lib.Database.RestoreBlockJob", b =>
                 {
-                    b.HasOne("TCC.Lib.Database.BackupJob")
+                    b.HasOne("TCC.Lib.Database.RestoreJob", null)
                         .WithMany("BlockJobs")
                         .HasForeignKey("JobId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasOne("TCC.Lib.Database.BackupJob", "Job")
+                    b.HasOne("TCC.Lib.Database.RestoreJob", "Job")
                         .WithMany()
                         .HasForeignKey("JobId1");
                 });

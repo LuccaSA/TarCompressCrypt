@@ -33,6 +33,30 @@ namespace TCC.Lib.AsyncStreams
             return new AsyncStream<T>(channel, task, cancellationToken);
         }
 
+        public static AsyncStream<T> AsAsyncStream<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken)
+        {
+            var channel = Channel.CreateUnbounded<StreamedValue<T>>(new UnboundedChannelOptions
+            {
+                SingleWriter = true,
+                SingleReader = false
+            });
+            var task = Task.Run(async () =>
+            {
+                try
+                {
+                    await foreach (var item in source)
+                    {
+                        await channel.Writer.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded), cancellationToken);
+                    }
+                }
+                finally
+                {
+                    channel.Writer.Complete();
+                }
+            });
+            return new AsyncStream<T>(channel, task, cancellationToken);
+        }
+
         public static AsyncStream<T> CountAsync<T>(this AsyncStream<T> source, out Counter counter)
         {
             var localCounter = new Counter();

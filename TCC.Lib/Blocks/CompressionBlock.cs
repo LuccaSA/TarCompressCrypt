@@ -42,16 +42,8 @@ namespace TCC.Lib.Blocks
         public FileInfo DestinationArchiveFileInfo
             => new FileInfo(Path.Combine(DestinationArchiveFolder.FullName, DestinationArchiveName + DestinationArchiveExtension));
 
-        public DirectoryInfo DestinationArchiveFolder
-        {
-            get
-            {
-                // todo : direct target root ?
-                //return FolderProvider.DestinationRootFolder;
-                return FolderProvider.GetDirectory(BackupMode ?? Database.BackupMode.Diff)
-                    .CreateSubDirectoryIfNotExists(SourceFileOrDirectory.Name);
-            }
-        }
+        public DirectoryInfo DestinationArchiveFolder =>
+            FolderProvider.GetDirectory(BackupMode, SourceFileOrDirectory.Name);
 
         public BackupMode? BackupMode { get; set; }
 
@@ -62,6 +54,6 @@ namespace TCC.Lib.Blocks
         public override long UncompressedSize => SourceFileOrDirectory.SourceSize;
 
         public DateTime? DiffDate { get; set; }
-        public DateTime StartTime { get; } = DateTime.UtcNow;
+        public DateTime StartTime { get; set; }
     }
 }

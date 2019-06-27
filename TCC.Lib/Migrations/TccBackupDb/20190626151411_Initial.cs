@@ -1,9 +1,9 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace TCC.Lib.Migrations
+namespace TCC.Lib.Migrations.TccBackupDb
 {
-    public partial class InitialSchemaBackup : Migration
+    public partial class Initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

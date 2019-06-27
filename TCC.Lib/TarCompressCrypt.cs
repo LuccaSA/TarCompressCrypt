@@ -42,7 +42,7 @@ namespace TCC.Lib
 
             var po = ParallelizeOption(option);
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
-            IEnumerable<CompressionBlock> ordered = await PrepareCompressionBlocksAsync(blocks);
+            var ordered = PrepareCompressionBlocksAsync(blocks);
 
             var job = new BackupJob
             {
@@ -66,6 +66,7 @@ namespace TCC.Lib
                     CommandResult result = null;
                     try
                     {
+                        block.StartTime = DateTime.UtcNow;
                         string cmd = _compressionCommands.CompressCommand(block, option);
                         result = await cmd.Run(block.OperationFolder, token);
                         _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
@@ -112,12 +113,13 @@ namespace TCC.Lib
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
             IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks();
-            IEnumerable<DecompressionBatch> ordered = await PrepareDecompressionBlocksAsync(blocks);
+            IAsyncEnumerable<DecompressionBatch> ordered = PrepareDecompressionBlocksAsync(blocks);
 
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
 
-            var operationBlocks = await blocks
+            IReadOnlyCollection<OperationDecompressionsBlock> operationBlocks = 
+                await ordered
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
                 // Prepare decryption
@@ -187,25 +189,31 @@ namespace TCC.Lib
             return result;
         }
 
-        private async Task<IEnumerable<CompressionBlock>> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
+        private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
         {
             var db = await _db.BackupDbAsync();
             var jobs = await db.BackupJobs
                 .Include(i => i.BlockJobs)
-                .LastOrDefaultAsync();
+                .OrderByDescending(i => i.StartTime)
+                .FirstOrDefaultAsync();
 
             if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
             {
                 // no history ATM, we consider a backup full for each block
-                return blocks.Foreach(b => { b.BackupMode = BackupMode.Full; });
+                foreach (var b in blocks)
+                {
+                    b.BackupMode = BackupMode.Full;
+                    yield return b;
+                }
+                yield break;
             }
 
-            var sequence = jobs.BlockJobs.OrderByDescending(b => b.Size);
+            var blocksInHistory = jobs.BlockJobs.OrderByDescending(b => b.Size);
 
-            return blocks.OrderBySequence(sequence,
+            await foreach (var b in blocks.OrderBySequence(blocksInHistory,
                 b => b.SourceFileOrDirectory.FullPath,
                 p => p.FullSourcePath,
-                (b, p) =>
+                async (b, p) =>
                 {
                     // If already Full here, it's a request from command line
                     if (b.BackupMode.HasValue && b.BackupMode.Value == BackupMode.Full)
@@ -213,14 +221,29 @@ namespace TCC.Lib
                         return; // we respect command line
                     }
 
-                    // If previous backup exists, then we will do a backup diff
-                    // If no previous backup, we do a backup full
-                    b.BackupMode = p != null ? BackupMode.Diff : BackupMode.Full;
-                    b.DiffDate = p.StartTime; // diff since the last full or diff
-                });
+                    var lastBackup = await db.BackupBlockJobs
+                        .Where(i => i.FullSourcePath == b.SourceFileOrDirectory.FullPath)
+                        .OrderByDescending(i => i.StartTime)
+                        .FirstOrDefaultAsync();
+
+                    if (lastBackup != null)
+                    {
+                        // If last backup found, we plan a backup diff
+                        b.BackupMode = BackupMode.Diff;
+                        b.DiffDate = lastBackup.StartTime;
+                    }
+                    else
+                    {
+                        // No previous backup, we start with a full
+                        b.BackupMode = BackupMode.Full;
+                    }
+                }))
+            {
+                yield return b;
+            }
         }
 
-        private async Task<IEnumerable<DecompressionBatch>> PrepareDecompressionBlocksAsync(IEnumerable<DecompressionBatch> blocks)
+        private async IAsyncEnumerable<DecompressionBatch> PrepareDecompressionBlocksAsync(IEnumerable<DecompressionBatch> blocks)
         {
             var db = await _db.RestoreDbAsync();
             var jobs = await db.RestoreJobs
@@ -230,12 +253,14 @@ namespace TCC.Lib
             if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
             {
                 // no history ATM, we consider a restore FULL + DIFF for each block
-                return blocks;
+                foreach (var b in blocks)
+                {
+                    yield return b;
+                }
+                yield break;
             }
-
-            var result = new List<DecompressionBatch>();
-
-            foreach (DecompressionBatch decompBlock in blocks)
+            
+            foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.Size))
             {
                 var opFolder = (decompBlock.BackupFull ?? decompBlock.BackupsDiff.First()).OperationFolder;
 
@@ -252,20 +277,18 @@ namespace TCC.Lib
                     }
 
                     // no backup full in history : we decompress the FULL + DIFF
-                    result.Add(decompBlock);
+                    yield return decompBlock;
                     continue;
                 }
-                else
+
+                var dir = new DirectoryInfo(decompBlock.BackupFull.OperationFolder);
+                if (!dir.Exists || !dir.EnumerateFiles().Any())
                 {
-                    var dir = new DirectoryInfo(decompBlock.BackupFull.OperationFolder);
-                    if (!dir.Exists || !dir.EnumerateFiles().Any())
-                    {
-                        // we have a backup full, but we need to check if target folder complies :
-                        // - check if exists
-                        // - check if empty
-                        result.Add(decompBlock);
-                        continue;
-                    }
+                    // we have a backup full, but we need to check if target folder complies :
+                    // - check if exists
+                    // - check if empty
+                    yield return decompBlock;
+                    continue;
                 }
 
                 var lastDiffSinceFull = await db.RestoreBlockJobs
@@ -276,26 +299,21 @@ namespace TCC.Lib
                 if (lastDiffSinceFull == null)
                 {
                     // No diff in history, we send all the existing diff EXCEPT the full
-
-                    result.Add(new DecompressionBatch
+                    yield return new DecompressionBatch
                     {
                         BackupsDiff = decompBlock.BackupsDiff
-                    });
-                    continue;
+                    };
                 }
                 else
                 {
                     // at least a DIFF in history, since the last FULL
                     // we decompress the DIFF delta (since the last DIFF)
-                    result.Add(new DecompressionBatch
+                    yield return new DecompressionBatch
                     {
                         BackupsDiff = decompBlock.BackupsDiff.Where(i => i.BackupDate >= lastDiffSinceFull.StartTime).ToList()
-                    });
-                    continue;
+                    };
                 }
             }
-
-            return result.OrderByDescending(b => b.Size);
             
             // TODO next
             // - si on déclenche un restore d'un FULL sur un dossier ou y'a deja des données, faut cleaner avant

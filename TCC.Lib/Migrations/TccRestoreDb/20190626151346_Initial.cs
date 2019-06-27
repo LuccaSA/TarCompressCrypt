@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace TCC.Lib.Migrations.TccRestoreDb
 {
-    public partial class InitialSchemaRestore : Migration
+    public partial class Initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -30,7 +30,7 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                     JobId = table.Column<int>(nullable: false),
                     JobId1 = table.Column<int>(nullable: true),
                     BackupMode = table.Column<int>(nullable: false),
-                    FullSourcePath = table.Column<string>(nullable: true),
+                    FullDestinationPath = table.Column<string>(nullable: true),
                     StartTime = table.Column<DateTime>(nullable: false),
                     Duration = table.Column<TimeSpan>(nullable: false),
                     Size = table.Column<long>(nullable: false),

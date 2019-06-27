@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Threading;
 using TCC.Lib.Blocks;
+using TCC.Lib.Database;
 
 namespace TCC
 {
@@ -21,7 +22,22 @@ namespace TCC
             foreach (var r in blockingCollection.GetConsumingEnumerable())
             {
                 int count = Interlocked.Increment(ref counter);
-                Console.WriteLine(count + "/" + r.Total + " : " + r.Block.BlockName);
+
+                if (r.Block is CompressionBlock cb)
+                {
+                    var report = $"{count}/{r.Total} : {cb.BlockName} [{cb.BackupMode ?? BackupMode.Full}]";
+                    if (cb.BackupMode == BackupMode.Diff)
+                    {
+                        report += $" from {cb.DiffDate}";
+                    }
+                    Console.WriteLine(report);
+                }
+                else if(r.Block is DecompressionBlock db)
+                {
+                    var report = $"{count}/{r.Total} : {db.BlockName}";
+                    Console.WriteLine(report);
+                }
+               
                 if (r.Cmd.HasError)
                 {
                     Console.Error.WriteLine("Error : " + r.Cmd.Errors);

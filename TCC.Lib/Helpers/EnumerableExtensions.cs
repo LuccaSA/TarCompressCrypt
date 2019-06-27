@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace TCC.Lib.Helpers
 {
     public static class EnumerableExtensions
     {
-        public static IEnumerable<T> OrderBySequence<T, TOrder, TProperty>(this IEnumerable<T> source, IEnumerable<TOrder> order,
+        public static async IAsyncEnumerable<T> OrderBySequence<T, TOrder, TProperty>(this IEnumerable<T> source, IEnumerable<TOrder> order,
             Func<T, TProperty> sourcePropertySelector,
             Func<TOrder, TProperty> orderPropertySelector,
-            Action<T, TOrder> itemMatch)
+            Func<T, TOrder, Task> itemMatch)
             where T : class
             where TOrder : class
         {
@@ -27,7 +28,7 @@ namespace TCC.Lib.Helpers
 
                 if (!queueEmpty && Equals(currentProperty, sourceProperty))
                 {
-                    itemMatch(item, current);
+                    await itemMatch(item, current);
                     yield return item;
 
                     if (queue.Count != 0)
@@ -59,7 +60,7 @@ namespace TCC.Lib.Helpers
                 {
                     foreach (var item in dic[currentProperty])
                     {
-                        itemMatch(item, current);
+                        await itemMatch(item, current);
                         yield return item;
                     }
                     dic.Remove(currentProperty);
@@ -76,7 +77,7 @@ namespace TCC.Lib.Helpers
 
             foreach (var item in dic.Values.SelectMany(i => i))
             {
-                itemMatch(item, null);
+                await itemMatch(item, null);
                 yield return item;
             }
         }
@@ -103,6 +104,15 @@ namespace TCC.Lib.Helpers
         public static IEnumerable<T> Yield<T>(this T source)
         {
             yield return source;
+        }
+
+        public static async IAsyncEnumerable<T> AsAsyncEnumerable<T>(this IEnumerable<T> enumerable)
+        {
+            await Task.Yield();
+            foreach (var item in enumerable)
+            {
+                yield return item;
+            }
         }
     }
 }
