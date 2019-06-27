@@ -7,60 +7,39 @@ namespace TCC.Lib.Blocks
 {
     public class CompressionFolderProvider
     {
-
-        private DirectoryInfo _diffFolder;
-        private DirectoryInfo _fullFolder;
-        private readonly object _sync = new object();
-
         public CompressionFolderProvider(DirectoryInfo destinationRootFolder)
         {
-            DestinationRootFolder = destinationRootFolder ?? throw new ArgumentNullException(nameof(destinationRootFolder));
+            _destinationRootFolder = destinationRootFolder ?? throw new ArgumentNullException(nameof(destinationRootFolder));
         }
 
-        public DirectoryInfo DestinationRootFolder { get; }
-
-        private DirectoryInfo DiffFolder
+        private readonly DirectoryInfo _destinationRootFolder;
+        private DirectoryInfo _destinationRoot;
+        private DirectoryInfo DestinationRoot
         {
             get
             {
-                if (_diffFolder != null)
+                if (_destinationRoot != null)
                 {
-                    return _diffFolder;
+                    return _destinationRoot;
                 }
-                lock (_sync)
-                {
-                    DestinationRootFolder.CreateIfNotExists();
-                    _diffFolder = DestinationRootFolder.CreateSubDirectoryIfNotExists(TccConst.Diff);
-                }
-                return _diffFolder;
+                var root = _destinationRootFolder.CreateIfNotExists();
+                _destinationRoot = root.CreateSubDirectoryIfNotExists(_destinationRootFolder.Hostname());
+                return _destinationRoot;
             }
         }
 
-        private DirectoryInfo FullFolder
+        public DirectoryInfo GetDirectory(BackupMode? backupMode, string directoryName)
         {
-            get
-            {
-                if (_fullFolder != null)
-                {
-                    return _fullFolder;
-                }
-                lock (_sync)
-                {
-                    DestinationRootFolder.CreateIfNotExists();
-                    _fullFolder = DestinationRootFolder.CreateSubDirectoryIfNotExists(TccConst.Full);
-                }
-                return _fullFolder;
-            }
-        }
-
-        public DirectoryInfo GetDirectory(BackupMode backupMode)
-        {
+            if (string.IsNullOrWhiteSpace(directoryName)) throw new ArgumentNullException(nameof(directoryName));
+            var archiveRoot = DestinationRoot.CreateSubDirectoryIfNotExists(directoryName);
             switch (backupMode)
             {
                 case BackupMode.Diff:
-                    return DiffFolder;
+                    return archiveRoot.CreateSubDirectoryIfNotExists(TccConst.Diff);
                 case BackupMode.Full:
-                    return FullFolder;
+                    return archiveRoot.CreateSubDirectoryIfNotExists(TccConst.Full);
+                case null:
+                    return archiveRoot;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(backupMode), backupMode, null);
             }

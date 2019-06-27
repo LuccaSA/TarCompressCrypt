@@ -48,30 +48,7 @@ namespace TCC.Lib.Blocks
 
         public override long UncompressedSize => throw new NotImplementedException();
 
-        public DateTime? BackupDate
-        {
-            get
-            {
-                int segment = SourceArchiveFileInfo.Name.LastIndexOf('_');
-                if (segment <= 0)
-                {
-                    return null;
-                }
-                var info = SourceArchiveFileInfo.Name.Substring(segment);
-                if (info.Length < 14)
-                {
-                    return null;
-                }
-                var dt = info.Substring(0, 14);
-                if (DateTime.TryParseExact(dt, _dateFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed))
-                {
-                    return parsed;
-                }
-                return null;
-            }
-        }
-
-        private const string _dateFormat = "yyyyMMddHHmmss";
+        public DateTime? BackupDate => SourceArchiveFileInfo.TryExtractBackupDateTime();
     }
 
 

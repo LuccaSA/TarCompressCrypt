@@ -17,4 +17,30 @@
     <PackageProjectUrl>https://github.com/rducom/TarCompressCrypt</PackageProjectUrl>
     <Copyright>Copyright 2018 - Raphael DUCOM</Copyright>
   </PropertyGroup>
+  
+
+  <PropertyGroup>
+    <!-- HACK: Work around dotnet/sdk#2976 in dependencies -->
+    <BundledNETCorePlatformsPackageVersion>$(MicrosoftNETCorePlatformsPackageVersion)</BundledNETCorePlatformsPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- HACK: Use the latest version instead of the one bundled with the SDK -->
+    <KnownFrameworkReference Update="Microsoft.NETCore.App">
+      <LatestRuntimeFrameworkVersion Condition="'%(TargetFramework)' == 'netcoreapp3.0'">$(MicrosoftNETCoreAppPackageVersion)</LatestRuntimeFrameworkVersion>
+      <DefaultRuntimeFrameworkVersion Condition="'%(TargetFramework)' == 'netcoreapp3.0'">$(MicrosoftNETCoreAppPackageVersion)</DefaultRuntimeFrameworkVersion>
+      <TargetingPackVersion Condition="'%(TargetFramework)' == 'netcoreapp3.0'">$(MicrosoftNETCoreAppPackageVersion)</TargetingPackVersion>
+    </KnownFrameworkReference>
+  </ItemGroup>
+
+  <!-- This is required to workaround overlap between System.Collections.Generic.IAsyncEnumerable in System.Runtime and System.Interactive.Async. -->
+  <Target Name="AddAssemblyAliasToReactiveAsync"
+          AfterTargets="ResolveAssemblyReferences"
+          Condition=" '$(TargetFramework)' != '' AND ( '$(TargetFramework)' == 'netcoreapp3.0' OR '$(TargetFramework)' == 'netstandard2.1' ) ">
+    <ItemGroup>
+      <ReferencePath Condition=" '%(FileName)' == 'System.Interactive.Async' ">
+        <Aliases>reactive</Aliases>
+      </ReferencePath>
+    </ItemGroup>
+  </Target>
 </Project>

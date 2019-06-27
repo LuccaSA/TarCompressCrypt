@@ -14,7 +14,7 @@ namespace TCC.Lib.Migrations.TccRestoreDb
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.2.4-servicing-10062");
+                .HasAnnotation("ProductVersion", "3.0.0-preview6.19304.10");
 
             modelBuilder.Entity("TCC.Lib.Database.RestoreBlockJob", b =>
                 {
@@ -27,7 +27,7 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
                     b.Property<string>("Exception");
 
-                    b.Property<string>("FullSourcePath");
+                    b.Property<string>("FullDestinationPath");
 
                     b.Property<int>("JobId");
 
@@ -66,10 +66,11 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
             modelBuilder.Entity("TCC.Lib.Database.RestoreBlockJob", b =>
                 {
-                    b.HasOne("TCC.Lib.Database.RestoreJob")
+                    b.HasOne("TCC.Lib.Database.RestoreJob", null)
                         .WithMany("BlockJobs")
                         .HasForeignKey("JobId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("TCC.Lib.Database.RestoreJob", "Job")
                         .WithMany()

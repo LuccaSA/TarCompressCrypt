@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace TCC.Lib.Helpers
 {
@@ -22,5 +21,48 @@ namespace TCC.Lib.Helpers
             }
             return directoryInfo;
         }
+
+        public static string Hostname(this DirectoryInfo directoryInfo)
+        {
+            if (!directoryInfo.FullName.StartsWith("\\"))
+            {
+                return Environment.MachineName;
+            }
+            string hostPart = directoryInfo.FullName.Substring(2);
+            int endIndex = hostPart.IndexOf('\\');
+            if (endIndex <= 0)
+            {
+                throw new ArgumentException("directoryInfo is not a correct network path");
+            }
+            return hostPart.Substring(0, hostPart.IndexOf('\\'));
+        }
+
+        public static DateTime ExtractBackupDateTime(this FileInfo sourceArchiveFileInfo)
+        {
+            return sourceArchiveFileInfo.TryExtractBackupDateTime() ?? throw new ArgumentException($"{sourceArchiveFileInfo.Name} doesn't have a date in the filename");
+        }
+
+        public static DateTime? TryExtractBackupDateTime(this FileInfo sourceArchiveFileInfo)
+        {
+            int segment = sourceArchiveFileInfo.Name.LastIndexOf('_');
+            if (segment <= 0)
+            {
+                return null;
+            }
+            var info = sourceArchiveFileInfo.Name.Substring(segment+1);
+            if (info.Length < 14)
+            {
+                return null;
+            }
+            var dt = info.Substring(0, 14);
+            if (DateTime.TryParseExact(dt, _dateFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
+                out var parsed))
+            {
+                return parsed;
+            }
+            return null;
+        }
+
+        private const string _dateFormat = "yyyyMMddHHmmss";
     }
 }
