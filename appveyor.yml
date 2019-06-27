@@ -24,6 +24,8 @@ install:
 
 before_build:
 - dotnet restore TCC.sln --verbosity m
+- dotnet --list-sdks
+- dotnet --version
 - cmd: >-
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
     dotnet sonarscanner begin /k:"TarCompressCrypt" /d:"sonar.host.url=https://sonarcloud.io" /o:rducom-github /d:"sonar.login=%SONAR_TOKEN%" /d:sonar.cs.opencover.reportsPaths="coverage-opencover.xml" /v:%APPVEYOR_BUILD_VERSION% /d:sonar.coverage.exclusions="**/TCC.Tests/**/*"
