@@ -32,6 +32,7 @@ before_build:
     )
 
 build_script:
+- dotnet build -c Debug
 - OpenCover.4.7.922\tools\OpenCover.Console.exe -returntargetcode -oldstyle -register:user -target:"C:\Program Files\dotnet\dotnet.exe" -targetargs:"test /p:DebugType=full -c Debug TCC.Tests\TCC.Tests.csproj" -excludebyattribute:*.ExcludeFromCodeCoverage* -filter:"+[TCC*]* -[*Tests*]*" -output:coverage-opencover.xml
 - dotnet sonarscanner end /d:"sonar.login=%SONAR_TOKEN%"
 
