@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.IO;
 using System.Threading;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -17,13 +18,13 @@ namespace TCC.Lib.Helpers
 {
     public static class TccRegisteringExtensions
     {
-        public static void AddTcc(this IServiceCollection services)
+        public static void AddTcc(this IServiceCollection services, string workingPath = null)
         {
-            services.Configure<TccSettings>(i =>
-                {
-                    i.BackupConnectionString = "Data Source=tcc.db";
-                    i.RestoreConnectionString = "Data Source=tcc.db";
-                });
+            //services.Configure<TccSettings>(i =>
+            //    {
+            //        i.BackupConnectionString = "Data Source=tcc.db";
+            //        i.RestoreConnectionString = "Data Source=tcc.db";
+            //    });
 
             services.TryAddScoped<IBlockListener, GenericBlockListener>();
             services.TryAddScoped(typeof(ILogger<>), typeof(NullLogger<>));
@@ -37,11 +38,11 @@ namespace TCC.Lib.Helpers
             services.AddScoped(_ => new CancellationTokenSource());
             services.AddSingleton<Database.Database>();
 
-            services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString);
-            services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString);
+            services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString, workingPath);
+            services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString, workingPath);
         }
 
-        private static void RegisterDbContext<TDbContext>(this IServiceCollection services, Func<TccSettings, string> connectionString)
+        private static void RegisterDbContext<TDbContext>(this IServiceCollection services, Func<TccSettings, string> connectionString, string workingPath)
             where TDbContext : DbContext
         {
             services.AddDbContext<TDbContext>((s, options) =>
@@ -62,6 +63,16 @@ namespace TCC.Lib.Helpers
                     case Provider.SqLite:
                         {
                             var cs = connectionString(setting);
+                            if (string.IsNullOrWhiteSpace(cs) && !string.IsNullOrWhiteSpace(workingPath))
+                            {
+                                // default SqLite path on source & destination targets
+                                if (!Path.IsPathRooted(workingPath))
+                                {
+                                    throw new ArgumentException($"Path {workingPath} isn't absolute");
+                                }
+                                var dir = new DirectoryInfo(workingPath);
+                                cs = "Data Source=" + Path.Combine(dir.FullName, "tcc.db");
+                            }
                             var sqLite = new SqliteConnection(cs);
                             sqLite.Open();
                             options.UseSqlite(sqLite);

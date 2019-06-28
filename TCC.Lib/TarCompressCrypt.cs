@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
@@ -25,8 +26,9 @@ namespace TCC.Lib
         private readonly EncryptionCommands _encryptionCommands;
         private readonly CompressionCommands _compressionCommands;
         private readonly Database.Database _db;
+        private readonly IServiceProvider _serviceProvider;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, Database.Database db)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, Database.Database db, IServiceProvider serviceProvider)
         {
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
@@ -34,21 +36,17 @@ namespace TCC.Lib
             _encryptionCommands = encryptionCommands;
             _compressionCommands = compressionCommands;
             _db = db;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task<OperationSummary> Compress(CompressOption option)
         {
             var sw = Stopwatch.StartNew();
-
             var po = ParallelizeOption(option);
-            IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
-            var ordered = PrepareCompressionBlocksAsync(blocks);
+            int idBackupJob = await InitializeBackupJobAsync();
 
-            var job = new BackupJob
-            {
-                StartTime = DateTime.UtcNow,
-                BlockJobs = new List<BackupBlockJob>()
-            };
+            IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
+            var ordered = PrepareCompressionBlocksAsync(blocks, idBackupJob);
 
             var operationBlocks = await ordered
                 .AsAsyncStream(_cancellationTokenSource.Token)
@@ -75,7 +73,9 @@ namespace TCC.Lib
                     {
                         _logger.LogError(e, $"Error on {block.Source}");
                     }
-                    return new OperationCompressionBlock(block, result);
+                    var opb = new OperationCompressionBlock(block, result);
+                    await AddBackupBlockJobAsync(opb, idBackupJob);
+                    return opb;
                 }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
@@ -90,33 +90,23 @@ namespace TCC.Lib
                 })
                 .AsReadOnlyCollectionAsync();
 
-            job.BlockJobs = operationBlocks.Select(i => new BackupBlockJob
-            {
-                StartTime = i.CompressionBlock.StartTime,
-                FullSourcePath = i.CompressionBlock.SourceFileOrDirectory.FullPath,
-                Duration = TimeSpan.FromMilliseconds(i.BlockResults.First().CommandResult.ElapsedMilliseconds),
-                Size = i.CompressionBlock.CompressedSize,
-                Exception = i.BlockResults.First().CommandResult.Errors,
-                Success = i.BlockResults.First().CommandResult.IsSuccess
-            }).ToList();
-
             sw.Stop();
-            job.Duration = sw.Elapsed;
-            var db = await _db.BackupDbAsync();
-            db.BackupJobs.Add(job);
-            db.BackupBlockJobs.AddRange(job.BlockJobs);
-            await db.SaveChangesAsync();
+
+            await UpdateBackupJobStatsAsync(sw, idBackupJob);
+            
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
         }
 
+
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
-            IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks();
-            IAsyncEnumerable<DecompressionBatch> ordered = PrepareDecompressionBlocksAsync(blocks);
-
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
+            int idRestoreJob = await InitializeRestoreJobAsync();
+
+            IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks();
+            IAsyncEnumerable<DecompressionBatch> ordered = PrepareDecompressionBlocksAsync(blocks, idRestoreJob);
 
             IReadOnlyCollection<OperationDecompressionsBlock> operationBlocks = 
                 await ordered
@@ -125,6 +115,7 @@ namespace TCC.Lib
                 // Prepare decryption
                 .ParallelizeStreamAsync(async (b, token) =>
                 {
+                    b.StartTime = DateTime.UtcNow;
                     await _encryptionCommands.PrepareDecryptionKey(b.BackupFull, option, token);
                     return b;
                 }, po)
@@ -146,7 +137,9 @@ namespace TCC.Lib
                             blockResults.Add(new BlockResult(batch.BackupsDiff[i], batch.BackupDiffCommandResult[i]));
                         }
                     }
-                    return new OperationDecompressionsBlock(blockResults, batch);
+                    var odb =  new OperationDecompressionsBlock(blockResults, batch);
+                    await AddRestoreBlockJobAsync(odb, idRestoreJob);
+                    return odb;
                 }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (odb, token) =>
@@ -165,6 +158,8 @@ namespace TCC.Lib
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
+            await UpdateRestoreJobStatsAsync(sw, idRestoreJob);
+
             return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 
@@ -185,10 +180,12 @@ namespace TCC.Lib
             return result;
         }
 
-        private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
+        private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(
+            IEnumerable<CompressionBlock> blocks, int currentBackupJobId)
         {
             var db = await _db.BackupDbAsync();
             var jobs = await db.BackupJobs
+                .Where(i => i.Id != currentBackupJobId)
                 .OrderByDescending(i => i.StartTime)
                 .Include(i => i.BlockJobs)
                 .FirstOrDefaultAsync();
@@ -239,12 +236,15 @@ namespace TCC.Lib
             }
         }
 
-        private async IAsyncEnumerable<DecompressionBatch> PrepareDecompressionBlocksAsync(IEnumerable<DecompressionBatch> blocks)
+        private async IAsyncEnumerable<DecompressionBatch> PrepareDecompressionBlocksAsync(
+            IEnumerable<DecompressionBatch> blocks, int currentRestoreJobId)
         {
             var db = await _db.RestoreDbAsync();
             var jobs = await db.RestoreJobs
+                .Where(i => i.Id != currentRestoreJobId)
+                .OrderByDescending(i => i.StartTime)
                 .Include(i => i.BlockJobs)
-                .LastOrDefaultAsync();
+                .FirstOrDefaultAsync();
 
             if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
             {
@@ -256,7 +256,7 @@ namespace TCC.Lib
                 yield break;
             }
             
-            foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.Size))
+            foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.CompressedSize))
             {
                 var opFolder = (decompBlock.BackupFull ?? decompBlock.BackupsDiff.First()).OperationFolder;
 
@@ -326,5 +326,104 @@ namespace TCC.Lib
             return po;
         }
 
+        private async Task<int> InitializeBackupJobAsync()
+        {
+            int idBackupJob;
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().BackupDbAsync();
+                var job = new BackupJob
+                {
+                    StartTime = DateTime.UtcNow,
+                    BlockJobs = new List<BackupBlockJob>()
+                };
+                db.BackupJobs.Add(job);
+                await db.SaveChangesAsync();
+                idBackupJob = job.Id;
+            }
+            return idBackupJob;
+        }
+
+        private async Task UpdateBackupJobStatsAsync(Stopwatch sw, int idBackupJob)
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().BackupDbAsync();
+                var job = await db.BackupJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
+                job.Duration = sw.Elapsed;
+                await db.SaveChangesAsync();
+            }
+        }
+
+        private async Task AddBackupBlockJobAsync(OperationCompressionBlock ocb, int idBackupJob)
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().BackupDbAsync();
+                var job = await db.BackupJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
+                var bbj = new BackupBlockJob
+                {
+                    JobId = idBackupJob,
+                    StartTime = ocb.CompressionBlock.StartTime,
+                    FullSourcePath = ocb.CompressionBlock.SourceFileOrDirectory.FullPath,
+                    Duration = TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
+                    Size = ocb.CompressionBlock.CompressedSize,
+                    Exception = ocb.BlockResults.First().CommandResult.Errors,
+                    Success = ocb.BlockResults.First().CommandResult.IsSuccess
+                };
+                db.BackupBlockJobs.Add(bbj);
+                await db.SaveChangesAsync();
+            }
+        }
+
+        private async Task<int> InitializeRestoreJobAsync()
+        {
+            int idRestoreJob;
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().RestoreDbAsync();
+                var job = new RestoreJob
+                {
+                    StartTime = DateTime.UtcNow,
+                    BlockJobs = new List<RestoreBlockJob>()
+                };
+                db.RestoreJobs.Add(job);
+                await db.SaveChangesAsync();
+                idRestoreJob = job.Id;
+            }
+            return idRestoreJob;
+        }
+
+        private async Task UpdateRestoreJobStatsAsync(Stopwatch sw, int idBackupJob)
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().RestoreDbAsync();
+                var job = await db.RestoreJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
+                job.Duration = sw.Elapsed;
+                await db.SaveChangesAsync();
+            }
+        }
+
+        private async Task AddRestoreBlockJobAsync(OperationDecompressionsBlock ocb, int idBackupJob)
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().RestoreDbAsync();
+                var job = await db.RestoreJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
+                var rbj = new RestoreBlockJob
+                {
+                    JobId = idBackupJob,
+                    StartTime = ocb.Batch.StartTime,
+                    FullDestinationPath = ocb.Batch.DestinationFolder,
+                    Duration = TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
+                    Size = ocb.Batch.CompressedSize,
+                    Exception = ocb.BlockResults.First().CommandResult.Errors,
+                    Success = ocb.BlockResults.First().CommandResult.IsSuccess
+                };
+                db.RestoreBlockJobs.Add(rbj);
+                await db.SaveChangesAsync();
+            }
+        }
     }
 }
