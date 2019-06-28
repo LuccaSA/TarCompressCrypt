@@ -109,7 +109,7 @@ namespace TCC.Lib.AsyncStreams
             return new AsyncStream<T>(channel, task, source.CancellationToken);
         }
 
-        public static async Task<IReadOnlyCollection<T>> AsReadOnlyCollection<T>(this AsyncStream<T> source)
+        public static async Task<IReadOnlyCollection<T>> AsReadOnlyCollectionAsync<T>(this AsyncStream<T> source)
         {
             var items = new ConcurrentBag<T>();
             await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))

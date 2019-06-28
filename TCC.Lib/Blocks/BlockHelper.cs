@@ -140,15 +140,16 @@ namespace TCC.Lib.Blocks
                             {
                                 if (fullBackups.TryGetValue(dir.Name, out var datedBatch))
                                 {
-                                    datedBatch.batch.BackupsDiff = new List<DecompressionBlock>();
+                                    var diffs = new List<DecompressionBlock>();
                                     foreach (var diffArchive in diff.EnumerateArchives()
                                         .Where(i => i.ExtractBackupDateTime() >= datedBatch.fullDate)
                                         .OrderBy(i => i.ExtractBackupDateTime()))
                                     {
                                         yielded = true;
-                                        datedBatch.batch.BackupsDiff.Add(GenerateDecompressBlock(diffArchive, dstDir,
+                                        diffs.Add(GenerateDecompressBlock(diffArchive, dstDir,
                                             AlgoFromExtension(diffArchive.Extension)));
                                     }
+                                    datedBatch.batch.BackupsDiff = diffs.ToArray();
                                 }
                                 else
                                 {

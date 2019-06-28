@@ -59,12 +59,14 @@ namespace TCC.Lib
 
     public class OperationDecompressionsBlock : OperationBlock
     {
+        public DecompressionBatch Batch { get; }
         public IEnumerable<DecompressionBlock> DecompressionBlock { get; }
 
-        public OperationDecompressionsBlock(IEnumerable<BlockResult> blockResults)
+        public OperationDecompressionsBlock(IEnumerable<BlockResult> blockResults, DecompressionBatch batch)
             : base(blockResults)
         {
             if (blockResults == null) throw new ArgumentNullException(nameof(blockResults));
+            Batch = batch;
             DecompressionBlock = blockResults.Select(i => i.Block as DecompressionBlock);
         }
     }

@@ -85,10 +85,10 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync((i, ct) =>
                 {
-                    _blockListener.OnBlockReport(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
+                    _blockListener.OnCompressionBlockReport(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                     return Task.CompletedTask;
                 })
-                .AsReadOnlyCollection();
+                .AsReadOnlyCollectionAsync();
 
             job.BlockJobs = operationBlocks.Select(i => new BackupBlockJob
             {
@@ -134,39 +134,35 @@ namespace TCC.Lib
                     var blockResults = new List<BlockResult>();
                     if (batch.BackupFull != null)
                     {
-                        var dblock = await DecompressBlock(option, batch.BackupFull, token);
-                        blockResults.Add(new BlockResult(batch.BackupFull, dblock));
+                        batch.BackupFullCommandResult = await DecompressBlock(option, batch.BackupFull, token);
+                        blockResults.Add(new BlockResult(batch.BackupFull, batch.BackupFullCommandResult));
                     }
                     if (batch.BackupsDiff != null)
                     {
-                        foreach (var block in batch.BackupsDiff)
+                        batch.BackupDiffCommandResult = new CommandResult[batch.BackupsDiff.Length];
+                        for (int i = 0; i < batch.BackupsDiff.Length; i++)
                         {
-                            var dblock = await DecompressBlock(option, block, token);
-                            blockResults.Add(new BlockResult(block, dblock));
+                            batch.BackupDiffCommandResult[i] = await DecompressBlock(option, batch.BackupsDiff[i], token);
+                            blockResults.Add(new BlockResult(batch.BackupsDiff[i], batch.BackupDiffCommandResult[i]));
                         }
                     }
-
-                    return new OperationDecompressionsBlock(blockResults);
+                    return new OperationDecompressionsBlock(blockResults, batch);
                 }, po)
                 // Cleanup loop
-                .ParallelizeStreamAsync(async (opb, token) =>
+                .ParallelizeStreamAsync(async (odb, token) =>
                 {
-                    foreach (var b in opb.BlockResults)
+                    foreach (var b in odb.BlockResults)
                     {
                         await _encryptionCommands.CleanupKey(b.Block, option, b.CommandResult, Mode.Compress);
                     }
-                    return opb;
+                    return odb;
                 }, po)
                 .ForEachAsync((i, ct) =>
-                {
-                    foreach (var b in i.Item.BlockResults)
-                    {
-                        _blockListener.OnBlockReport(new BlockReport(b.CommandResult, counter.Count, b.Block));
-                    }
-
+                { 
+                    _blockListener.OnDecompressionBatchReport(new DecompressionBlockReport(i.Item.Batch, counter.Count));
                     return Task.CompletedTask;
                 })
-                .AsReadOnlyCollection();
+                .AsReadOnlyCollectionAsync();
 
             sw.Stop();
             return new OperationSummary(operationBlocks, option.Threads, sw);
@@ -310,7 +306,7 @@ namespace TCC.Lib
                     // we decompress the DIFF delta (since the last DIFF)
                     yield return new DecompressionBatch
                     {
-                        BackupsDiff = decompBlock.BackupsDiff.Where(i => i.BackupDate >= lastDiffSinceFull.StartTime).ToList()
+                        BackupsDiff = decompBlock.BackupsDiff.Where(i => i.BackupDate >= lastDiffSinceFull.StartTime).ToArray()
                     };
                 }
             }
