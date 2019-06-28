@@ -23,34 +23,59 @@ namespace TCC
             {
                 int count = Interlocked.Increment(ref counter);
 
-                if (r.Block is CompressionBlock cb)
+                if (r is CompressionBlockReport cb)
                 {
-                    var report = $"{count}/{r.Total} : {cb.BlockName} [{cb.BackupMode ?? BackupMode.Full}]";
-                    if (cb.BackupMode == BackupMode.Diff)
+                    var report = $"{count}/{r.Total} : {cb.CompressionBlock.BlockName} [{cb.CompressionBlock.BackupMode ?? BackupMode.Full}]";
+                    if (cb.CompressionBlock.BackupMode == BackupMode.Diff)
                     {
-                        report += $" from {cb.DiffDate}";
+                        report += $"(from {cb.CompressionBlock.DiffDate})";
                     }
                     Console.WriteLine(report);
                 }
-                else if(r.Block is DecompressionBlock db)
+                else if(r is DecompressionBlockReport db)
                 {
-                    var report = $"{count}/{r.Total} : {db.BlockName}";
-                    Console.WriteLine(report);
+                    string progress = $"{count}/{r.Total} :";
+                    if (db.DecompressionBatch.BackupFull != null)
+                    {
+                        var report = $"{progress} {db.DecompressionBatch.BackupFull.BlockName} [{BackupMode.Full}]";
+                        Console.WriteLine(report);
+                    }
+                    else
+                    {
+                        if (db.DecompressionBatch.BackupsDiff != null)
+                        {
+                            foreach (var dec in db.DecompressionBatch.BackupsDiff)
+                            {
+                                var report = $"{progress} {dec.BlockName} [{BackupMode.Full}]";
+                                Console.WriteLine(report);
+                            }
+                        }
+                    }
                 }
-               
-                if (r.Cmd.HasError)
+      
+                if (r.HasError)
                 {
-                    Console.Error.WriteLine("Error : " + r.Cmd.Errors);
+                    Console.Error.WriteLine("Error : " + r.Errors);
                 }
 
-                if (!String.IsNullOrEmpty(r.Cmd.Output))
+                if (!String.IsNullOrEmpty(r.Output))
                 {
-                    Console.Out.WriteLine("Info : " + r.Cmd.Errors);
+                    Console.Out.WriteLine("Info : " + r.Errors);
                 }
             }
         }
         
         public void OnBlockReport(BlockReport report)
+        {
+            _blockingCollection.Add(report);
+        }
+
+        public void OnCompressionBlockReport(CompressionBlockReport report)
+        {
+            _blockingCollection.Add(report);
+        }
+
+        public void OnDecompressionBatchReport(DecompressionBlockReport report)
         {
             _blockingCollection.Add(report);
         }

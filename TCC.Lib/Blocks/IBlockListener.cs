@@ -2,6 +2,7 @@
 {
     public interface IBlockListener
     {
-        void OnBlockReport(BlockReport report);
+        void OnCompressionBlockReport(CompressionBlockReport report);
+        void OnDecompressionBatchReport(DecompressionBlockReport report);
     }
 }
