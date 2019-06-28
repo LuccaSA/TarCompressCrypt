@@ -23,7 +23,7 @@ namespace TCC
             }
 
             var serviceCollection = new ServiceCollection();
-            serviceCollection.AddTcc();
+            serviceCollection.AddTcc(WorkingPath(parsed));
             serviceCollection.AddSerilog(parsed.Mode != Mode.Benchmark && parsed.Option.Verbose);
 
             if (parsed.Mode != Mode.Benchmark)
@@ -45,6 +45,21 @@ namespace TCC
             {
                 Environment.Exit(1);
             }
+        }
+
+        private static string WorkingPath(TccCommand parsed)
+        {
+            string workingPath = null;
+            switch (parsed.Mode)
+            {
+                case Mode.Compress:
+                    workingPath = parsed.Option.SourceDirOrFile;
+                    break;
+                case Mode.Decompress:
+                    workingPath = parsed.Option.DestinationDir;
+                    break;
+            }
+            return workingPath;
         }
 
         private static Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)

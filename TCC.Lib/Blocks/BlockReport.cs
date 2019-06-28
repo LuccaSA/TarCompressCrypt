@@ -46,7 +46,7 @@ namespace TCC.Lib.Blocks
 
         public override bool HasError =>
             (DecompressionBatch?.BackupFullCommandResult?.HasError ?? false)
-            || (DecompressionBatch?.BackupDiffCommandResult.Any(i => i.HasError) ?? false);
+            || (DecompressionBatch?.BackupDiffCommandResult?.Any(i => i.HasError) ?? false);
 
         public override string Output
         {

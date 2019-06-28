@@ -61,7 +61,7 @@ namespace TCC.Lib.Blocks
         public CommandResult BackupFullCommandResult { get; set; }
         public CommandResult[] BackupDiffCommandResult { get; set; }
 
-        public long Size
+        public long CompressedSize
         {
             get
             {
@@ -75,6 +75,20 @@ namespace TCC.Lib.Blocks
                     sum += BackupsDiff.Sum(b => b.Archive.Length);
                 }
                 return sum;
+            }
+        }
+
+        public DateTime StartTime { get; set; }
+
+        public string DestinationFolder
+        {
+            get
+            {
+                if (BackupFull != null)
+                {
+                    return BackupFull.OperationFolder;
+                }
+                return BackupsDiff?.Select(i => i.OperationFolder).FirstOrDefault();
             }
         }
     }
