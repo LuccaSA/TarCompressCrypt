@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.AspNetCore;
@@ -7,7 +8,7 @@ namespace TCC
 {
     public static class LoggingExtensions
     {
-        public static void AddSerilog(this IServiceCollection serviceCollection, bool optionVerbose)
+        public static void AddSerilog(this IServiceCollection serviceCollection, bool optionVerbose, string workingPath)
         {
             serviceCollection.AddLogging();
             serviceCollection.AddSingleton<ILoggerFactory>(servicesProvider =>
@@ -17,7 +18,8 @@ namespace TCC
                 {
                     loggerConfiguration.WriteTo.Console();
                 }
-                loggerConfiguration.WriteTo.File("logs/tcc.log");
+                string path = string.IsNullOrWhiteSpace(workingPath) ? "logs/tcc.log" : Path.Combine(workingPath, "tcc.log");
+                loggerConfiguration.WriteTo.File(path);
                 var logger = loggerConfiguration.CreateLogger();
                 return new SerilogLoggerFactory(logger, true);
             });

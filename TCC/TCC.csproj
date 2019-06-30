@@ -20,8 +20,4 @@
   <ItemGroup>
     <ProjectReference Include="..\TCC.Lib\TCC.Lib.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="logs\" />
-  </ItemGroup>
 </Project>
