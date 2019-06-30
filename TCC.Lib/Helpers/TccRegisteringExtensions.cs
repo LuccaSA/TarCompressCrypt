@@ -36,7 +36,7 @@ namespace TCC.Lib.Helpers
             services.AddScoped<BenchmarkOptionHelper>();
             services.AddScoped<BenchmarkIterationGenerator>();
             services.AddScoped(_ => new CancellationTokenSource());
-            services.AddSingleton<Database.Database>();
+            services.AddScoped<Database.Database>();
 
             services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString, workingPath);
             services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString, workingPath);
@@ -62,17 +62,7 @@ namespace TCC.Lib.Helpers
                         }
                     case Provider.SqLite:
                         {
-                            var cs = connectionString(setting);
-                            if (string.IsNullOrWhiteSpace(cs) && !string.IsNullOrWhiteSpace(workingPath))
-                            {
-                                // default SqLite path on source & destination targets
-                                if (!Path.IsPathRooted(workingPath))
-                                {
-                                    throw new ArgumentException($"Path {workingPath} isn't absolute");
-                                }
-                                var dir = new DirectoryInfo(workingPath);
-                                cs = "Data Source=" + Path.Combine(dir.FullName, "tcc.db");
-                            }
+                            string cs = GetSqLiteConnectionString(connectionString(setting), workingPath);
                             var sqLite = new SqliteConnection(cs);
                             sqLite.Open();
                             options.UseSqlite(sqLite);
@@ -82,6 +72,23 @@ namespace TCC.Lib.Helpers
                         throw new ArgumentOutOfRangeException();
                 }
             });
+        }
+
+        private static string GetSqLiteConnectionString(string settingConnectionString, string workingPath)
+        {
+            if (string.IsNullOrWhiteSpace(settingConnectionString) && !string.IsNullOrWhiteSpace(workingPath))
+            {
+                // default SqLite path on source & destination targets
+                if (!Path.IsPathRooted(workingPath))
+                {
+                    throw new ArgumentException($"Path {workingPath} isn't absolute");
+                }
+
+                var dir = new DirectoryInfo(workingPath);
+                return "Data Source=" + Path.Combine(dir.FullName, "tcc.db");
+            }
+            // fallback
+            return "Data Source=tcc.db";
         }
     }
 
