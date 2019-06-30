@@ -82,7 +82,7 @@ namespace TCC.Lib.Helpers
                 return "Data Source=" + Path.Combine(dir.FullName, "tcc.db");
             }
             // fallback
-            return "Data Source=tcc.db";
+            return string.IsNullOrWhiteSpace(settingConnectionString) ? "Data Source=tcc.db" : settingConnectionString;
         }
     }
 

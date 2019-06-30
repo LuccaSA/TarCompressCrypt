@@ -49,18 +49,28 @@ namespace TCC.Lib.Helpers
             {
                 return null;
             }
-            var info = sourceArchiveFileInfo.Name.Substring(segment+1);
+            var info = sourceArchiveFileInfo.Name.Substring(segment + 1);
             if (info.Length < 14)
             {
                 return null;
             }
             var dt = info.Substring(0, 14);
-            if (DateTime.TryParseExact(dt, _dateFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
-                out var parsed))
+            if (dt.TryParseArchiveDateTime(out DateTime? tryExtractBackupDateTime))
             {
-                return parsed;
+                return tryExtractBackupDateTime;
             }
             return null;
+        }
+
+        public static bool TryParseArchiveDateTime(this string date, out DateTime? tryExtractBackupDateTime)
+        {
+            if (DateTime.TryParseExact(date, _dateFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed))
+            {
+                tryExtractBackupDateTime = parsed.ToUniversalTime();
+                return true;
+            }
+            tryExtractBackupDateTime = null;
+            return false;
         }
 
         private const string _dateFormat = "yyyyMMddHHmmss";

@@ -249,7 +249,7 @@ namespace TCC.Lib.Blocks
             }
 
             // for each file in sourceDir we create an archive
-            foreach (FileInfo fi in srcDir.EnumerateFiles().Where(f => f.Name != "tcc.db"))
+            foreach (FileInfo fi in srcDir.EnumerateFiles().Where(f => f.Name != "tcc.db" && f.Name != "tcc.log"))
             {
                 yield return new CompressionBlock
                 {

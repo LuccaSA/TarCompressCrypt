@@ -1,8 +1,12 @@
-﻿namespace TCC.Lib.Blocks
+﻿using System.Threading.Tasks;
+
+namespace TCC.Lib.Blocks
 {
     public interface IBlockListener
     {
-        void OnCompressionBlockReport(CompressionBlockReport report);
-        void OnDecompressionBatchReport(DecompressionBlockReport report);
+        Task OnCompressionBlockReportAsync(CompressionBlockReport report);
+        Task OnDecompressionBatchReportAsync(DecompressionBlockReport report);
+        Task CompletedReports { get; }
+        void Complete();
     }
 }

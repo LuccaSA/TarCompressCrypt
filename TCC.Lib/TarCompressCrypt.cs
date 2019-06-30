@@ -83,17 +83,16 @@ namespace TCC.Lib
                     await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, opb.BlockResults.First().CommandResult, Mode.Compress);
                     return opb;
                 }, po)
-                .ForEachAsync((i, ct) =>
+                .ForEachAsync(async (i, ct) =>
                 {
-                    _blockListener.OnCompressionBlockReport(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
-                    return Task.CompletedTask;
+                    await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
 
             await UpdateBackupJobStatsAsync(sw, idBackupJob);
-            
+            _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
         }
@@ -108,7 +107,7 @@ namespace TCC.Lib
             IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks();
             IAsyncEnumerable<DecompressionBatch> ordered = PrepareDecompressionBlocksAsync(blocks, idRestoreJob);
 
-            IReadOnlyCollection<OperationDecompressionsBlock> operationBlocks = 
+            IReadOnlyCollection<OperationDecompressionsBlock> operationBlocks =
                 await ordered
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
@@ -137,7 +136,7 @@ namespace TCC.Lib
                             blockResults.Add(new BlockResult(batch.BackupsDiff[i], batch.BackupDiffCommandResult[i]));
                         }
                     }
-                    var odb =  new OperationDecompressionsBlock(blockResults, batch);
+                    var odb = new OperationDecompressionsBlock(blockResults, batch);
                     await AddRestoreBlockJobAsync(odb, idRestoreJob);
                     return odb;
                 }, po)
@@ -150,16 +149,15 @@ namespace TCC.Lib
                     }
                     return odb;
                 }, po)
-                .ForEachAsync((i, ct) =>
-                { 
-                    _blockListener.OnDecompressionBatchReport(new DecompressionBlockReport(i.Item.Batch, counter.Count));
-                    return Task.CompletedTask;
+                .ForEachAsync(async (i, ct) =>
+                {
+                    await _blockListener.OnDecompressionBatchReportAsync(new DecompressionBlockReport(i.Item.Batch, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
             await UpdateRestoreJobStatsAsync(sw, idRestoreJob);
-
+            _blockListener.Complete();
             return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 
@@ -255,7 +253,7 @@ namespace TCC.Lib
                 }
                 yield break;
             }
-            
+
             foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.CompressedSize))
             {
                 var opFolder = (decompBlock.BackupFull ?? decompBlock.BackupsDiff.First()).OperationFolder;
@@ -310,7 +308,7 @@ namespace TCC.Lib
                     };
                 }
             }
-            
+
             // TODO next
             // - si on déclenche un restore d'un FULL sur un dossier ou y'a deja des données, faut cleaner avant
         }

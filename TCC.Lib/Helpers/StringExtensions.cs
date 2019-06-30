@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace TCC.Lib.Helpers
 {
@@ -59,6 +60,31 @@ namespace TCC.Lib.Helpers
                 return new string(' ', length);
             }
             return source.Length > length ? source.Substring(0, length) : source.PadLeft(length, ' ');
+        }
+
+        public static (string Name, DateTime? Date) ExtractArchiveNameAndDate(this string filePath)
+        {
+            if (filePath == null)
+                throw new ArgumentNullException(nameof(filePath));
+
+            string segment = Path.GetFileNameWithoutExtension(filePath);
+            if (segment.EndsWith(".diff") || segment.EndsWith(".full"))
+            {
+                segment = segment.Substring(0, segment.Length - 5);
+            }
+
+            var lastSegment = segment.LastIndexOf('_');
+            if (lastSegment > 0)
+            {
+                string name = segment.Substring(0, lastSegment);
+                string date = segment.Substring(lastSegment + 1);
+                if (date.TryParseArchiveDateTime(out var dt))
+                {
+                    return (name, dt);
+                }
+                return (name, null);
+            }
+            return (segment, null);
         }
     }
 }
