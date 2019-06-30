@@ -20,12 +20,6 @@ namespace TCC.Lib.Helpers
     {
         public static void AddTcc(this IServiceCollection services, string workingPath = null)
         {
-            //services.Configure<TccSettings>(i =>
-            //    {
-            //        i.BackupConnectionString = "Data Source=tcc.db";
-            //        i.RestoreConnectionString = "Data Source=tcc.db";
-            //    });
-
             services.TryAddScoped<IBlockListener, GenericBlockListener>();
             services.TryAddScoped(typeof(ILogger<>), typeof(NullLogger<>));
             services.AddScoped<ExternalDependencies>();

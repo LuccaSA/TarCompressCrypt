@@ -23,9 +23,10 @@ namespace TCC
                 Environment.Exit(1);
             }
 
+            var workingPath = WorkingPath(parsed);
             var serviceCollection = new ServiceCollection();
-            serviceCollection.AddTcc(WorkingPath(parsed));
-            serviceCollection.AddSerilog(parsed.Mode != Mode.Benchmark && parsed.Option.Verbose);
+            serviceCollection.AddTcc(workingPath);
+            serviceCollection.AddSerilog(parsed.Mode != Mode.Benchmark && parsed.Option.Verbose, workingPath);
 
             if (parsed.Mode != Mode.Benchmark)
             {
