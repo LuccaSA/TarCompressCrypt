@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,17 +50,26 @@ namespace TCC
 
         private static string WorkingPath(TccCommand parsed)
         {
-            string workingPath = null;
             switch (parsed.Mode)
             {
                 case Mode.Compress:
-                    workingPath = parsed.Option.SourceDirOrFile;
+                    if (Directory.Exists(parsed.Option.SourceDirOrFile))
+                    {
+                        return parsed.Option.SourceDirOrFile;
+                    }
+                    else if(File.Exists(parsed.Option.SourceDirOrFile))
+                    {
+                        return new FileInfo(parsed.Option.SourceDirOrFile).Directory?.FullName;
+                    }
                     break;
                 case Mode.Decompress:
-                    workingPath = parsed.Option.DestinationDir;
+                    if (Directory.Exists(parsed.Option.SourceDirOrFile))
+                    {
+                      return parsed.Option.SourceDirOrFile;
+                    }
                     break;
             }
-            return workingPath;
+            return null;
         }
 
         private static Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
