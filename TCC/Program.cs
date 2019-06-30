@@ -33,17 +33,30 @@ namespace TCC
                 serviceCollection.AddSingleton<IBlockListener, CommandLineBlockListener>();
             }
 
-            OperationSummary op;
-            IServiceProvider provider = serviceCollection.BuildServiceProvider();
-            using (var scope = provider.CreateScope())
+            OperationSummary op = null;
+            try
             {
-                scope.ServiceProvider.GetRequiredService<CancellationTokenSource>().HookTermination();
-                await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
+                IServiceProvider provider = serviceCollection.BuildServiceProvider();
+                using (var scope = provider.CreateScope())
+                {
+                    scope.ServiceProvider.GetRequiredService<CancellationTokenSource>().HookTermination();
+                    await scope.ServiceProvider.GetRequiredService<ExternalDependencies>()
+                        .EnsureAllDependenciesPresent();
 
-                op = await RunTcc(scope.ServiceProvider, parsed);
+                    op = await RunTcc(scope.ServiceProvider, parsed);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Operation canceled, shutting down");
             }
 
-            if(op == null || !op.IsSuccess)
+            if (op != null)
+            {
+                Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}, average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}");
+            }
+
+            if (op == null || !op.IsSuccess)
             {
                 Environment.Exit(1);
             }
@@ -58,7 +71,7 @@ namespace TCC
                     {
                         return parsed.Option.SourceDirOrFile;
                     }
-                    else if(File.Exists(parsed.Option.SourceDirOrFile))
+                    else if (File.Exists(parsed.Option.SourceDirOrFile))
                     {
                         return new FileInfo(parsed.Option.SourceDirOrFile).Directory?.FullName;
                     }
@@ -66,7 +79,7 @@ namespace TCC
                 case Mode.Decompress:
                     if (Directory.Exists(parsed.Option.SourceDirOrFile))
                     {
-                      return parsed.Option.SourceDirOrFile;
+                        return parsed.Option.SourceDirOrFile;
                     }
                     break;
             }

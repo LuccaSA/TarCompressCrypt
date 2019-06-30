@@ -1,19 +1,28 @@
 ﻿using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace TCC.Lib.Blocks
 {
     public class GenericBlockListener : IBlockListener
     {
-        public ConcurrentBag<BlockReport> BlockReports { get; } = new ConcurrentBag<BlockReport>();
- 
-        public void OnCompressionBlockReport(CompressionBlockReport report)
+        private readonly ConcurrentBag<BlockReport> _blockReports = new ConcurrentBag<BlockReport>();
+        private readonly TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
+        public Task OnCompressionBlockReportAsync(CompressionBlockReport report)
         {
-            BlockReports.Add(report);
+            _blockReports.Add(report);
+            return Task.CompletedTask;
         }
 
-        public void OnDecompressionBatchReport(DecompressionBlockReport report)
+        public Task OnDecompressionBatchReportAsync(DecompressionBlockReport report)
         {
-            BlockReports.Add(report);
+            _blockReports.Add(report);
+            return Task.CompletedTask;
+        }
+
+        public Task CompletedReports => _tcs.Task;
+        public void Complete()
+        {
+            _tcs.TrySetResult(true);
         }
     }
 }

@@ -15,35 +15,8 @@ namespace TCC.Lib.Blocks
         public FileInfo SourceArchiveFileInfo { get; set; }
         public string Source => SourceArchiveFileInfo.FullName.Escape();
 
-        public override string BlockName
-        {
-            get
-            {
-                var name = Path.GetFileNameWithoutExtension(SourceArchiveFileInfo.Name);
-
-                if (name.Length <= 15)
-                {
-                    return name;
-                }
-
-                var sep = name.Length - 15;
-                if (name[sep] != '_')
-                {
-                    return name;
-                }
-
-                for (int i = sep + 1; i < name.Length; i++)
-                {
-                    char c = name[i];
-                    if (!char.IsDigit(c))
-                    {
-                        return name;
-                    }
-                }
-
-                return name.Substring(0, sep);
-            }
-        }
+        public override string BlockName => SourceArchiveFileInfo.Name.ExtractArchiveNameAndDate().Name;
+        public string BlockDate => SourceArchiveFileInfo.Name.ExtractArchiveNameAndDate().Date.ToString();
 
         public override FileInfo Archive => SourceArchiveFileInfo;
 
