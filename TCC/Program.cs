@@ -54,15 +54,31 @@ namespace TCC
 
             if (op != null)
             {
-                Console.WriteLine();
                 if (op.OperationBlocks.Any())
                 {
-                    Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}, average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}");
+                    string report = null;
+                    if (op.Stopwatch != null)
+                    {
+                        report = $"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}";
+                    }
+                    if (op.Statistics != null)
+                    {
+                        report += $"average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}";
+                    }
+
+                    if (!string.IsNullOrEmpty(report))
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine(report);
+                    }
                 }
                 else
                 {
                     Console.WriteLine("WARNING : No archive candidate for extraction");
-                    Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()},");
+                    if (op.Stopwatch != null)
+                    {
+                        Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}");
+                    }
                 }
 
             }
