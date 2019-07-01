@@ -21,8 +21,6 @@ namespace TCC.Tests
             services.AddTcc();
             services.PostConfigure<TccSettings>(i =>
             {
-                i.BackupConnectionString = "Data Source=:memory:";
-                i.RestoreConnectionString = "Data Source=:memory:";
                 i.Provider = Provider.SqLite;
             });
             var builder = services.BuildServiceProvider();
