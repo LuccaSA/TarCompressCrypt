@@ -45,6 +45,10 @@ namespace TCC.Lib.Dependencies
 
         public async Task PrepareEncryptionKey(CompressionBlock block, TccOption option, CancellationToken cancellationToken)
         {
+            if (block == null)
+            {
+                throw new ArgumentNullException(nameof(block));
+            }
             string key = null;
             string keyCrypted = null;
 
@@ -76,6 +80,10 @@ namespace TCC.Lib.Dependencies
 
         public async Task PrepareDecryptionKey(DecompressionBlock block, TccOption option, CancellationToken cancellationToken)
         {
+            if (block == null)
+            {
+                throw new ArgumentNullException(nameof(block));
+            }
             string key = null;
             string keyCrypted = null;
             switch (option.PasswordOption.PasswordMode)

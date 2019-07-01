@@ -115,7 +115,7 @@ namespace TCC.Lib
                 .ParallelizeStreamAsync(async (b, token) =>
                 {
                     b.StartTime = DateTime.UtcNow;
-                    await _encryptionCommands.PrepareDecryptionKey(b.BackupFull, option, token);
+                    await _encryptionCommands.PrepareDecryptionKey(b.BackupFull ?? b.BackupsDiff.FirstOrDefault(), option, token);
                     return b;
                 }, po)
                 // Core loop 
@@ -238,32 +238,30 @@ namespace TCC.Lib
             IEnumerable<DecompressionBatch> blocks, int currentRestoreJobId)
         {
             var db = await _db.RestoreDbAsync();
-            var jobs = await db.RestoreJobs
-                .Where(i => i.Id != currentRestoreJobId)
-                .OrderByDescending(i => i.StartTime)
-                .Include(i => i.BlockJobs)
-                .FirstOrDefaultAsync();
-
-            if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
-            {
-                // no history ATM, we consider a restore FULL + DIFF for each block
-                foreach (var b in blocks)
-                {
-                    yield return b;
-                }
-                yield break;
-            }
 
             foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.CompressedSize))
             {
-                var opFolder = (decompBlock.BackupFull ?? decompBlock.BackupsDiff.First()).OperationFolder;
+                var opFolder = decompBlock.DestinationFolder;
 
-                var lastFull = await db.RestoreBlockJobs
-                    .Where(i => i.FullDestinationPath == opFolder && i.BackupMode == BackupMode.Full)
+                // If target directory doesn't exists, then we restore FULL + DIFF
+                var dir = new DirectoryInfo(decompBlock.DestinationFolder);
+                if (!dir.Exists || !dir.EnumerateDirectories().Any() && !dir.EnumerateFiles().Any())
+                {
+                    yield return decompBlock;
+                    continue;
+                }
+
+                var tmp = await db.RestoreBlockJobs
+                    .Where(i => i.FullDestinationPath == opFolder)
+                    .OrderByDescending(i => i.StartTime)
+                    .ToListAsync();
+
+                var lastRestore = await db.RestoreBlockJobs
+                    .Where(i => i.FullDestinationPath == opFolder)
                     .OrderByDescending(i => i.StartTime)
                     .FirstOrDefaultAsync();
 
-                if (lastFull == null)
+                if (lastRestore == null)
                 {
                     if (decompBlock.BackupFull == null)
                     {
@@ -275,38 +273,21 @@ namespace TCC.Lib
                     continue;
                 }
 
-                var dir = new DirectoryInfo(decompBlock.BackupFull.OperationFolder);
-                if (!dir.Exists || !dir.EnumerateFiles().Any())
+                var d = new DecompressionBatch();
+
+                DateTime recent = lastRestore.StartTime;
+                // if more recent full, we take it
+                if (decompBlock.BackupFull.BackupDate > recent)
                 {
-                    // we have a backup full, but we need to check if target folder complies :
-                    // - check if exists
-                    // - check if empty
-                    yield return decompBlock;
-                    continue;
+                    recent = decompBlock.BackupFull.BackupDate.Value;
+                    // if no diff, check more recent full
+                    d.BackupFull = decompBlock.BackupFull;
                 }
 
-                var lastDiffSinceFull = await db.RestoreBlockJobs
-                    .Where(i => i.FullDestinationPath == opFolder && i.BackupMode == BackupMode.Diff && i.StartTime > lastFull.StartTime)
-                    .OrderByDescending(i => i.StartTime)
-                    .FirstOrDefaultAsync();
-
-                if (lastDiffSinceFull == null)
-                {
-                    // No diff in history, we send all the existing diff EXCEPT the full
-                    yield return new DecompressionBatch
-                    {
-                        BackupsDiff = decompBlock.BackupsDiff
-                    };
-                }
-                else
-                {
-                    // at least a DIFF in history, since the last FULL
-                    // we decompress the DIFF delta (since the last DIFF)
-                    yield return new DecompressionBatch
-                    {
-                        BackupsDiff = decompBlock.BackupsDiff.Where(i => i.BackupDate >= lastDiffSinceFull.StartTime).ToArray()
-                    };
-                }
+                // we yield all the DIFF archives more recent the the last restore or the last full
+                d.BackupsDiff = decompBlock.BackupsDiff?.Where(i => i.BackupDate > recent).ToArray();
+                
+                yield return d;
             }
 
             // TODO next
@@ -358,7 +339,6 @@ namespace TCC.Lib
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().BackupDbAsync();
-                var job = await db.BackupJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
                 var bbj = new BackupBlockJob
                 {
                     JobId = idBackupJob,
@@ -408,18 +388,43 @@ namespace TCC.Lib
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().RestoreDbAsync();
-                var job = await db.RestoreJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
-                var rbj = new RestoreBlockJob
+
+                if (ocb.Batch.BackupFull != null)
                 {
-                    JobId = idBackupJob,
-                    StartTime = ocb.Batch.StartTime,
-                    FullDestinationPath = ocb.Batch.DestinationFolder,
-                    Duration = TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
-                    Size = ocb.Batch.CompressedSize,
-                    Exception = ocb.BlockResults.First().CommandResult.Errors,
-                    Success = ocb.BlockResults.First().CommandResult.IsSuccess
-                };
-                db.RestoreBlockJobs.Add(rbj);
+                    var rb = new RestoreBlockJob
+                    {
+                        JobId = idBackupJob,
+                        StartTime = ocb.Batch.BackupFull.BlockDateTime,
+                        FullDestinationPath = ocb.Batch.DestinationFolder,
+                        Duration = TimeSpan.FromMilliseconds(ocb.Batch.BackupFullCommandResult.ElapsedMilliseconds),
+                        Size = ocb.Batch.BackupFull.CompressedSize,
+                        Exception = ocb.Batch.BackupFullCommandResult.Errors,
+                        Success = ocb.Batch.BackupFullCommandResult.IsSuccess,
+                        BackupMode = BackupMode.Full
+                    };
+                    db.RestoreBlockJobs.Add(rb);
+                }
+
+                if (ocb.Batch.BackupsDiff != null)
+                {
+                    for (var index = 0; index < ocb.Batch.BackupsDiff.Length; index++)
+                    {
+                        var b = ocb.Batch.BackupsDiff[index];
+                        var rb = new RestoreBlockJob
+                        {
+                            JobId = idBackupJob,
+                            StartTime = b.BlockDateTime,
+                            FullDestinationPath = ocb.Batch.DestinationFolder,
+                            Duration = TimeSpan.FromMilliseconds(ocb.Batch.BackupDiffCommandResult[index].ElapsedMilliseconds),
+                            Size = b.CompressedSize,
+                            Exception = ocb.Batch.BackupDiffCommandResult[index].Errors,
+                            Success = ocb.Batch.BackupDiffCommandResult[index].IsSuccess,
+                            BackupMode = BackupMode.Diff
+                        };
+                        db.RestoreBlockJobs.Add(rb);
+                    }
+                }
+
                 await db.SaveChangesAsync();
             }
         }
