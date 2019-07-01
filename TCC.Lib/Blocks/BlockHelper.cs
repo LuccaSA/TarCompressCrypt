@@ -122,41 +122,37 @@ namespace TCC.Lib.Blocks
                         else
                         {
                             // at least a FULL or a DIFF folder
-                            if (full != null)
-                            {
-                                var lastFull = full.EnumerateArchives().OrderByDescending(i => i.ExtractBackupDateTime()).FirstOrDefault();
+                            var lastFull = full?.EnumerateArchives().OrderByDescending(i => i.ExtractBackupDateTime()).FirstOrDefault();
 
-                                if (lastFull != null)
+                            if (lastFull != null)
+                            {
+                                var batch = new DecompressionBatch();
+                                fullBackups.Add(dir.Name, (lastFull.ExtractBackupDateTime(), batch, lastFull.Length));
+                                yielded = true;
+                                batch.BackupFull = GenerateDecompressBlock(lastFull, dstDir, AlgoFromExtension(lastFull.Extension));
+                            }
+
+                            if (diff == null)
+                            {
+                                continue;
+                            }
+
+                            if (fullBackups.TryGetValue(dir.Name, out var datedBatch))
+                            {
+                                var diffs = new List<DecompressionBlock>();
+                                foreach (var diffArchive in diff.EnumerateArchives()
+                                    .Where(i => i.ExtractBackupDateTime() >= datedBatch.fullDate)
+                                    .OrderBy(i => i.ExtractBackupDateTime()))
                                 {
-                                    var batch = new DecompressionBatch();
-                                    fullBackups.Add(dir.Name, (lastFull.ExtractBackupDateTime(), batch, lastFull.Length));
                                     yielded = true;
-                                    batch.BackupFull = GenerateDecompressBlock(lastFull, dstDir,
-                                        AlgoFromExtension(lastFull.Extension));
+                                    diffs.Add(GenerateDecompressBlock(diffArchive, dstDir, AlgoFromExtension(diffArchive.Extension)));
                                 }
+                                datedBatch.batch.BackupsDiff = diffs.ToArray();
                             }
-
-                            if (diff != null)
+                            else
                             {
-                                if (fullBackups.TryGetValue(dir.Name, out var datedBatch))
-                                {
-                                    var diffs = new List<DecompressionBlock>();
-                                    foreach (var diffArchive in diff.EnumerateArchives()
-                                        .Where(i => i.ExtractBackupDateTime() >= datedBatch.fullDate)
-                                        .OrderBy(i => i.ExtractBackupDateTime()))
-                                    {
-                                        yielded = true;
-                                        diffs.Add(GenerateDecompressBlock(diffArchive, dstDir,
-                                            AlgoFromExtension(diffArchive.Extension)));
-                                    }
-                                    datedBatch.batch.BackupsDiff = diffs.ToArray();
-                                }
-                                else
-                                {
-                                    throw new Exception("no full found for diff");
-                                }
+                                throw new Exception("no full found for diff");
                             }
-
                         }
                     }
 

@@ -17,6 +17,7 @@ namespace TCC.Lib.Blocks
 
         public override string BlockName => SourceArchiveFileInfo.Name.ExtractArchiveNameAndDate().Name;
         public string BlockDate => SourceArchiveFileInfo.Name.ExtractArchiveNameAndDate().Date.ToString();
+        public DateTime BlockDateTime => SourceArchiveFileInfo.Name.ExtractArchiveNameAndDate().Date ?? DateTime.MinValue;
 
         public override FileInfo Archive => SourceArchiveFileInfo;
 
@@ -59,9 +60,9 @@ namespace TCC.Lib.Blocks
             {
                 if (BackupFull != null)
                 {
-                    return BackupFull.OperationFolder;
+                    return Path.Combine(BackupFull.OperationFolder, BackupFull.BlockName);
                 }
-                return BackupsDiff?.Select(i => i.OperationFolder).FirstOrDefault();
+                return BackupsDiff?.Select(i => Path.Combine(i.OperationFolder, i.BlockName)).FirstOrDefault();
             }
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +54,17 @@ namespace TCC
 
             if (op != null)
             {
-                Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}, average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}");
+                Console.WriteLine();
+                if (op.OperationBlocks.Any())
+                {
+                    Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}, average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}");
+                }
+                else
+                {
+                    Console.WriteLine("WARNING : No archive candidate for extraction");
+                    Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()},");
+                }
+
             }
 
             if (op == null || !op.IsSuccess)
@@ -77,9 +88,9 @@ namespace TCC
                     }
                     break;
                 case Mode.Decompress:
-                    if (Directory.Exists(parsed.Option.SourceDirOrFile))
+                    if (Directory.Exists(parsed.Option.DestinationDir))
                     {
-                        return parsed.Option.SourceDirOrFile;
+                        return parsed.Option.DestinationDir;
                     }
                     break;
             }
