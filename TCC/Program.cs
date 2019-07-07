@@ -83,6 +83,7 @@ namespace TCC
                 }
             }
 
+            Serilog.Log.CloseAndFlush();
             if (op == null || !op.IsSuccess)
             {
                 Environment.Exit(1);

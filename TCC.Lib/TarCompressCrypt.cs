@@ -59,21 +59,18 @@ namespace TCC.Lib
                 // Core loop 
                 .ParallelizeStreamAsync(async (block, token) =>
                 {
-                    _logger.LogInformation($"Starting {block.Source}");
                     CommandResult result = null;
                     try
                     {
                         string cmd = _compressionCommands.CompressCommand(block, option);
                         result = await cmd.Run(block.OperationFolder, token);
-                        _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
+                        _logger.LogInformation($"Completed {block.Source} on {result?.ElapsedMilliseconds} ms, {block.DestinationArchiveFileInfo.Length} bytes, {block.DestinationArchiveFileInfo.FullName}");
                     }
                     catch (Exception e)
                     {
                         _logger.LogError(e, $"Error on {block.Source}");
                     }
-                    var opb = new OperationCompressionBlock(block, result);
-                   
-                    return opb;
+                    return new OperationCompressionBlock(block, result);
                 }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
@@ -135,8 +132,7 @@ namespace TCC.Lib
                             blockResults.Add(new BlockResult(batch.BackupsDiff[i], batch.BackupDiffCommandResult[i]));
                         }
                     }
-                    var odb = new OperationDecompressionsBlock(blockResults, batch);
-                    return odb;
+                    return new OperationDecompressionsBlock(blockResults, batch);
                 }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (odb, token) =>
