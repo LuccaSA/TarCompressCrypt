@@ -64,7 +64,7 @@ namespace TCC
                     }
                     if (op.Statistics != null)
                     {
-                        report += $"average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}";
+                        report += $" Average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}";
                     }
 
                     if (!string.IsNullOrEmpty(report))
@@ -81,7 +81,6 @@ namespace TCC
                         Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}");
                     }
                 }
-
             }
 
             if (op == null || !op.IsSuccess)

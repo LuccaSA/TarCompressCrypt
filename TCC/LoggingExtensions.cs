@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using Serilog.AspNetCore;
+using Serilog.Events;
 
 namespace TCC
 {
@@ -18,10 +18,13 @@ namespace TCC
                 {
                     loggerConfiguration.WriteTo.Console();
                 }
+
+                loggerConfiguration.MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning);
+
                 string path = string.IsNullOrWhiteSpace(workingPath) ? "logs/tcc.log" : Path.Combine(workingPath, "tcc.log");
                 loggerConfiguration.WriteTo.File(path);
                 var logger = loggerConfiguration.CreateLogger();
-                return new SerilogLoggerFactory(logger, true);
+                return new Serilog.Extensions.Logging.SerilogLoggerFactory(logger, true);
             });
         }
     }
