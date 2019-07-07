@@ -64,11 +64,15 @@ namespace TCC.Lib
                     {
                         string cmd = _compressionCommands.CompressCommand(block, option);
                         result = await cmd.Run(block.OperationFolder, token);
-                        _logger.LogInformation($"Completed {block.Source} on {result?.ElapsedMilliseconds} ms, {block.DestinationArchiveFileInfo.Length} bytes, {block.DestinationArchiveFileInfo.FullName}");
+                        _logger.LogInformation($"Compressed {block.Source} on {result?.ElapsedMilliseconds} ms, {block.DestinationArchiveFileInfo.Length} bytes, {block.DestinationArchiveFileInfo.FullName}");
+                        if (result?.Errors.Any() ?? false)
+                        {
+                            _logger.LogWarning($"Compressed {block.Source} with errors : {result.Errors}");
+                        }
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, $"Error on {block.Source}");
+                        _logger.LogError(e, $"Error compressing {block.Source}");
                     }
                     return new OperationCompressionBlock(block, result);
                 }, po)
@@ -118,11 +122,13 @@ namespace TCC.Lib
                 .ParallelizeStreamAsync(async (batch, token) =>
                 {
                     var blockResults = new List<BlockResult>();
+
                     if (batch.BackupFull != null)
                     {
                         batch.BackupFullCommandResult = await DecompressBlock(option, batch.BackupFull, token);
                         blockResults.Add(new BlockResult(batch.BackupFull, batch.BackupFullCommandResult));
                     }
+
                     if (batch.BackupsDiff != null)
                     {
                         batch.BackupDiffCommandResult = new CommandResult[batch.BackupsDiff.Length];
@@ -132,6 +138,7 @@ namespace TCC.Lib
                             blockResults.Add(new BlockResult(batch.BackupsDiff[i], batch.BackupDiffCommandResult[i]));
                         }
                     }
+
                     return new OperationDecompressionsBlock(blockResults, batch);
                 }, po)
                 // Cleanup loop
@@ -158,17 +165,21 @@ namespace TCC.Lib
 
         private async Task<CommandResult> DecompressBlock(DecompressOption option, DecompressionBlock block, CancellationToken token)
         {
-            _logger.LogInformation($"Starting {block.Source}");
             CommandResult result = null;
             try
             {
                 string cmd = _compressionCommands.DecompressCommand(block, option);
                 result = await cmd.Run(block.OperationFolder, token);
-                _logger.LogInformation($"Finished {block.Source} on {result?.ElapsedMilliseconds} ms");
+
+                _logger.LogInformation($"Decompressed {block.Source} on {result?.ElapsedMilliseconds} ms, {block.SourceArchiveFileInfo.Length} bytes, {block.SourceArchiveFileInfo.FullName}");
+                if (result?.Errors.Any() ?? false)
+                {
+                    _logger.LogWarning($"Compressed {block.Source} with errors : {result.Errors}");
+                }
             }
             catch (Exception e)
             {
-                _logger.LogError(e, $"Error on {block.Source}");
+                _logger.LogError(e, $"Error decompressing {block.Source}");
             }
             return result;
         }
@@ -285,7 +296,7 @@ namespace TCC.Lib
 
                 // we yield all the DIFF archives more recent the the last restore or the last full
                 d.BackupsDiff = decompBlock.BackupsDiff?.Where(i => i.BackupDate > recent).ToArray();
-                
+
                 yield return d;
             }
 
