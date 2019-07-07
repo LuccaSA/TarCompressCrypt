@@ -21,7 +21,7 @@ namespace TCC.Lib.Helpers
         public static void AddTcc(this IServiceCollection services, string workingPath = null)
         {
             services.TryAddScoped<IBlockListener, GenericBlockListener>();
-            services.TryAddScoped(typeof(ILogger<>), typeof(NullLogger<>));
+            //services.TryAddScoped(typeof(ILogger<>), typeof(NullLogger<>));
             services.AddScoped<ExternalDependencies>();
             services.AddScoped<TarCompressCrypt>();
             services.AddScoped<EncryptionCommands>();
