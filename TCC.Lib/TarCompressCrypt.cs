@@ -72,7 +72,7 @@ namespace TCC.Lib
                         _logger.LogError(e, $"Error on {block.Source}");
                     }
                     var opb = new OperationCompressionBlock(block, result);
-                    await AddBackupBlockJobAsync(opb, idBackupJob);
+                   
                     return opb;
                 }, po)
                 // Cleanup loop
@@ -83,6 +83,7 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync(async (i, ct) =>
                 {
+                    await AddBackupBlockJobAsync(i.Item, idBackupJob);
                     await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
@@ -135,7 +136,6 @@ namespace TCC.Lib
                         }
                     }
                     var odb = new OperationDecompressionsBlock(blockResults, batch);
-                    await AddRestoreBlockJobAsync(odb, idRestoreJob);
                     return odb;
                 }, po)
                 // Cleanup loop
@@ -149,6 +149,7 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync(async (i, ct) =>
                 {
+                    await AddRestoreBlockJobAsync(i.Item, idRestoreJob);
                     await _blockListener.OnDecompressionBatchReportAsync(new DecompressionBlockReport(i.Item.Batch, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
