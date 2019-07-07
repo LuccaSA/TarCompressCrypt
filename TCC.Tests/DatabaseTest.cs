@@ -11,8 +11,9 @@ namespace TCC.Tests
 {
     public class DatabaseTest
     {
-        private readonly Database _db;
-        
+        private readonly DatabaseSetup _db;
+        private TccBackupDbContext _backupDbContext;
+
         public DatabaseTest()
         {
             var services = new ServiceCollection();
@@ -24,16 +25,15 @@ namespace TCC.Tests
                 i.Provider = Provider.SqLite;
             });
             var provider = services.BuildServiceProvider();
-            _db = provider.GetRequiredService<Database>();
+            _db = provider.GetRequiredService<DatabaseSetup>();
+            _backupDbContext = provider.GetRequiredService<TccBackupDbContext>();
         }
 
         [Fact]
         public async Task SimpleCrud()
         {
-            var db = await _db.BackupDbAsync();
-            await db.Database.EnsureCreatedAsync();
-
-            db.BackupJobs.Add(new BackupJob
+            await _db.EnsureDatabaseExistsAsync(Lib.Options.Mode.Compress | Lib.Options.Mode.Decompress);
+            _backupDbContext.BackupJobs.Add(new BackupJob
             {
                 StartTime = DateTime.UtcNow,
                 Duration = TimeSpan.FromMinutes(2),
@@ -43,8 +43,8 @@ namespace TCC.Tests
                     new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "two", Success = true}
                 }
             });
-            await db.SaveChangesAsync();
-            var found = await db.BackupJobs.LastOrDefaultAsync();
+            await _backupDbContext.SaveChangesAsync();
+            var found = await _backupDbContext.BackupJobs.LastOrDefaultAsync();
             Assert.NotNull(found);
             Assert.Equal(2, found.BlockJobs.Count);
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using TCC.Lib.Benchmark;
+using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
@@ -28,6 +29,7 @@ namespace TCC.Tests
             IServiceProvider provider = services.BuildServiceProvider();
             using (var scope = provider.CreateScope())
             {
+                await scope.ServiceProvider.GetRequiredService<DatabaseSetup>().EnsureDatabaseExistsAsync(Mode.Benchmark);
                 await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
 
                 var op = await scope.ServiceProvider
