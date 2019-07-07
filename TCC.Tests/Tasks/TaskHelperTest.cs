@@ -74,6 +74,7 @@ namespace TCC.Tests.Tasks
                     }
                     catch (Exception)
                     {
+                        // Ignore
                     }
 
                     if (ct.IsCancellationRequested)

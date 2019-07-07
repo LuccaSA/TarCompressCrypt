@@ -58,7 +58,7 @@ namespace TCC.Lib.Blocks
 
         public DateTime StartTime
         {
-            get => _startTime ?? throw new ArgumentOutOfRangeException("CompressionBlock StartTime undefined");
+            get => _startTime ?? throw new ArgumentOutOfRangeException( nameof(StartTime),"CompressionBlock StartTime undefined");
             set => _startTime = value;
         }
     }
