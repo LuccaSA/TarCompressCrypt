@@ -39,7 +39,7 @@ namespace TCC.Lib.Helpers
         private static void RegisterDbContext<TDbContext>(this IServiceCollection services, Func<TccSettings, string> connectionString, string workingPath)
             where TDbContext : DbContext
         {
-            services.AddDbContext<TDbContext>((s, options) =>
+            services.AddDbContextPool<TDbContext>((s, options) =>
             {
                 var setting = s.GetRequiredService<IOptions<TccSettings>>().Value;
 
