@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using CommandLine;
 using TCC.Lib.Database;
-using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Parser

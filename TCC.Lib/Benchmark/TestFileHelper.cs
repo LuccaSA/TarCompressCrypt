@@ -9,7 +9,7 @@ namespace TCC.Lib.Benchmark
     public static class TestFileHelper
     {
 
-        const int BytesToRead = sizeof(Int64);
+        const int _bytesToRead = sizeof(Int64);
 
         public static bool FilesAreEqual(FileInfo first, FileInfo second)
         {
@@ -19,18 +19,18 @@ namespace TCC.Lib.Benchmark
             if (string.Equals(first.FullName, second.FullName, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            int iterations = (int)Math.Ceiling((double)first.Length / BytesToRead);
+            int iterations = (int)Math.Ceiling((double)first.Length / _bytesToRead);
 
             using (FileStream fs1 = first.OpenRead())
             using (FileStream fs2 = second.OpenRead())
             {
-                byte[] one = new byte[BytesToRead];
-                byte[] two = new byte[BytesToRead];
+                byte[] one = new byte[_bytesToRead];
+                byte[] two = new byte[_bytesToRead];
 
                 for (int i = 0; i < iterations; i++)
                 {
-                    fs1.Read(one, 0, BytesToRead);
-                    fs2.Read(two, 0, BytesToRead);
+                    fs1.Read(one, 0, _bytesToRead);
+                    fs2.Read(two, 0, _bytesToRead);
 
                     if (BitConverter.ToInt64(one, 0) != BitConverter.ToInt64(two, 0))
                         return false;

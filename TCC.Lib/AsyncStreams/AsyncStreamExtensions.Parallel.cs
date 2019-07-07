@@ -5,9 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using TCC.Lib.AsyncStreams;
 
-namespace TCC.Lib.Helpers
+namespace TCC.Lib.AsyncStreams
 {
     public static partial class AsyncStreamExtensions
     {

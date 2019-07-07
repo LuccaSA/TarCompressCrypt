@@ -30,7 +30,7 @@ namespace TCC.Lib.Helpers
             services.AddScoped<BenchmarkOptionHelper>();
             services.AddScoped<BenchmarkIterationGenerator>();
             services.AddScoped(_ => new CancellationTokenSource());
-            services.AddScoped<Database.DatabaseSetup>();
+            services.AddScoped<DatabaseSetup>();
 
             services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString, workingPath);
             services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString, workingPath);
