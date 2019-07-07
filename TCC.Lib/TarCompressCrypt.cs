@@ -25,17 +25,15 @@ namespace TCC.Lib
         private readonly ILogger<TarCompressCrypt> _logger;
         private readonly EncryptionCommands _encryptionCommands;
         private readonly CompressionCommands _compressionCommands;
-        private readonly Database.Database _db;
         private readonly IServiceProvider _serviceProvider;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, Database.Database db, IServiceProvider serviceProvider)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider)
         {
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
             _logger = logger;
             _encryptionCommands = encryptionCommands;
             _compressionCommands = compressionCommands;
-            _db = db;
             _serviceProvider = serviceProvider;
         }
 
@@ -178,10 +176,19 @@ namespace TCC.Lib
             return result;
         }
 
+        private TccBackupDbContext BackupDb()
+        {
+            return _serviceProvider.GetRequiredService<TccBackupDbContext>();
+        }
+        private TccRestoreDbContext RestoreDb()
+        {
+            return _serviceProvider.GetRequiredService<TccRestoreDbContext>();
+        }
+
         private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(
             IEnumerable<CompressionBlock> blocks, int currentBackupJobId)
         {
-            var db = await _db.BackupDbAsync();
+            var db = BackupDb();
             var jobs = await db.BackupJobs
                 .Where(i => i.Id != currentBackupJobId)
                 .OrderByDescending(i => i.StartTime)
@@ -237,7 +244,7 @@ namespace TCC.Lib
         private async IAsyncEnumerable<DecompressionBatch> PrepareDecompressionBlocksAsync(
             IEnumerable<DecompressionBatch> blocks, int currentRestoreJobId)
         {
-            var db = await _db.RestoreDbAsync();
+            var db = RestoreDb();
 
             foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.CompressedSize))
             {
@@ -310,7 +317,7 @@ namespace TCC.Lib
             int idBackupJob;
             using (var scope = _serviceProvider.CreateScope())
             {
-                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().BackupDbAsync();
+                var db = scope.ServiceProvider.GetRequiredService<TccBackupDbContext>();
                 var job = new BackupJob
                 {
                     StartTime = DateTime.UtcNow,
@@ -327,7 +334,7 @@ namespace TCC.Lib
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().BackupDbAsync();
+                var db = scope.ServiceProvider.GetRequiredService<TccBackupDbContext>();
                 var job = await db.BackupJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
                 job.Duration = sw.Elapsed;
                 await db.SaveChangesAsync();
@@ -338,7 +345,7 @@ namespace TCC.Lib
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().BackupDbAsync();
+                var db = scope.ServiceProvider.GetRequiredService<TccBackupDbContext>();
                 var bbj = new BackupBlockJob
                 {
                     JobId = idBackupJob,
@@ -359,7 +366,7 @@ namespace TCC.Lib
             int idRestoreJob;
             using (var scope = _serviceProvider.CreateScope())
             {
-                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().RestoreDbAsync();
+                var db = scope.ServiceProvider.GetRequiredService<TccRestoreDbContext>();
                 var job = new RestoreJob
                 {
                     StartTime = DateTime.UtcNow,
@@ -376,7 +383,7 @@ namespace TCC.Lib
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().RestoreDbAsync();
+                var db = scope.ServiceProvider.GetRequiredService<TccRestoreDbContext>();
                 var job = await db.RestoreJobs.FirstOrDefaultAsync(i => i.Id == idBackupJob);
                 job.Duration = sw.Elapsed;
                 await db.SaveChangesAsync();
@@ -387,7 +394,7 @@ namespace TCC.Lib
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var db = await scope.ServiceProvider.GetRequiredService<Database.Database>().RestoreDbAsync();
+                var db = scope.ServiceProvider.GetRequiredService<TccRestoreDbContext>();
 
                 if (ocb.Batch.BackupFull != null)
                 {

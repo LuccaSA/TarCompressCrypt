@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
+using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
@@ -41,8 +42,8 @@ namespace TCC
                 using (var scope = provider.CreateScope())
                 {
                     scope.ServiceProvider.GetRequiredService<CancellationTokenSource>().HookTermination();
-                    await scope.ServiceProvider.GetRequiredService<ExternalDependencies>()
-                        .EnsureAllDependenciesPresent();
+                    await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
+
 
                     op = await RunTcc(scope.ServiceProvider, parsed);
                 }
@@ -113,22 +114,23 @@ namespace TCC
             return null;
         }
 
-        private static Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
+        private static async Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {
+            await provider.GetRequiredService<DatabaseSetup>().EnsureDatabaseExistsAsync(command.Mode);
             switch (command.Mode)
             {
                 case Mode.Compress:
-                    return provider
+                    return await provider
                         .GetRequiredService<TarCompressCrypt>()
                         .Compress(command.Option as CompressOption);
 
                 case Mode.Decompress:
-                    return provider
+                    return await provider
                         .GetRequiredService<TarCompressCrypt>()
                         .Decompress(command.Option as DecompressOption);
 
                 case Mode.Benchmark:
-                    return provider
+                    return await provider
                         .GetRequiredService<BenchmarkRunner>()
                         .RunBenchmark(command.BenchmarkOption);
                 default:

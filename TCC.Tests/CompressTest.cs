@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
+using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
@@ -30,11 +31,13 @@ namespace TCC.Tests
             _tarCompressCrypt = provider.GetRequiredService<TarCompressCrypt>();
             _externalDependencies = provider.GetRequiredService<ExternalDependencies>();
             _benchmarkOptionHelper = provider.GetRequiredService<BenchmarkOptionHelper>();
+            _dbSetup = provider.GetRequiredService<DatabaseSetup>();
         }
 
         private readonly TarCompressCrypt _tarCompressCrypt;
         private readonly ExternalDependencies _externalDependencies;
         private readonly BenchmarkOptionHelper _benchmarkOptionHelper;
+        private readonly DatabaseSetup _dbSetup;
 
         [Theory]
         [InlineData(PasswordMode.None, CompressionAlgo.Lz4)]
@@ -52,6 +55,7 @@ namespace TCC.Tests
         public async Task CompressDecompress(PasswordMode mode, CompressionAlgo algo)
         {
             await _externalDependencies.EnsureAllDependenciesPresent();
+            await _dbSetup.EnsureDatabaseExistsAsync(Mode.Benchmark);
 
             string toCompressFolder = TestFileHelper.NewFolder();
             string compressedFolder = TestFileHelper.NewFolder();
