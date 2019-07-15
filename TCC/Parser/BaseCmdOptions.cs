@@ -24,5 +24,10 @@ namespace TCC.Parser
 
         [Option('v', "verbose", HelpText = "Verbose output", Default = false)]
         public bool Verbose { get; set; }
+
+        [Option('s', "slackSecret", HelpText = "Slack xoxp Secret")]
+        public string SlackSecret { get; set; }
+        [Option('c', "slackChannel", HelpText = "Slack #channel name")]
+        public string SlackChannel { get; set; }
     }
 }
