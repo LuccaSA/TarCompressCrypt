@@ -12,5 +12,8 @@
 
         public bool FailFast { get; set; }
         public bool Verbose { get; set; }
+
+        public string SlackChannel { get; set; }
+        public string SlackSecret { get; set; }
     }
 }

@@ -30,7 +30,9 @@ namespace TCC.Parser
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
                             BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
                             Threads = ExtractThreads(opts),
-                            BackupMode = opts.BackupMode
+                            BackupMode = opts.BackupMode,
+                            SlackChannel = opts.SlackChannel,
+                            SlackSecret = opts.SlackSecret
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Compress);
@@ -49,7 +51,9 @@ namespace TCC.Parser
                             FailFast = opts.FailFast,
                             Verbose = opts.Verbose,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
-                            Threads = ExtractThreads(opts)
+                            Threads = ExtractThreads(opts),
+                            SlackChannel = opts.SlackChannel,
+                            SlackSecret = opts.SlackSecret
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Decompress);
