@@ -18,7 +18,7 @@ namespace TCC.Lib.Command
         private static Task<CommandResult> Run(this string command, string workingDirectory,
             CancellationToken cancellationToken, IProcessOutputClassifier outputClassifier, TimeSpan? timeout = null)
         {
-            TimeSpan timeOutSpan = timeout ?? TimeSpan.FromMinutes(120);
+            TimeSpan timeOutSpan = timeout ?? TimeSpan.FromHours(12);
 
             Process process = CreateProcess(command, workingDirectory);
 

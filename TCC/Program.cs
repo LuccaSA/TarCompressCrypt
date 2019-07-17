@@ -64,6 +64,14 @@ namespace TCC
             }
         }
 
+
+        public class SlackReport
+        {
+            public string BlockName { get; set; }
+            public string Message { get; set; }
+            public AlertLevel Alert { get; set; }
+        }
+
         private static async Task ReportOperationSlackAsync(OperationSummary op, TccOption parsedOption, Mode mode)
         {
             if (string.IsNullOrWhiteSpace(parsedOption.SlackSecret) ||
@@ -72,83 +80,34 @@ namespace TCC
                 return;
             }
 
-            var msg = new SlackMessage()
+            var msg = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
                 Text = $"*{mode} report* [{Environment.MachineName}]",
                 Attachments = new List<Attachment>()
             };
 
-            switch (mode)
+            var reports = new List<SlackReport>();
+            foreach (var o in op.OperationBlocks)
             {
-                case Mode.Compress:
-                    foreach (var o in op.OperationBlocks.OfType<OperationCompressionBlock>())
+                ExtractSlackReports(o, reports);
+            }
+
+            foreach (var ga in reports.GroupBy(i => i.Alert))
+            {
+                foreach (var grp in ga.GroupBy(g => g.Message))
+                {
+                    msg.Attachments.Add(new Attachment
                     {
-                        var errors = o.BlockResults
-                            .Where(i => i.CommandResult.HasError)
-                            .Select(i => new Field { Title = i.Block.BlockName, Value = i.CommandResult.Errors, Short = true })
-                            .ToArray();
-
-                        var warning = o.BlockResults.Where(i => i.CommandResult.Infos.Any())
-                            .Select(i => new Field { Title = i.Block.BlockName, Value = string.Join(Environment.NewLine, i.CommandResult.Infos) })
-                            .ToArray();
-
-                        if (errors.Length != 0)
+                        Color = ga.Key.ToSlackColor(),
+                        Title = grp.Key,
+                        Fields = grp.Select(d => new Field
                         {
-                            msg.Attachments.Add(new Attachment
-                            {
-                                Color = AlertLevel.Error.ToSlackColor(),
-                                Title = "Compression Errors",
-                                Fields = errors
-                            });
-                        }
-
-                        if (warning.Length != 0)
-                        {
-                            msg.Attachments.Add(new Attachment
-                            {
-                                Color = AlertLevel.Warning.ToSlackColor(),
-                                Title = "Compression warnings",
-                                Fields = warning
-                            });
-                        }
-                    }
-                    break;
-                case Mode.Decompress:
-                    foreach (var o in op.OperationBlocks.OfType<OperationDecompressionsBlock>())
-                    {
-                        var errors = o.BlockResults
-                            .Where(i => i.CommandResult.HasError)
-                            .Select(i => new Field { Title = i.Block.BlockName, Value = i.CommandResult.Errors, Short = true })
-                            .ToArray();
-
-                        var warning = o.BlockResults.Where(i => i.CommandResult.Infos.Any())
-                            .Select(i => new Field { Title = i.Block.BlockName, Value = string.Join(Environment.NewLine, i.CommandResult.Infos) })
-                            .ToArray();
-
-                        if (errors.Length != 0)
-                        {
-                            msg.Attachments.Add(new Attachment
-                            {
-                                Color = AlertLevel.Error.ToSlackColor(),
-                                Title = "Compression Errors",
-                                Fields = errors
-                            });
-                        }
-
-                        if (warning.Length != 0)
-                        {
-                            msg.Attachments.Add(new Attachment
-                            {
-                                Color = AlertLevel.Warning.ToSlackColor(),
-                                Title = "Compression warnings",
-                                Fields = warning
-                            });
-                        }
-                    }
-                    break; 
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+                            Value = d.BlockName,
+                            Short = true
+                        }).ToArray()
+                    });
+                }
             }
 
             if (op.OperationBlocks.Any())
@@ -170,6 +129,10 @@ namespace TCC
                         new Field
                         {
                             Value = $"Average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}", Short = true
+                        },
+                        new Field
+                        {
+                            Value = $"Total job size : {op.OperationBlocks.SelectMany(i => i.BlockResults).Sum(i => i.Block.CompressedSize).HumanizeSize()}", Short = true
                         }
                     }
                 });
@@ -184,6 +147,49 @@ namespace TCC
             }
 
             await SlackNotifier.SendSlackMessageAsync(msg, parsedOption.SlackSecret);
+        }
+
+        private static void ExtractSlackReports(OperationBlock block, List<SlackReport> reports)
+        {
+            foreach (var v in block.BlockResults.Where(i => i.CommandResult.HasError))
+            {
+                reports.Add(new SlackReport
+                {
+                    BlockName = v.Block.BlockName,
+                    Message = v.CommandResult.Errors,
+                    Alert = AlertLevel.Error
+                });
+            }
+
+            foreach (var v in block.BlockResults.Where(i => i.CommandResult.Infos.Any()))
+            {
+                foreach (var inf in v.CommandResult.Infos)
+                {
+                    if (String.IsNullOrWhiteSpace(inf))
+                    {
+                        continue;
+                    }
+
+                    if (inf.EndsWith("file changed as we read it"))
+                    {
+                        reports.Add(new SlackReport
+                        {
+                            BlockName = v.Block.BlockName,
+                            Message = "Files created or modified while compressing",
+                            Alert = AlertLevel.Warning
+                        });
+                    }
+                    else
+                    {
+                        reports.Add(new SlackReport
+                        {
+                            BlockName = v.Block.BlockName,
+                            Message = inf,
+                            Alert = AlertLevel.Info
+                        });
+                    }
+                }
+            }
         }
 
         private static void ReportOperationConsole(OperationSummary op)
