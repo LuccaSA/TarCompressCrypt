@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 
 namespace TCC.Lib.Helpers
@@ -21,6 +22,17 @@ namespace TCC.Lib.Helpers
                 ordinal++;
             }
             return String.Format("{0:n" + decimals + "} {1}b/s", Math.Round(rate, decimals, MidpointRounding.AwayFromZero), ordinals[ordinal]);
+        }
+
+        public static String HumanizeSize(this long size)
+        {
+            string[] suf = { "B", "Ko", "Mo", "Go", "To", "Po", "Eo" };
+            if (size == 0)
+                return "0" + suf[0];
+            long bytes = Math.Abs(size);
+            int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
+            double num = Math.Round(bytes / Math.Pow(1024, place), 1);
+            return (Math.Sign(size) * num).ToString(CultureInfo.InvariantCulture) + " " + suf[place];
         }
 
         public static string HumanizedTimeSpan(this TimeSpan t, int parts = 2)

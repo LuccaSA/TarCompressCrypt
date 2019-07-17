@@ -30,6 +30,10 @@ namespace TCC.Lib.Command
             {
                 return true;
             }
+            if (line.EndsWith("file changed as we read it"))
+            {
+                return true;
+            }
             return false;
         }
 
