@@ -107,17 +107,14 @@ namespace TCC.Lib.Blocks
 
                         if (diff == null && full == null)
                         {
-                            // Archives in this directory ??
-                            throw new NotImplementedException();
-
-                            //foreach (FileInfo fi in srcDir.EnumerateArchives())
-                            //{
-                            //    yielded = true;
-                            //    yield return new DecompressionBatch
-                            //    {
-                            //        BackupFull = GenerateDecompressBlock(fi, dstDir, AlgoFromExtension(fi.Extension))
-                            //    };
-                            //}
+                            foreach (FileInfo fi in dir.EnumerateArchives())
+                            {
+                                yielded = true;
+                                yield return new DecompressionBatch
+                                {
+                                    BackupFull = GenerateDecompressBlock(fi, dstDir, AlgoFromExtension(fi.Extension))
+                                };
+                            }
                         }
                         else
                         {
