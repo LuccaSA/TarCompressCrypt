@@ -64,15 +64,11 @@ namespace TCC.Lib
                     {
                         string cmd = _compressionCommands.CompressCommand(block, option);
                         result = await cmd.Run(block.OperationFolder, token);
-                        _logger.LogInformation($"Compressed {block.Source} on {result?.Elapsed.HumanizedTimeSpan(2)}, {block.DestinationArchiveFileInfo.Length.HumanizeSize()}, {block.DestinationArchiveFileInfo.FullName}");
-                        if (result?.Errors.Any() ?? false)
-                        {
-                            _logger.LogWarning($"Compressed {block.Source} with errors : {result.Errors}");
-                        }
+                        LogReport(block, result);
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, $"Error compressing {block.Source}");
+                        _logger.LogCritical(e, $"Error compressing {block.Source}");
                     }
                     return new OperationCompressionBlock(block, result);
                 }, po)
@@ -171,11 +167,7 @@ namespace TCC.Lib
                 string cmd = _compressionCommands.DecompressCommand(block, option);
                 result = await cmd.Run(block.OperationFolder, token);
 
-                _logger.LogInformation($"Decompressed {block.Source} on {result?.Elapsed.HumanizedTimeSpan(2)}, {block.SourceArchiveFileInfo.Length.HumanizeSize()}, {block.SourceArchiveFileInfo.FullName}");
-                if (result?.Errors.Any() ?? false)
-                {
-                    _logger.LogWarning($"Compressed {block.Source} with errors : {result.Errors}");
-                }
+                LogReport(block, result);
             }
             catch (Exception e)
             {
@@ -183,6 +175,7 @@ namespace TCC.Lib
             }
             return result;
         }
+
 
         private TccBackupDbContext BackupDb()
         {
@@ -436,6 +429,37 @@ namespace TCC.Lib
             }
 
             await db.SaveChangesAsync();
+        }
+
+
+        private void LogReport(CompressionBlock block, CommandResult result)
+        {
+            _logger.LogInformation($"Compressed {block.Source} in {result?.Elapsed.HumanizedTimeSpan(2)}, {block.DestinationArchiveFileInfo.Length.HumanizeSize()}, {block.DestinationArchiveFileInfo.FullName}");
+
+            if (result?.Infos.Any() ?? false)
+            {
+                _logger.LogWarning($"Compressed {block.Source} with warning : {string.Join(Environment.NewLine, result.Infos)}");
+            }
+
+            if (result?.HasError ?? false)
+            {
+                _logger.LogError($"Compressed {block.Source} with errors : {result.Errors}");
+            }
+        }
+
+        private void LogReport(DecompressionBlock block, CommandResult result)
+        {
+            _logger.LogInformation($"Decompressed {block.Source} in {result?.Elapsed.HumanizedTimeSpan(2)}, {block.SourceArchiveFileInfo.Length.HumanizeSize()}, {block.SourceArchiveFileInfo.FullName}");
+
+            if (result?.Infos.Any() ?? false)
+            {
+                _logger.LogWarning($"Decompressed {block.Source} with warning : {string.Join(Environment.NewLine, result.Infos)}");
+            }
+
+            if (result?.HasError ?? false)
+            {
+                _logger.LogError($"Decompressed {block.Source} with errors : {result.Errors}");
+            }
         }
     }
 }

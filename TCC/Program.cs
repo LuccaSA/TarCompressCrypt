@@ -45,13 +45,14 @@ namespace TCC
                 IServiceProvider provider = serviceCollection.BuildServiceProvider();
                 using (var scope = provider.CreateScope())
                 {
+                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<TarCompressCrypt>>();
                     scope.ServiceProvider.GetRequiredService<CancellationTokenSource>().HookTermination();
                     await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
+                    logger.LogInformation($"Starting ------------------------------------------------- {DateTime.UtcNow}");
 
                     op = await RunTcc(scope.ServiceProvider, parsed);
 
                     report = ReportOperationStats(op).ToList();
-                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<TarCompressCrypt>>();
                     foreach (var line in report.Where(i=>!string.IsNullOrEmpty(i)))
                     {
                         logger.LogInformation(line);
