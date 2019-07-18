@@ -79,9 +79,9 @@ namespace TCC
                 Console.Error.WriteLine("Error : " + r.Errors);
             }
 
-            if (!String.IsNullOrEmpty(r.Output))
+            if (!String.IsNullOrEmpty(r.Infos))
             {
-                Console.Out.WriteLine("Info : " + r.Errors);
+                Console.Out.WriteLine("Info : " + r.Infos);
             }
         }
 

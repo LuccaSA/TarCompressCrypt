@@ -57,7 +57,7 @@ namespace TCC.Lib.Command
                     Output = string.Join(Environment.NewLine, stdout),
                     Errors = string.Join(Environment.NewLine, stderr),
                     Infos = standardInfos,
-                    ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
+                    Elapsed = stopwatch.Elapsed
                 };
 
                 tcs.TrySetResult(result);
