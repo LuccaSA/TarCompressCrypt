@@ -23,7 +23,8 @@ namespace TCC
             var loggerConfiguration = new LoggerConfiguration()
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
                 .MinimumLevel.Verbose()
-                .WriteTo.File(path);
+                .WriteTo
+                .File(path, rollingInterval: RollingInterval.Day);
 
             if (optionVerbose)
             {

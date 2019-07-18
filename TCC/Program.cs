@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
@@ -38,6 +39,7 @@ namespace TCC
             }
 
             OperationSummary op = null;
+            List<string> report = null;
             try
             {
                 IServiceProvider provider = serviceCollection.BuildServiceProvider();
@@ -47,6 +49,13 @@ namespace TCC
                     await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
 
                     op = await RunTcc(scope.ServiceProvider, parsed);
+
+                    report = ReportOperationStats(op).ToList();
+                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<TarCompressCrypt>>();
+                    foreach (var line in report.Where(i=>!string.IsNullOrEmpty(i)))
+                    {
+                        logger.LogInformation(line);
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -54,7 +63,14 @@ namespace TCC
                 Console.WriteLine("Operation canceled, shutting down");
             }
 
-            ReportOperationConsole(op);
+            if (report != null)
+            {
+                foreach (var line in report)
+                {
+                    Console.WriteLine(line);
+                }
+            }
+
             await ReportOperationSlackAsync(op, parsed.Option, parsed.Mode);
 
             Serilog.Log.CloseAndFlush();
@@ -192,11 +208,11 @@ namespace TCC
             }
         }
 
-        private static void ReportOperationConsole(OperationSummary op)
+        private static IEnumerable<string> ReportOperationStats(OperationSummary op)
         {
             if (op == null)
             {
-                return;
+                yield break;
             }
 
             if (op.OperationBlocks.Any())
@@ -214,16 +230,16 @@ namespace TCC
 
                 if (!string.IsNullOrEmpty(report))
                 {
-                    Console.WriteLine();
-                    Console.WriteLine(report);
+                    yield return string.Empty;
+                    yield return report;
                 }
             }
             else
             {
-                Console.WriteLine("WARNING : No archive candidate for extraction");
+                yield return "WARNING : No archive candidate for extraction";
                 if (op.Stopwatch != null)
                 {
-                    Console.WriteLine($"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}");
+                    yield return $"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}";
                 }
             }
         }
