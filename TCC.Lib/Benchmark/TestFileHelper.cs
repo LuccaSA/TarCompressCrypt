@@ -79,13 +79,11 @@ namespace TCC.Lib.Benchmark
             const int blocksPerKb = (1024) / blockSize;
             byte[] data = new byte[blockSize];
             var rng = RandomNumberGenerator.Create();
-            using (FileStream stream = File.OpenWrite(fileName))
+            using FileStream stream = File.OpenWrite(fileName);
+            for (int i = 0; i < sizeInKb * blocksPerKb; i++)
             {
-                for (int i = 0; i < sizeInKb * blocksPerKb; i++)
-                {
-                    rng.GetBytes(data);
-                    await stream.WriteAsync(data, 0, data.Length);
-                }
+                rng.GetBytes(data);
+                await stream.WriteAsync(data, 0, data.Length);
             }
         }
 
@@ -98,14 +96,12 @@ namespace TCC.Lib.Benchmark
             byte[] data = new byte[blockSize];
             var rng = RandomNumberGenerator.Create();
 
-            using (FileStream stream = File.OpenWrite(fileName))
+            using FileStream stream = File.OpenWrite(fileName);
+            for (int i = 0; i < sizeInKb * blocksPerKb; i++)
             {
-                for (int i = 0; i < sizeInKb * blocksPerKb; i++)
-                {
-                    rng.GetBytes(data);
-                    byte[] alpha = data.Select(d => (byte)chars[d % chars.Length]).ToArray();
-                    await stream.WriteAsync(alpha, 0, alpha.Length);
-                }
+                rng.GetBytes(data);
+                byte[] alpha = data.Select(d => (byte)chars[d % chars.Length]).ToArray();
+                await stream.WriteAsync(alpha, 0, alpha.Length);
             }
         }
 
@@ -115,10 +111,8 @@ namespace TCC.Lib.Benchmark
             try
             {
                 stream = File.OpenWrite(fileName);
-                using (var writer = new StreamWriter(stream))
-                {
-                    writer.WriteLine(content);
-                }
+                using var writer = new StreamWriter(stream);
+                writer.WriteLine(content);
             }
             finally
             {

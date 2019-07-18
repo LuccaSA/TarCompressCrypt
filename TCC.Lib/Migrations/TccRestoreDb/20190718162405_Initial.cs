@@ -1,14 +1,14 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace TCC.Lib.Migrations.TccBackupDb
+namespace TCC.Lib.Migrations.TccRestoreDb
 {
     public partial class Initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "BackupJobs",
+                name: "RestoreJobs",
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
@@ -18,19 +18,18 @@ namespace TCC.Lib.Migrations.TccBackupDb
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BackupJobs", x => x.Id);
+                    table.PrimaryKey("PK_RestoreJobs", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "BackupBlockJobs",
+                name: "RestoreBlockJobs",
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     JobId = table.Column<int>(nullable: false),
-                    JobId1 = table.Column<int>(nullable: true),
                     BackupMode = table.Column<int>(nullable: false),
-                    FullSourcePath = table.Column<string>(nullable: true),
+                    FullDestinationPath = table.Column<string>(nullable: true),
                     StartTime = table.Column<DateTime>(nullable: false),
                     Duration = table.Column<TimeSpan>(nullable: false),
                     Size = table.Column<long>(nullable: false),
@@ -39,44 +38,33 @@ namespace TCC.Lib.Migrations.TccBackupDb
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BackupBlockJobs", x => x.Id);
+                    table.PrimaryKey("PK_RestoreBlockJobs", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_BackupBlockJobs_BackupJobs_JobId",
+                        name: "FK_RestoreBlockJobs_RestoreJobs_JobId",
                         column: x => x.JobId,
-                        principalTable: "BackupJobs",
+                        principalTable: "RestoreJobs",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_BackupBlockJobs_BackupJobs_JobId1",
-                        column: x => x.JobId1,
-                        principalTable: "BackupJobs",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_BackupBlockJobs_JobId",
-                table: "BackupBlockJobs",
+                name: "IX_RestoreBlockJobs_JobId",
+                table: "RestoreBlockJobs",
                 column: "JobId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_BackupBlockJobs_JobId1",
-                table: "BackupBlockJobs",
-                column: "JobId1");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_BackupBlockJobs_StartTime",
-                table: "BackupBlockJobs",
+                name: "IX_RestoreBlockJobs_StartTime",
+                table: "RestoreBlockJobs",
                 column: "StartTime");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "BackupBlockJobs");
+                name: "RestoreBlockJobs");
 
             migrationBuilder.DropTable(
-                name: "BackupJobs");
+                name: "RestoreJobs");
         }
     }
 }

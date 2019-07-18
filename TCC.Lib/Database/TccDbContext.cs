@@ -13,13 +13,15 @@ namespace TCC.Lib.Database
         {
             modelBuilder.Entity<BackupJob>()
                 .HasMany(i => i.BlockJobs)
-                .WithOne()
-                .HasForeignKey(i => i.JobId)
+                .WithOne(i => i.Job)
                 .IsRequired();
 
             modelBuilder.Entity<BackupBlockJob>()
                 .HasIndex(i => i.StartTime);
-            
+
+            modelBuilder.Entity<BackupBlockJob>()
+                .HasIndex(p => new { p.FullSourcePath, p.StartTime });
+
             base.OnModelCreating(modelBuilder);
         }
     }
@@ -35,8 +37,7 @@ namespace TCC.Lib.Database
         {
             modelBuilder.Entity<RestoreJob>()
                 .HasMany(i => i.BlockJobs)
-                .WithOne()
-                .HasForeignKey(i => i.JobId)
+                .WithOne(i => i.Job)
                 .IsRequired();
 
             modelBuilder.Entity<RestoreBlockJob>()

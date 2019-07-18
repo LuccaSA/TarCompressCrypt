@@ -31,6 +31,7 @@ namespace TCC.Lib.Helpers
             services.AddScoped<BenchmarkIterationGenerator>();
             services.AddScoped(_ => new CancellationTokenSource());
             services.AddScoped<DatabaseSetup>();
+            services.AddScoped<DatabaseHelper>();
 
             services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString, workingPath);
             services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString, workingPath);

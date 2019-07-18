@@ -52,7 +52,7 @@ namespace TCC
 
                     op = await RunTcc(scope.ServiceProvider, parsed);
 
-                    report = ReportOperationStats(op).ToList();
+                    report = ReportOperationStats(op, parsed.Mode).ToList();
                     foreach (var line in report.Where(i => !string.IsNullOrEmpty(i)))
                     {
                         logger.LogInformation(line);
@@ -71,7 +71,7 @@ namespace TCC
                     Console.WriteLine(line);
                 }
             }
-            
+
             await SlackSender.ReportAsync(op, parsed.Option, parsed.Mode);
 
             Serilog.Log.CloseAndFlush();
@@ -81,7 +81,7 @@ namespace TCC
             }
         }
 
-        private static IEnumerable<string> ReportOperationStats(OperationSummary op)
+        private static IEnumerable<string> ReportOperationStats(OperationSummary op, Mode mode)
         {
             if (op == null)
             {
@@ -109,7 +109,7 @@ namespace TCC
             }
             else
             {
-                yield return "WARNING : No archive candidate for extraction";
+                yield return $"WARNING : No candidate for {mode}";
                 if (op.Stopwatch != null)
                 {
                     yield return $"Finished in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}";

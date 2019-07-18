@@ -174,23 +174,21 @@ namespace TCC.Lib.Command
 
         private static void KillProcessAndChildren(int pid)
         {
-            using (var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid))
+            using var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid);
+            var moc = searcher.Get();
+            foreach (var o in moc)
             {
-                var moc = searcher.Get();
-                foreach (var o in moc)
-                {
-                    var mo = (ManagementObject)o;
-                    KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
-                }
-                try
-                {
-                    var proc = Process.GetProcessById(pid);
-                    proc.Kill();
-                }
-                catch (Exception)
-                {
-                    // Process already exited.
-                }
+                var mo = (ManagementObject)o;
+                KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
+            }
+            try
+            {
+                var proc = Process.GetProcessById(pid);
+                proc.Kill();
+            }
+            catch (Exception)
+            {
+                // Process already exited.
             }
         }
     }
