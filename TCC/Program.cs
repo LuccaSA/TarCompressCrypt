@@ -53,7 +53,7 @@ namespace TCC
                     op = await RunTcc(scope.ServiceProvider, parsed);
 
                     report = ReportOperationStats(op).ToList();
-                    foreach (var line in report.Where(i=>!string.IsNullOrEmpty(i)))
+                    foreach (var line in report.Where(i => !string.IsNullOrEmpty(i)))
                     {
                         logger.LogInformation(line);
                     }
@@ -71,178 +71,13 @@ namespace TCC
                     Console.WriteLine(line);
                 }
             }
-
-            await ReportOperationSlackAsync(op, parsed.Option, parsed.Mode);
+            
+            await SlackSender.ReportAsync(op, parsed.Option, parsed.Mode);
 
             Serilog.Log.CloseAndFlush();
             if (op == null || !op.IsSuccess)
             {
                 Environment.Exit(1);
-            }
-        }
-
-
-        public class SlackReport
-        {
-            public string BlockName { get; set; }
-            public string Message { get; set; }
-            public AlertLevel Alert { get; set; }
-        }
-
-        private static async Task ReportOperationSlackAsync(OperationSummary op, TccOption parsedOption, Mode mode)
-        {
-            if (string.IsNullOrWhiteSpace(parsedOption.SlackSecret) ||
-                string.IsNullOrWhiteSpace(parsedOption.SlackChannel))
-            {
-                return;
-            }
-
-            string shell = ":greenshell:";
-            if (!op.OperationBlocks.Any())
-            {
-                shell = ":redshell:";
-            }
-            else
-            {
-                foreach (var result in op.OperationBlocks.SelectMany(i => i.BlockResults))
-                {
-                    if (result.CommandResult.HasError)
-                    {
-                        shell = ":redshell:";
-                        break;
-                    }
-                    if (result.CommandResult.Infos.Any())
-                    {
-                        shell = ":warning:";
-                    }
-                }
-            }
-
-            var msgRoot = new SlackMessage
-            {
-                Channel = parsedOption.SlackChannel,
-                Text = $"*{Environment.MachineName}* : {shell} {mode} {op.OperationBlocks.Count()} blocks",
-            };  
-            var response = await SlackNotifier.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
-           
-            var msgDetail = new SlackMessage
-            {
-                Channel = parsedOption.SlackChannel,
-                Text = $"*{mode}* details on {Environment.MachineName}",
-                Thread_Ts = response.Ts,
-                Attachments = new List<Attachment>()
-            };
-
-            SlackReportDetail(op, parsedOption, msgDetail);
-            await SlackNotifier.SendSlackMessageAsync(msgDetail, parsedOption.SlackSecret);
-        }
-
-        private static void SlackReportDetail(OperationSummary op, TccOption parsedOption, SlackMessage msg)
-        {
-            var reports = new List<SlackReport>();
-            foreach (var o in op.OperationBlocks)
-            {
-                ExtractSlackReports(o, reports);
-            }
-
-            foreach (var ga in reports.GroupBy(i => i.Alert))
-            {
-                foreach (var grp in ga.GroupBy(g => g.Message))
-                {
-                    msg.Attachments.Add(new Attachment
-                    {
-                        Color = ga.Key.ToSlackColor(),
-                        Title = grp.Key,
-                        Fields = grp.Select(d => new Field
-                        {
-                            Value = d.BlockName,
-                            Short = true
-                        }).ToArray()
-                    });
-                }
-            }
-
-            if (op.OperationBlocks.Any())
-            {
-                msg.Attachments.Add(new Attachment
-                {
-                    Color = AlertLevel.Info.ToSlackColor(),
-                    Title = $"Statistics",
-                    Fields = new[]
-                    {
-                        new Field
-                        {
-                            Value = $"Input : {parsedOption.SourceDirOrFile}", Short = true
-                        },
-                        new Field
-                        {
-                            Value =
-                                $"{op.OperationBlocks.Count()} blocks processed in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}",
-                            Short = true
-                        },
-                        new Field
-                        {
-                            Value = $"Average throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}", Short = true
-                        },
-                        new Field
-                        {
-                            Value =
-                                $"Total job size : {op.OperationBlocks.SelectMany(i => i.BlockResults).Sum(i => i.Block.CompressedSize).HumanizeSize()}",
-                            Short = true
-                        }
-                    }
-                });
-            }
-            else
-            {
-                msg.Attachments.Add(new Attachment
-                {
-                    Color = AlertLevel.Error.ToSlackColor(),
-                    Title = "Nothing processed !!!"
-                });
-            }
-        }
-
-        private static void ExtractSlackReports(OperationBlock block, List<SlackReport> reports)
-        {
-            foreach (var v in block.BlockResults.Where(i => i.CommandResult.HasError))
-            {
-                reports.Add(new SlackReport
-                {
-                    BlockName = v.Block.BlockName,
-                    Message = v.CommandResult.Errors,
-                    Alert = AlertLevel.Error
-                });
-            }
-
-            foreach (var v in block.BlockResults.Where(i => i.CommandResult.Infos.Any()))
-            {
-                foreach (var inf in v.CommandResult.Infos)
-                {
-                    if (String.IsNullOrWhiteSpace(inf))
-                    {
-                        continue;
-                    }
-
-                    if (inf.EndsWith("file changed as we read it"))
-                    {
-                        reports.Add(new SlackReport
-                        {
-                            BlockName = v.Block.BlockName,
-                            Message = "Files created or modified while compressing",
-                            Alert = AlertLevel.Warning
-                        });
-                    }
-                    else
-                    {
-                        reports.Add(new SlackReport
-                        {
-                            BlockName = v.Block.BlockName,
-                            Message = inf,
-                            Alert = AlertLevel.Info
-                        });
-                    }
-                }
             }
         }
 
@@ -308,26 +143,31 @@ namespace TCC
 
         private static async Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {
-            await provider.GetRequiredService<DatabaseSetup>().EnsureDatabaseExistsAsync(command.Mode);
+            var db = provider.GetRequiredService<DatabaseSetup>();
+            await db.EnsureDatabaseExistsAsync(command.Mode);
+            OperationSummary op;
             switch (command.Mode)
             {
                 case Mode.Compress:
-                    return await provider
+                    op = await provider
                         .GetRequiredService<TarCompressCrypt>()
                         .Compress(command.Option as CompressOption);
-
+                    break;
                 case Mode.Decompress:
-                    return await provider
+                    op = await provider
                         .GetRequiredService<TarCompressCrypt>()
                         .Decompress(command.Option as DecompressOption);
-
+                    break;
                 case Mode.Benchmark:
-                    return await provider
+                    op = await provider
                         .GetRequiredService<BenchmarkRunner>()
                         .RunBenchmark(command.BenchmarkOption);
+                    break;
                 default:
                     throw new NotImplementedException();
             }
+            await db.CleanupDatabaseAsync(command.Mode);
+            return op;
         }
     }
 }

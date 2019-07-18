@@ -53,5 +53,33 @@ namespace TCC.Lib.Database
                 }
             }
         }
+
+        public async Task CleanupDatabaseAsync(Mode commandMode)
+        {
+            if (commandMode.HasFlag(Mode.Compress))
+            { 
+                await _tccBackupDbContext.Database.ExecuteSqlRawAsync(_cleanBlockJobs);
+                await _tccBackupDbContext.Database.ExecuteSqlRawAsync(_cleanJobs);
+            }
+
+            if (commandMode.HasFlag(Mode.Decompress))
+            {
+
+
+            }
+        }
+
+        private const string _cleanBlockJobs = @"
+DELETE FROM BackupBlockJobs 
+WHERE Id IN (
+    SELECT b.Id 
+    FROM BackupBlockJobs b
+    WHERE ( SELECT b.StartTime >= c.StartTime FROM BackupBlockJobs c
+	        WHERE c.BackupMode = 1 AND c.FullSourcePath = b.FullSourcePath 
+		    ORDER BY c.StartTime DESC) = 0 )";
+
+        private const string _cleanJobs = @"DELETE
+ FROM BackupJobs
+ WHERE Id NOT IN (SELECT c.JobId FROM BackupBlockJobs c)";
     }
 }

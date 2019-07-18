@@ -8,7 +8,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace TCC.Notification
 {
-    public class SlackNotifier
+    public class SlackClient
     {
         public static async Task<SlackResponse> SendSlackMessageAsync(SlackMessage message, string slackSecret)
         {
@@ -44,7 +44,6 @@ namespace TCC.Notification
             }
         }
     }
-
 
     public class SlackMessage
     {
@@ -122,5 +121,4 @@ namespace TCC.Notification
         public string Subtype { get; set; }
         public string Ts { get; set; }
     }
-
 }

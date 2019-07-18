@@ -350,7 +350,8 @@ namespace TCC.Lib
                     Duration = TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
                     Size = ocb.CompressionBlock.CompressedSize,
                     Exception = ocb.BlockResults.First().CommandResult.Errors,
-                    Success = ocb.BlockResults.First().CommandResult.IsSuccess
+                    Success = ocb.BlockResults.First().CommandResult.IsSuccess,
+                    BackupMode = ocb.CompressionBlock.BackupMode ?? BackupMode.Full
                 };
                 db.BackupBlockJobs.Add(bbj);
                 await db.SaveChangesAsync();

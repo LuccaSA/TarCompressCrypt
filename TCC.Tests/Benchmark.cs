@@ -19,6 +19,7 @@ namespace TCC.Tests
         {
             var services = new ServiceCollection();
             services.AddTcc();
+            services.AddLogging();
             services.PostConfigure<TccSettings>(i =>
             {
                 i.BackupConnectionString = "Data Source=test_tcc.db";
