@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TCC.Lib.Database;
 
 namespace TCC.Lib.Migrations.TccRestoreDb
@@ -30,8 +31,6 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
                     b.Property<int>("JobId");
 
-                    b.Property<int?>("JobId1");
-
                     b.Property<long>("Size");
 
                     b.Property<DateTime>("StartTime");
@@ -41,8 +40,6 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                     b.HasKey("Id");
 
                     b.HasIndex("JobId");
-
-                    b.HasIndex("JobId1");
 
                     b.HasIndex("StartTime");
 
@@ -65,15 +62,11 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
             modelBuilder.Entity("TCC.Lib.Database.RestoreBlockJob", b =>
                 {
-                    b.HasOne("TCC.Lib.Database.RestoreJob", null)
+                    b.HasOne("TCC.Lib.Database.RestoreJob", "Job")
                         .WithMany("BlockJobs")
                         .HasForeignKey("JobId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("TCC.Lib.Database.RestoreJob", "Job")
-                        .WithMany()
-                        .HasForeignKey("JobId1");
                 });
 #pragma warning restore 612, 618
         }
