@@ -16,11 +16,8 @@ namespace TCC.Lib.Database
                 .WithOne(i => i.Job)
                 .IsRequired();
 
-            modelBuilder.Entity<BackupBlockJob>()
-                .HasIndex(i => i.StartTime);
-
-            modelBuilder.Entity<BackupBlockJob>()
-                .HasIndex(p => new { p.FullSourcePath, p.StartTime });
+            modelBuilder.Entity<BackupBlockJob>().HasIndex(i => i.StartTime);
+            modelBuilder.Entity<BackupBlockJob>().HasIndex(p => new { p.FullSourcePath, p.StartTime });
 
             base.OnModelCreating(modelBuilder);
         }
@@ -40,8 +37,8 @@ namespace TCC.Lib.Database
                 .WithOne(i => i.Job)
                 .IsRequired();
 
-            modelBuilder.Entity<RestoreBlockJob>()
-                .HasIndex(i => i.StartTime);
+            modelBuilder.Entity<RestoreBlockJob>().HasIndex(i => i.StartTime);
+            modelBuilder.Entity<RestoreBlockJob>().HasIndex(p => new { p.FullDestinationPath, p.StartTime });
 
             base.OnModelCreating(modelBuilder);
         }

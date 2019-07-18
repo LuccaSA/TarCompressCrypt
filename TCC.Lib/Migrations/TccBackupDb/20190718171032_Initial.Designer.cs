@@ -9,7 +9,7 @@ using TCC.Lib.Database;
 namespace TCC.Lib.Migrations
 {
     [DbContext(typeof(TccBackupDbContext))]
-    [Migration("20190718162334_Initial")]
+    [Migration("20190718171032_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

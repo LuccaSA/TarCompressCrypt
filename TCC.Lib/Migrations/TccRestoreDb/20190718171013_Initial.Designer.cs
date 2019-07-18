@@ -9,7 +9,7 @@ using TCC.Lib.Database;
 namespace TCC.Lib.Migrations.TccRestoreDb
 {
     [DbContext(typeof(TccRestoreDbContext))]
-    [Migration("20190718162405_Initial")]
+    [Migration("20190718171013_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -44,6 +44,8 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                     b.HasIndex("JobId");
 
                     b.HasIndex("StartTime");
+
+                    b.HasIndex("FullDestinationPath", "StartTime");
 
                     b.ToTable("RestoreBlockJobs");
                 });
