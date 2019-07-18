@@ -56,30 +56,84 @@ namespace TCC.Lib.Database
 
         public async Task CleanupDatabaseAsync(Mode commandMode)
         {
+            await Task.CompletedTask;
+
             if (commandMode.HasFlag(Mode.Compress))
-            { 
-                await _tccBackupDbContext.Database.ExecuteSqlRawAsync(_cleanBlockJobs);
-                await _tccBackupDbContext.Database.ExecuteSqlRawAsync(_cleanJobs);
+            {
+                // Remove Full and Diff older than the last Full
+                var paths = await _tccBackupDbContext.BackupBlockJobs
+                    .Select(i => i.FullSourcePath)
+                    .Distinct()
+                    .ToListAsync();
+
+                foreach (var p in paths)
+                {
+                    var lastFull = await _tccBackupDbContext.BackupBlockJobs
+                                            .Where(i => i.FullSourcePath == p && i.BackupMode == BackupMode.Full)
+                                            .OrderByDescending(i => i.StartTime)
+                                            .FirstOrDefaultAsync();
+                    if (lastFull != null)
+                    {
+                        var toDelete = await _tccBackupDbContext.BackupBlockJobs
+                            .Where(i => i.FullSourcePath == p && i.StartTime < lastFull.StartTime)
+                            .ToListAsync();
+                        if (toDelete.Count != 0)
+                        {
+                            _tccBackupDbContext.BackupBlockJobs.RemoveRange(toDelete);
+                        }
+                    }
+                }
+
+                await _tccBackupDbContext.SaveChangesAsync();
+
+                // Remove empty jobs
+                var jobsToDelete = await _tccBackupDbContext.BackupJobs.Where(i => !i.BlockJobs.Any()).ToListAsync();
+                if (jobsToDelete.Any())
+                {
+                    _tccBackupDbContext.BackupJobs.RemoveRange(jobsToDelete);
+
+                    await _tccBackupDbContext.SaveChangesAsync();
+                }
             }
 
             if (commandMode.HasFlag(Mode.Decompress))
             {
+                // Remove Full and Diff older than the last Full
+                var paths = await _tccRestoreDbContext.RestoreBlockJobs
+                    .Select(i => i.FullDestinationPath)
+                    .Distinct()
+                    .ToListAsync();
 
+                foreach (var p in paths)
+                {
+                    var lastFull = await _tccRestoreDbContext.RestoreBlockJobs
+                        .Where(i => i.FullDestinationPath == p && i.BackupMode == BackupMode.Full)
+                        .OrderByDescending(i => i.StartTime)
+                        .FirstOrDefaultAsync();
 
+                    if (lastFull != null)
+                    {
+                        var toDelete = await _tccRestoreDbContext.RestoreBlockJobs
+                            .Where(i => i.FullDestinationPath == p && i.StartTime < lastFull.StartTime)
+                            .ToListAsync();
+                        if (toDelete.Count != 0)
+                        {
+                            _tccRestoreDbContext.RestoreBlockJobs.RemoveRange(toDelete);
+                        }
+                    }
+                }
+
+                await _tccRestoreDbContext.SaveChangesAsync();
+
+                // Remove empty jobs
+                var jobsToDelete = await _tccRestoreDbContext.RestoreJobs.Where(i => !i.BlockJobs.Any()).ToListAsync();
+                if (jobsToDelete.Any())
+                {
+                    _tccRestoreDbContext.RestoreJobs.RemoveRange(jobsToDelete);
+
+                    await _tccRestoreDbContext.SaveChangesAsync();
+                }
             }
         }
-
-        private const string _cleanBlockJobs = @"
-DELETE FROM BackupBlockJobs 
-WHERE Id IN (
-    SELECT b.Id 
-    FROM BackupBlockJobs b
-    WHERE ( SELECT b.StartTime >= c.StartTime FROM BackupBlockJobs c
-	        WHERE c.BackupMode = 1 AND c.FullSourcePath = b.FullSourcePath 
-		    ORDER BY c.StartTime DESC) = 0 )";
-
-        private const string _cleanJobs = @"DELETE
- FROM BackupJobs
- WHERE Id NOT IN (SELECT c.JobId FROM BackupBlockJobs c)";
     }
 }
