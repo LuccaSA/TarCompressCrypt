@@ -16,6 +16,7 @@ namespace TCC.Lib.Blocks
         public int Total { get; }
         public abstract bool HasError { get; }
         public abstract string Output { get; }
+        public abstract string Infos { get; }
         public abstract string Errors { get; }
     }
 
@@ -31,6 +32,7 @@ namespace TCC.Lib.Blocks
         public CompressionBlock CompressionBlock { get; }
         public override bool HasError => Cmd.HasError;
         public override string Output => Cmd.Output;
+        public override string Infos => string.Join(Environment.NewLine, Cmd.Infos);
         public override string Errors => Cmd.Errors;
     }
 
@@ -66,6 +68,26 @@ namespace TCC.Lib.Blocks
                     }
                 }
                 return sb.ToString();
+            }
+        }
+
+        public override string Infos
+        {
+            get
+            {
+                var sb = new StringBuilder();
+                if (DecompressionBatch?.BackupFullCommandResult?.Infos.Any() ?? false)
+                {
+                    sb.AppendLine(string.Join(Environment.NewLine, DecompressionBatch.BackupFullCommandResult.Infos));
+                }
+                if (DecompressionBatch?.BackupDiffCommandResult != null)
+                {
+                    foreach (var cr in DecompressionBatch.BackupDiffCommandResult.Where(i => i.Infos.Any()))
+                    {
+                        sb.AppendLine(string.Join(Environment.NewLine, cr.Infos));
+                    }
+                }
+                return sb.ToString(); 
             }
         }
 

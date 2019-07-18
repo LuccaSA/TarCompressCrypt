@@ -13,91 +13,35 @@ namespace TCC.Lib.Helpers
             Func<T, TOrder, Task> itemMatch)
             where T : class
             where TOrder : class
-        {
-            var dic = new Dictionary<TProperty, List<T>>();
-            var queue = new Queue<TOrder>(order);
+        { 
+            var fromOrder = new List<T>();
 
-            var current = queue.Dequeue();
-            var currentProperty = orderPropertySelector(current);
+            var src = source
+                .GroupBy(sourcePropertySelector)
+                .ToDictionary(i=> i.Key, v => v.ToList());
 
-            bool queueEmpty = false;
-
-            foreach (var item in source)
+            foreach (var ord in order)
             {
-                var sourceProperty = sourcePropertySelector(item);
-
-                if (!queueEmpty && Equals(currentProperty, sourceProperty))
-                {
-                    await itemMatch(item, current);
-                    yield return item;
-
-                    if (queue.Count != 0)
-                    {
-                        current = queue.Dequeue();
-                        currentProperty = orderPropertySelector(current);
-                    }
-                    else
-                    {
-                        queueEmpty = true;
-                    }
-                }
-                else
-                {
-                    if (dic.ContainsKey(sourceProperty))
-                    {
-                        dic[sourceProperty].Add(item);
-                    }
-                    else
-                    {
-                        dic[sourceProperty] = new List<T> { item };
-                    }
-                }
+               var orderedProperty = orderPropertySelector(ord);
+               if (src.ContainsKey(orderedProperty))
+               {
+                   foreach (var i in src[orderedProperty])
+                   {
+                       await itemMatch(i, ord);
+                       fromOrder.Add(i);
+                   }
+                   src.Remove(orderedProperty);
+               }
             }
 
-            while (true)
+            foreach (var v in src.Values.SelectMany(i => i))
             {
-                if (!queueEmpty && dic.ContainsKey(currentProperty))
-                {
-                    foreach (var item in dic[currentProperty])
-                    {
-                        await itemMatch(item, current);
-                        yield return item;
-                    }
-                    dic.Remove(currentProperty);
-                }
-
-                if (queue.Count == 0)
-                {
-                    break;
-                }
-
-                current = queue.Dequeue();
-                currentProperty = orderPropertySelector(current);
+                yield return v;
             }
 
-            foreach (var item in dic.Values.SelectMany(i => i))
+            foreach (var v in fromOrder)
             {
-                await itemMatch(item, null);
-                yield return item;
-            }
-        }
-
-        public static IEnumerable<T> Foreach<T>(this IEnumerable<T> source, Action<T> action)
-        {
-            if (source == null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            if (action == null)
-            {
-                throw new ArgumentNullException(nameof(action));
-            }
-
-            foreach (T item in source)
-            {
-                action(item);
-                yield return item;
+                yield return v;
             }
         }
 

@@ -64,7 +64,7 @@ namespace TCC.Lib
                     {
                         string cmd = _compressionCommands.CompressCommand(block, option);
                         result = await cmd.Run(block.OperationFolder, token);
-                        _logger.LogInformation($"Compressed {block.Source} on {result?.ElapsedMilliseconds} ms, {block.DestinationArchiveFileInfo.Length} bytes, {block.DestinationArchiveFileInfo.FullName}");
+                        _logger.LogInformation($"Compressed {block.Source} on {result?.Elapsed.HumanizedTimeSpan(2)} ms, {block.DestinationArchiveFileInfo.Length.HumanizeSize()} bytes, {block.DestinationArchiveFileInfo.FullName}");
                         if (result?.Errors.Any() ?? false)
                         {
                             _logger.LogWarning($"Compressed {block.Source} with errors : {result.Errors}");
@@ -171,7 +171,7 @@ namespace TCC.Lib
                 string cmd = _compressionCommands.DecompressCommand(block, option);
                 result = await cmd.Run(block.OperationFolder, token);
 
-                _logger.LogInformation($"Decompressed {block.Source} on {result?.ElapsedMilliseconds} ms, {block.SourceArchiveFileInfo.Length} bytes, {block.SourceArchiveFileInfo.FullName}");
+                _logger.LogInformation($"Decompressed {block.Source} on {result?.Elapsed.HumanizedTimeSpan(2)} ms, {block.SourceArchiveFileInfo.Length.HumanizeSize()} bytes, {block.SourceArchiveFileInfo.FullName}");
                 if (result?.Errors.Any() ?? false)
                 {
                     _logger.LogWarning($"Compressed {block.Source} with errors : {result.Errors}");
