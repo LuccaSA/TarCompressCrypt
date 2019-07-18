@@ -43,6 +43,8 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
                     b.HasIndex("StartTime");
 
+                    b.HasIndex("FullDestinationPath", "StartTime");
+
                     b.ToTable("RestoreBlockJobs");
                 });
 

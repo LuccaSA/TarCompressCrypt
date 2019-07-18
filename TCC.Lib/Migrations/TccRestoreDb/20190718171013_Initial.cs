@@ -56,6 +56,11 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                 name: "IX_RestoreBlockJobs_StartTime",
                 table: "RestoreBlockJobs",
                 column: "StartTime");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RestoreBlockJobs_FullDestinationPath_StartTime",
+                table: "RestoreBlockJobs",
+                columns: new[] { "FullDestinationPath", "StartTime" });
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
