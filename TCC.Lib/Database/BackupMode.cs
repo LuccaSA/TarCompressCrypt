@@ -5,8 +5,8 @@ namespace TCC.Lib.Database
     [DefaultValue(Diff)]
     public enum BackupMode
     {
-        Diff,
-        Full,
+        Diff = 0,
+        Full = 1,
     }
 
 }

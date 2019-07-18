@@ -17,6 +17,14 @@ namespace TCC.Lib.Database
         public string Exception { get; set; }
     }
 
+    public class BackupJob
+    {
+        public int Id { get; set; }
+        public DateTime StartTime { get; set; }
+        public TimeSpan Duration { get; set; }
+        public List<BackupBlockJob> BlockJobs { get; set; }
+    }
+
     public class RestoreBlockJob
     {
         public int Id { get; set; }
@@ -31,13 +39,6 @@ namespace TCC.Lib.Database
         public string Exception { get; set; }
     }
 
-    public class BackupJob
-    {
-        public int Id { get; set; }
-        public DateTime StartTime { get; set; }
-        public TimeSpan Duration { get; set; }
-        public List<BackupBlockJob> BlockJobs { get; set; }
-    }
 
     public class RestoreJob
     {
