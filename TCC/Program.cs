@@ -97,13 +97,48 @@ namespace TCC
                 return;
             }
 
-            var msg = new SlackMessage
+            string shell = ":greenshell:";
+            if (!op.OperationBlocks.Any())
+            {
+                shell = ":redshell:";
+            }
+            else
+            {
+                foreach (var result in op.OperationBlocks.SelectMany(i => i.BlockResults))
+                {
+                    if (result.CommandResult.HasError)
+                    {
+                        shell = ":redshell:";
+                        break;
+                    }
+                    if (result.CommandResult.Infos.Any())
+                    {
+                        shell = ":warning:";
+                    }
+                }
+            }
+
+            var msgRoot = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
-                Text = $"*{mode} report* [{Environment.MachineName}]",
+                Text = $"*{Environment.MachineName}* : {shell} {mode} {op.OperationBlocks.Count()} blocks",
+            };  
+            var response = await SlackNotifier.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
+           
+            var msgDetail = new SlackMessage
+            {
+                Channel = parsedOption.SlackChannel,
+                Text = $"*{mode}* details on {Environment.MachineName}",
+                Thread_Ts = response.Ts,
                 Attachments = new List<Attachment>()
             };
 
+            SlackReportDetail(op, parsedOption, msgDetail);
+            await SlackNotifier.SendSlackMessageAsync(msgDetail, parsedOption.SlackSecret);
+        }
+
+        private static void SlackReportDetail(OperationSummary op, TccOption parsedOption, SlackMessage msg)
+        {
             var reports = new List<SlackReport>();
             foreach (var o in op.OperationBlocks)
             {
@@ -141,7 +176,9 @@ namespace TCC
                         },
                         new Field
                         {
-                            Value = $"{op.OperationBlocks.Count()} blocks processed in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}", Short = true
+                            Value =
+                                $"{op.OperationBlocks.Count()} blocks processed in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}",
+                            Short = true
                         },
                         new Field
                         {
@@ -149,7 +186,9 @@ namespace TCC
                         },
                         new Field
                         {
-                            Value = $"Total job size : {op.OperationBlocks.SelectMany(i => i.BlockResults).Sum(i => i.Block.CompressedSize).HumanizeSize()}", Short = true
+                            Value =
+                                $"Total job size : {op.OperationBlocks.SelectMany(i => i.BlockResults).Sum(i => i.Block.CompressedSize).HumanizeSize()}",
+                            Short = true
                         }
                     }
                 });
@@ -162,8 +201,6 @@ namespace TCC
                     Title = "Nothing processed !!!"
                 });
             }
-
-            await SlackNotifier.SendSlackMessageAsync(msg, parsedOption.SlackSecret);
         }
 
         private static void ExtractSlackReports(OperationBlock block, List<SlackReport> reports)

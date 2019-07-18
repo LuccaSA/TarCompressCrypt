@@ -10,7 +10,7 @@ namespace TCC.Notification
 {
     public class SlackNotifier
     {
-        public static async Task SendSlackMessageAsync(SlackMessage message, string slackSecret)
+        public static async Task<SlackResponse> SendSlackMessageAsync(SlackMessage message, string slackSecret)
         {
             try
             {
@@ -27,25 +27,22 @@ namespace TCC.Notification
                 var ok = await client.PostAsync("api/chat.postMessage", content);
                 if (!ok.IsSuccessStatusCode)
                 {
-                    //log.LogError(ok.ReasonPhrase);
+                    throw new Exception(ok.StatusCode.ToString());
                 }
-                else
+
+                var response = JsonConvert.DeserializeObject<SlackResponse>(await ok.Content.ReadAsStringAsync());
+                if (!response.Ok)
                 {
-                    var response = await ok.Content.ReadAsStringAsync();
-                    //log.LogInformation(response);
+                    throw new Exception(response.Error);
                 }
+                return response;
             }
             catch (Exception)
             {
                 //log.LogError(e, "slack");
+                throw;
             }
         }
-    }
-
-    public class SlackReturn
-    {
-        public bool Ok { get; set; }
-        public string Error { get; set; }
     }
 
 
@@ -53,6 +50,8 @@ namespace TCC.Notification
     {
         public string Channel { get; set; }
         public string Text { get; set; }
+        [JsonProperty(PropertyName = "thread_ts")]
+        public string Thread_Ts { get; set; }
         public List<Attachment> Attachments { get; set; }
 
     }
@@ -76,7 +75,7 @@ namespace TCC.Notification
         public bool Short { get; set; }
     }
 
-   
+
     public enum AlertLevel
     {
         Info,
@@ -101,4 +100,27 @@ namespace TCC.Notification
             }
         }
     }
+
+
+
+    public class SlackResponse
+    {
+        public bool Ok { get; set; }
+        public string Error { get; set; }
+        public string Channel { get; set; }
+        public string Ts { get; set; }
+        public Message Message { get; set; }
+    }
+
+    public class Message
+    {
+        public string Text { get; set; }
+        public string Username { get; set; }
+        public string BotId { get; set; }
+        public Attachment[] Attachments { get; set; }
+        public string Type { get; set; }
+        public string Subtype { get; set; }
+        public string Ts { get; set; }
+    }
+
 }
