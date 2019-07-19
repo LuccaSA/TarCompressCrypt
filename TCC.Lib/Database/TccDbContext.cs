@@ -8,6 +8,7 @@ namespace TCC.Lib.Database
 
         public DbSet<BackupBlockJob> BackupBlockJobs { get; set; }
         public DbSet<BackupJob> BackupJobs { get; set; }
+        public DbSet<BackupSource> BackupSources { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -16,8 +17,13 @@ namespace TCC.Lib.Database
                 .WithOne(i => i.Job)
                 .IsRequired();
 
+            modelBuilder.Entity<BackupSource>()
+                .HasMany(i => i.BackupBlockJobs)
+                .WithOne(i => i.BackupSource)
+                .IsRequired();
+
             modelBuilder.Entity<BackupBlockJob>().HasIndex(i => i.StartTime);
-            modelBuilder.Entity<BackupBlockJob>().HasIndex(p => new { p.FullSourcePath, p.StartTime });
+            modelBuilder.Entity<BackupSource>().HasIndex(p => p.FullSourcePath).IsUnique();
 
             base.OnModelCreating(modelBuilder);
         }
@@ -29,6 +35,7 @@ namespace TCC.Lib.Database
 
         public DbSet<RestoreBlockJob> RestoreBlockJobs { get; set; }
         public DbSet<RestoreJob> RestoreJobs { get; set; }
+        public DbSet<RestoreDestination> RestoreDestinations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,8 +44,13 @@ namespace TCC.Lib.Database
                 .WithOne(i => i.Job)
                 .IsRequired();
 
+            modelBuilder.Entity<RestoreDestination>()
+                .HasMany(i => i.RestoreBlockJobs)
+                .WithOne(i => i.RestoreDestination)
+                .IsRequired();
+
             modelBuilder.Entity<RestoreBlockJob>().HasIndex(i => i.StartTime);
-            modelBuilder.Entity<RestoreBlockJob>().HasIndex(p => new { p.FullDestinationPath, p.StartTime });
+            modelBuilder.Entity<RestoreDestination>().HasIndex(p => p.FullDestinationPath).IsUnique();
 
             base.OnModelCreating(modelBuilder);
         }

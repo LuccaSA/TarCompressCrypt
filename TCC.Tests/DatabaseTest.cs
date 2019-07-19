@@ -39,8 +39,8 @@ namespace TCC.Tests
                 Duration = TimeSpan.FromMinutes(2),
                 BlockJobs = new List<BackupBlockJob>
                 {
-                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "one", Success = true},
-                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), FullSourcePath = "two", Success = true}
+                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), BackupSource = new BackupSource{ FullSourcePath = "one"}, Success = true},
+                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), BackupSource = new BackupSource{ FullSourcePath = "two"}, Success = true}
                 }
             });
             await _backupDbContext.SaveChangesAsync();

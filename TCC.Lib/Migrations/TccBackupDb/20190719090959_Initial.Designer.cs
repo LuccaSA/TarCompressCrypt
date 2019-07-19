@@ -6,10 +6,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TCC.Lib.Database;
 
-namespace TCC.Lib.Migrations
+namespace TCC.Lib.Migrations.TccBackupDb
 {
     [DbContext(typeof(TccBackupDbContext))]
-    [Migration("20190718171032_Initial")]
+    [Migration("20190719090959_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,11 +25,11 @@ namespace TCC.Lib.Migrations
 
                     b.Property<int>("BackupMode");
 
+                    b.Property<int>("BackupSourceId");
+
                     b.Property<TimeSpan>("Duration");
 
                     b.Property<string>("Exception");
-
-                    b.Property<string>("FullSourcePath");
 
                     b.Property<int>("JobId");
 
@@ -41,11 +41,11 @@ namespace TCC.Lib.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BackupSourceId");
+
                     b.HasIndex("JobId");
 
                     b.HasIndex("StartTime");
-
-                    b.HasIndex("FullSourcePath", "StartTime");
 
                     b.ToTable("BackupBlockJobs");
                 });
@@ -64,8 +64,29 @@ namespace TCC.Lib.Migrations
                     b.ToTable("BackupJobs");
                 });
 
+            modelBuilder.Entity("TCC.Lib.Database.BackupSource", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("FullSourcePath");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FullSourcePath")
+                        .IsUnique();
+
+                    b.ToTable("BackupSources");
+                });
+
             modelBuilder.Entity("TCC.Lib.Database.BackupBlockJob", b =>
                 {
+                    b.HasOne("TCC.Lib.Database.BackupSource", "BackupSource")
+                        .WithMany("BackupBlockJobs")
+                        .HasForeignKey("BackupSourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TCC.Lib.Database.BackupJob", "Job")
                         .WithMany("BlockJobs")
                         .HasForeignKey("JobId")
