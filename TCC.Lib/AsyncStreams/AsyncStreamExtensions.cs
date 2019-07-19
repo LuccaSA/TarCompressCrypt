@@ -16,21 +16,10 @@ namespace TCC.Lib.AsyncStreams
                 SingleWriter = true,
                 SingleReader = false
             });
-            var task = Task.Run(async () =>
+            return new AsyncStream<T>(channel, cancellationToken, async () =>
             {
-                try
-                {
-                    foreach (var item in source)
-                    {
-                        await channel.Writer.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded), cancellationToken);
-                    }
-                }
-                finally
-                {
-                    channel.Writer.Complete();
-                }
+                await AsAsyncStreamInternalAsync(source, cancellationToken, channel);
             });
-            return new AsyncStream<T>(channel, task, cancellationToken);
         }
 
         public static AsyncStream<T> AsAsyncStream<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken)
@@ -40,21 +29,10 @@ namespace TCC.Lib.AsyncStreams
                 SingleWriter = true,
                 SingleReader = false
             });
-            var task = Task.Run(async () =>
+            return new AsyncStream<T>(channel, cancellationToken, async () =>
             {
-                try
-                {
-                    await foreach (var item in source)
-                    {
-                        await channel.Writer.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded), cancellationToken);
-                    }
-                }
-                finally
-                {
-                    channel.Writer.Complete();
-                }
+                await AsAsyncStreamInternalAsync(source, cancellationToken, channel);
             });
-            return new AsyncStream<T>(channel, task, cancellationToken);
         }
 
         public static AsyncStream<T> CountAsync<T>(this AsyncStream<T> source, out Counter counter)
@@ -66,22 +44,10 @@ namespace TCC.Lib.AsyncStreams
                 SingleWriter = false,
                 SingleReader = false
             });
-            var task = Task.Run(async () =>
+            return new AsyncStream<T>(channel, source.CancellationToken, async () =>
             {
-                try
-                {
-                    await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))
-                    {
-                        localCounter.Increment();
-                        await channel.Writer.WriteAsync(item, source.CancellationToken);
-                    }
-                }
-                finally
-                {
-                    channel.Writer.Complete();
-                }
+                await CountInternalAsync(source, localCounter, channel); 
             });
-            return new AsyncStream<T>(channel, task, source.CancellationToken);
         }
 
         public static AsyncStream<T> ForEachAsync<T>(this AsyncStream<T> source, Func<StreamedValue<T>, CancellationToken, Task> action)
@@ -91,23 +57,12 @@ namespace TCC.Lib.AsyncStreams
                 SingleWriter = false,
                 SingleReader = false
             });
-            var task = Task.Run(async () =>
+            return new AsyncStream<T>(channel,  source.CancellationToken, async () =>
             {
-                try
-                {
-                    await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))
-                    {
-                        await action(item, source.CancellationToken);
-                        await channel.Writer.WriteAsync(item, source.CancellationToken);
-                    }
-                }
-                finally
-                {
-                    channel.Writer.Complete();
-                }
+                await ForeachInternalAsync(source, action, channel); 
             });
-            return new AsyncStream<T>(channel, task, source.CancellationToken);
         }
+
 
         public static async Task<IReadOnlyCollection<T>> AsReadOnlyCollectionAsync<T>(this AsyncStream<T> source)
         {
@@ -119,42 +74,66 @@ namespace TCC.Lib.AsyncStreams
             return items;
         }
 
-        public static AsyncStream<TResult> SelectAsync<TSource, TResult>(this AsyncStream<TSource> source, Func<StreamedValue<TSource>, CancellationToken, Task<TResult>> action)
+        private static async Task AsAsyncStreamInternalAsync<T>(IEnumerable<T> source, CancellationToken cancellationToken, Channel<StreamedValue<T>> channel)
         {
-            var channel = Channel.CreateUnbounded<StreamedValue<TResult>>();
-            var writer = channel.Writer;
-            var task = Task.Run(async () =>
-            {
-                await foreach (var sourceValue in source.ChannelReader.ReadAllAsync(source.CancellationToken))
-                {
-                    await sourceValue.ExecuteAndStreamAsync(action, writer, source.CancellationToken);
-                }
-                channel.Writer.Complete();
-            });
-            return new AsyncStream<TResult>(channel, task, source.CancellationToken);
-        }
-
-        private static async Task ExecuteAndStreamAsync<TSource, TResult>(this StreamedValue<TSource> sourceValue,
-            Func<StreamedValue<TSource>, CancellationToken, Task<TResult>> action,
-            ChannelWriter<StreamedValue<TResult>> writer,
-            CancellationToken cancellationToken)
-        {
-            TResult result;
             try
             {
-                result = await action(sourceValue, cancellationToken);
+                foreach (var item in source)
+                {
+                    await channel.Writer.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded), cancellationToken);
+                }
             }
-            catch (TaskCanceledException tce)
+            finally
             {
-                await writer.WriteAsync(new StreamedValue<TResult>(default, ExecutionStatus.Canceled, tce), cancellationToken);
-                return;
+                channel.Writer.Complete();
             }
-            catch (Exception e)
+        }
+
+        private static async Task AsAsyncStreamInternalAsync<T>(IAsyncEnumerable<T> source, CancellationToken cancellationToken, Channel<StreamedValue<T>> channel)
+        {
+            try
             {
-                await writer.WriteAsync(new StreamedValue<TResult>(default, ExecutionStatus.Faulted, e), cancellationToken);
-                return;
+                await foreach (var item in source)
+                {
+                    await channel.Writer.WriteAsync(new StreamedValue<T>(item, ExecutionStatus.Succeeded), cancellationToken);
+                }
             }
-            await writer.WriteAsync(new StreamedValue<TResult>(result, ExecutionStatus.Succeeded), cancellationToken);
+            finally
+            {
+                channel.Writer.Complete();
+            }
+        }
+
+        private static async Task CountInternalAsync<T>(AsyncStream<T> source, Counter localCounter, Channel<StreamedValue<T>> channel)
+        {
+            try
+            {
+                await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))
+                {
+                    localCounter.Increment();
+                    await channel.Writer.WriteAsync(item, source.CancellationToken);
+                }
+            }
+            finally
+            {
+                channel.Writer.Complete();
+            }
+        }
+
+        private static async Task ForeachInternalAsync<T>(AsyncStream<T> source, Func<StreamedValue<T>, CancellationToken, Task> action, Channel<StreamedValue<T>> channel)
+        {
+            try
+            {
+                await foreach (var item in source.ChannelReader.ReadAllAsync(source.CancellationToken))
+                {
+                    await action(item, source.CancellationToken);
+                    await channel.Writer.WriteAsync(item, source.CancellationToken);
+                }
+            }
+            finally
+            {
+                channel.Writer.Complete();
+            }
         }
     }
 

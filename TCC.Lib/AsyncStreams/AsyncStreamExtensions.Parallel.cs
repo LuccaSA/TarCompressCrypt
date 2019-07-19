@@ -43,18 +43,15 @@ namespace TCC.Lib.AsyncStreams
             var core = new ParallelizeCore(source.CancellationToken, option);
             var monitor = new ParallelMonitor<T>(option.MaxDegreeOfParallelism);
             var channel = Channel.CreateUnbounded<StreamedValue<TResult>>();
-            var task = Task.Run(async () =>
+
+            return new AsyncStream<TResult>(channel, source.CancellationToken, async () =>
             {
                 try
                 {
                     using (core)
                     {
-                        var parallelTasks =
-                            Enumerable.Range(0, option.MaxDegreeOfParallelism)
-                                .Select(i => ParallelizeCoreStreamAsync(core, actionAsync, source, channel, i, monitor))
-                                .ToArray();
-
-                        await Task.WhenAll(parallelTasks);
+                        await Task.WhenAll(Enumerable.Range(0, option.MaxDegreeOfParallelism)
+                            .Select(i => ParallelizeCoreStreamAsync(core, actionAsync, source, channel, i, monitor)));
                     }
                 }
                 catch (Exception e)
@@ -68,8 +65,6 @@ namespace TCC.Lib.AsyncStreams
                 }
                 ThrowOnErrors(option, core);
             });
-
-            return new AsyncStream<TResult>(channel, task, source.CancellationToken);
         }
 
         public static async Task<ParallelizedSummary> GetExceptionsAsync<T>(this AsyncStream<T> source)

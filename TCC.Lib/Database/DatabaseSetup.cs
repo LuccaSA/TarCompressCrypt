@@ -1,8 +1,6 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Lib.Database
@@ -11,13 +9,11 @@ namespace TCC.Lib.Database
     {
         private readonly TccBackupDbContext _tccBackupDbContext;
         private readonly TccRestoreDbContext _tccRestoreDbContext;
-        private readonly IOptions<TccSettings> _options;
 
-        public DatabaseSetup(TccBackupDbContext tccBackupDbContext, TccRestoreDbContext tccRestoreDbContext, IOptions<TccSettings> options)
+        public DatabaseSetup(TccBackupDbContext tccBackupDbContext, TccRestoreDbContext tccRestoreDbContext)
         {
             _tccBackupDbContext = tccBackupDbContext;
             _tccRestoreDbContext = tccRestoreDbContext;
-            _options = options;
         }
 
         public async Task EnsureDatabaseExistsAsync(Mode commandMode)
