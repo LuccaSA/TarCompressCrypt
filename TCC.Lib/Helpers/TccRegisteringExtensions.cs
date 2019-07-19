@@ -48,9 +48,6 @@ namespace TCC.Lib.Helpers
 
                 switch (setting.Provider)
                 {
-                    case Provider.InMemory:
-                        options.UseInMemoryDatabase(Guid.NewGuid().ToString());
-                        break;
                     case Provider.SqlServer:
                         {
                             var cs = connectionString(setting);
@@ -100,7 +97,6 @@ namespace TCC.Lib.Helpers
     public enum Provider
     {
         SqLite,
-        InMemory,
         SqlServer
     }
 }

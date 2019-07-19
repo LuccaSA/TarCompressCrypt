@@ -22,34 +22,19 @@ namespace TCC.Lib.Database
 
         public async Task EnsureDatabaseExistsAsync(Mode commandMode)
         {
-            if (_options.Value.Provider == Provider.InMemory)
+            if (commandMode.HasFlag(Mode.Compress))
             {
-                if (commandMode.HasFlag(Mode.Compress))
+                if ((await _tccBackupDbContext.Database.GetPendingMigrationsAsync()).Any())
                 {
-                    await _tccBackupDbContext.Database.EnsureCreatedAsync();
-                }
-
-                if (commandMode.HasFlag(Mode.Decompress))
-                {
-                    await _tccRestoreDbContext.Database.EnsureCreatedAsync();
+                    await _tccBackupDbContext.Database.MigrateAsync();
                 }
             }
-            else
-            {
-                if (commandMode.HasFlag(Mode.Compress))
-                {
-                    if ((await _tccBackupDbContext.Database.GetPendingMigrationsAsync()).Any())
-                    {
-                        await _tccBackupDbContext.Database.MigrateAsync();
-                    }
-                }
 
-                if (commandMode.HasFlag(Mode.Decompress))
+            if (commandMode.HasFlag(Mode.Decompress))
+            {
+                if ((await _tccRestoreDbContext.Database.GetPendingMigrationsAsync()).Any())
                 {
-                    if ((await _tccRestoreDbContext.Database.GetPendingMigrationsAsync()).Any())
-                    {
-                        await _tccRestoreDbContext.Database.MigrateAsync();
-                    }
+                    await _tccRestoreDbContext.Database.MigrateAsync();
                 }
             }
         }

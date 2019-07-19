@@ -25,11 +25,12 @@ namespace TCC.Lib.Notification
             }
 
             string shell = SlackShell(op);
+            string blocksStats = BlocksStats(op, mode);
 
             var msgRoot = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
-                Text = $"*{Environment.MachineName}* : {shell} {mode} {op.OperationBlocks.Count()} blocks",
+                Text = $"*{Environment.MachineName}* : {mode} {blocksStats} {shell}",
             };
             var response = await _slackClient.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
 
@@ -43,6 +44,26 @@ namespace TCC.Lib.Notification
 
             SlackReportDetail(op, parsedOption, msgDetail);
             await _slackClient.SendSlackMessageAsync(msgDetail, parsedOption.SlackSecret);
+        }
+
+        private static string BlocksStats(OperationSummary op, Mode mode)
+        {
+            string blocksStats;
+            switch (mode)
+            {
+                case Mode.Compress:
+                    blocksStats = string.Join(' ', op.OperationBlocks.OfType<OperationCompressionBlock>()
+                        .GroupBy(i => i.CompressionBlock.BackupMode)
+                        .Select(i => new {Mode = i.Key, Count = i.Count()})
+                        .OrderBy(i => i.Mode).Select(i => $"{i.Count} {i.Mode}"));
+                    break;
+                case Mode.Decompress:
+                    blocksStats = $"{op.OperationBlocks.Count()} blocks";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            }
+            return blocksStats;
         }
 
         private static string SlackShell(OperationSummary op)

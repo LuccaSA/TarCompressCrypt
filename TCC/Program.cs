@@ -20,8 +20,12 @@ namespace TCC
 {
     public static class Program
     {
+        private const string _tccMutex = "Global\\FD70BFC5-79C8-44DF-9629-65512A1CD0FC";
+
         public static async Task Main(string[] args)
         {
+            using Mutex mutex = new Mutex(false, _tccMutex);
+
             TccCommand parsed = args.ParseCommandLine();
             if (parsed.ReturnCode == 1)
             {
@@ -46,8 +50,17 @@ namespace TCC
                 using (var scope = provider.CreateScope())
                 {
                     var logger = scope.ServiceProvider.GetRequiredService<ILogger<TarCompressCrypt>>();
+
+                    if (!mutex.WaitOne(0, false))
+                    {
+                        Console.Error.WriteLine("Tcc is already running");
+                        logger.LogError("Tcc is already running");
+                        return;
+                    }
+
                     scope.ServiceProvider.GetRequiredService<CancellationTokenSource>().HookTermination();
                     await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
+
                     logger.LogInformation($"Starting ------------------------------------------------- {DateTime.UtcNow}");
 
                     op = await RunTcc(scope.ServiceProvider, parsed);
@@ -57,6 +70,7 @@ namespace TCC
                     {
                         logger.LogInformation(line);
                     }
+
                     var notifier = scope.ServiceProvider.GetRequiredService<SlackSender>();
                     await notifier.ReportAsync(op, parsed.Option, parsed.Mode);
                 }
