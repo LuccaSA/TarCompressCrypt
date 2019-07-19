@@ -12,8 +12,8 @@ using TCC.Lib.Blocks;
 using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
+using TCC.Lib.Notification;
 using TCC.Lib.Options;
-using TCC.Notification;
 using TCC.Parser;
 
 namespace TCC
@@ -57,11 +57,17 @@ namespace TCC
                     {
                         logger.LogInformation(line);
                     }
+                    var notifier = scope.ServiceProvider.GetRequiredService<SlackSender>();
+                    await notifier.ReportAsync(op, parsed.Option, parsed.Mode);
                 }
             }
             catch (OperationCanceledException)
             {
                 Console.WriteLine("Operation canceled, shutting down");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Critical : " + e.Message);
             }
 
             if (report != null)
@@ -71,8 +77,6 @@ namespace TCC
                     Console.WriteLine(line);
                 }
             }
-
-            await SlackSender.ReportAsync(op, parsed.Option, parsed.Mode);
 
             Serilog.Log.CloseAndFlush();
             if (op == null || !op.IsSuccess)

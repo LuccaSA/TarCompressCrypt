@@ -11,6 +11,7 @@ using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
 using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
+using TCC.Lib.Notification;
 
 namespace TCC.Lib.Helpers
 {
@@ -19,7 +20,7 @@ namespace TCC.Lib.Helpers
         public static void AddTcc(this IServiceCollection services, string workingPath = null)
         {
             services.TryAddScoped<IBlockListener, GenericBlockListener>();
-            //services.TryAddScoped(typeof(ILogger<>), typeof(NullLogger<>));
+
             services.AddScoped<ExternalDependencies>();
             services.AddScoped<TarCompressCrypt>();
             services.AddScoped<EncryptionCommands>();
@@ -30,6 +31,9 @@ namespace TCC.Lib.Helpers
             services.AddScoped(_ => new CancellationTokenSource());
             services.AddScoped<DatabaseSetup>();
             services.AddScoped<DatabaseHelper>();
+
+            services.AddScoped<SlackSender>();
+            services.AddScoped<SlackClient>();
 
             services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString, workingPath);
             services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString, workingPath);
