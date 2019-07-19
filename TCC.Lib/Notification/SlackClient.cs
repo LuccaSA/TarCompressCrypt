@@ -22,8 +22,7 @@ namespace TCC.Lib.Notification
         {
             try
             {
-                var client = new HttpClient();
-                client.BaseAddress = new Uri("https://slack.com");
+                var client = new HttpClient {BaseAddress = new Uri("https://slack.com")};
                 client.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", slackSecret);
 
@@ -107,8 +106,6 @@ namespace TCC.Lib.Notification
             }
         }
     }
-
-
 
     public class SlackResponse
     {

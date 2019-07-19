@@ -13,11 +13,7 @@ namespace TCC.Lib
         {
             BlockResults = blockResults ?? throw new ArgumentNullException(nameof(blockResults));
         }
-
-        //public IEnumerable<Block> Block { get; }
-
-        //public IEnumerable<CommandResult> CommandResult { get; }
-
+        
         public IEnumerable<BlockResult> BlockResults { get; }
 
         public double BlockThroughputMbps()
