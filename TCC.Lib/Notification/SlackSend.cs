@@ -2,15 +2,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using TCC.Lib;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
-namespace TCC.Notification
+namespace TCC.Lib.Notification
 {
-    public static class SlackSender
+    public class SlackSender
     {
-        public static async Task ReportAsync(OperationSummary op, TccOption parsedOption, Mode mode)
+        private readonly SlackClient _slackClient;
+
+        public SlackSender(SlackClient slackClient)
+        {
+            _slackClient = slackClient;
+        }
+
+        public async Task ReportAsync(OperationSummary op, TccOption parsedOption, Mode mode)
         {
             if (string.IsNullOrWhiteSpace(parsedOption?.SlackSecret) ||
                 string.IsNullOrWhiteSpace(parsedOption.SlackChannel))
@@ -18,6 +24,29 @@ namespace TCC.Notification
                 return;
             }
 
+            string shell = SlackShell(op);
+
+            var msgRoot = new SlackMessage
+            {
+                Channel = parsedOption.SlackChannel,
+                Text = $"*{Environment.MachineName}* : {shell} {mode} {op.OperationBlocks.Count()} blocks",
+            };
+            var response = await _slackClient.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
+
+            var msgDetail = new SlackMessage
+            {
+                Channel = parsedOption.SlackChannel,
+                Text = $"*{mode}* details on {Environment.MachineName}",
+                ThreadTs = response.Ts,
+                Attachments = new List<Attachment>()
+            };
+
+            SlackReportDetail(op, parsedOption, msgDetail);
+            await _slackClient.SendSlackMessageAsync(msgDetail, parsedOption.SlackSecret);
+        }
+
+        private static string SlackShell(OperationSummary op)
+        {
             string shell = ":greenshell:";
             if (!op.OperationBlocks.Any())
             {
@@ -32,6 +61,7 @@ namespace TCC.Notification
                         shell = ":redshell:";
                         break;
                     }
+
                     if (result.CommandResult.Infos.Any())
                     {
                         shell = ":warning:";
@@ -39,23 +69,7 @@ namespace TCC.Notification
                 }
             }
 
-            var msgRoot = new SlackMessage
-            {
-                Channel = parsedOption.SlackChannel,
-                Text = $"*{Environment.MachineName}* : {shell} {mode} {op.OperationBlocks.Count()} blocks",
-            };
-            var response = await SlackClient.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
-
-            var msgDetail = new SlackMessage
-            {
-                Channel = parsedOption.SlackChannel,
-                Text = $"*{mode}* details on {Environment.MachineName}",
-                ThreadTs = response.Ts,
-                Attachments = new List<Attachment>()
-            };
-
-            SlackReportDetail(op, parsedOption, msgDetail);
-            await SlackClient.SendSlackMessageAsync(msgDetail, parsedOption.SlackSecret);
+            return shell;
         }
 
         private static void SlackReportDetail(OperationSummary op, TccOption parsedOption, SlackMessage msg)

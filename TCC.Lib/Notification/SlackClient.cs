@@ -3,14 +3,22 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace TCC.Notification
+namespace TCC.Lib.Notification
 {
     public class SlackClient
     {
-        public static async Task<SlackResponse> SendSlackMessageAsync(SlackMessage message, string slackSecret)
+        private readonly ILogger<SlackClient> _logger;
+
+        public SlackClient(ILogger<SlackClient> logger)
+        {
+            _logger = logger;
+        }
+
+        public async Task<SlackResponse> SendSlackMessageAsync(SlackMessage message, string slackSecret)
         {
             try
             {
@@ -37,11 +45,11 @@ namespace TCC.Notification
                 }
                 return response;
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                //log.LogError(e, "slack");
-                throw;
+                _logger.LogError(e, e.Message);
             }
+            return null;
         }
     }
 
