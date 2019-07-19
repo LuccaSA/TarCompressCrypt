@@ -11,7 +11,7 @@ namespace TCC.Lib.Migrations
                 name: "RestoreDestinations",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false)
+                    Id = table.Column<int>()
                         .Annotation("Sqlite:Autoincrement", true),
                     FullDestinationPath = table.Column<string>(nullable: true)
                 },
@@ -24,10 +24,10 @@ namespace TCC.Lib.Migrations
                 name: "RestoreJobs",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false)
+                    Id = table.Column<int>()
                         .Annotation("Sqlite:Autoincrement", true),
-                    StartTime = table.Column<DateTime>(nullable: false),
-                    Duration = table.Column<TimeSpan>(nullable: false)
+                    StartTime = table.Column<DateTime>(),
+                    Duration = table.Column<TimeSpan>()
                 },
                 constraints: table =>
                 {
@@ -38,15 +38,15 @@ namespace TCC.Lib.Migrations
                 name: "RestoreBlockJobs",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false)
+                    Id = table.Column<int>()
                         .Annotation("Sqlite:Autoincrement", true),
-                    JobId = table.Column<int>(nullable: false),
-                    BackupMode = table.Column<int>(nullable: false),
-                    RestoreDestinationId = table.Column<int>(nullable: false),
-                    StartTime = table.Column<DateTime>(nullable: false),
-                    Duration = table.Column<TimeSpan>(nullable: false),
-                    Size = table.Column<long>(nullable: false),
-                    Success = table.Column<bool>(nullable: false),
+                    JobId = table.Column<int>(),
+                    BackupMode = table.Column<int>(),
+                    RestoreDestinationId = table.Column<int>(),
+                    StartTime = table.Column<DateTime>(),
+                    Duration = table.Column<TimeSpan>(),
+                    Size = table.Column<long>(),
+                    Success = table.Column<bool>(),
                     Exception = table.Column<string>(nullable: true)
                 },
                 constraints: table =>

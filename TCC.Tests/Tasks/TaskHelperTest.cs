@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib.AsyncStreams;
-using TCC.Lib.Helpers;
 using Xunit;
 
 namespace TCC.Tests.Tasks
