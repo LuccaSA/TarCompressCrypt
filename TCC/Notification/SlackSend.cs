@@ -13,7 +13,7 @@ namespace TCC.Notification
         public static async Task ReportAsync(OperationSummary op, TccOption parsedOption, Mode mode)
         {
             if (string.IsNullOrWhiteSpace(parsedOption?.SlackSecret) ||
-                string.IsNullOrWhiteSpace(parsedOption?.SlackChannel))
+                string.IsNullOrWhiteSpace(parsedOption.SlackChannel))
             {
                 return;
             }
@@ -50,7 +50,7 @@ namespace TCC.Notification
             {
                 Channel = parsedOption.SlackChannel,
                 Text = $"*{mode}* details on {Environment.MachineName}",
-                Thread_Ts = response.Ts,
+                ThreadTs = response.Ts,
                 Attachments = new List<Attachment>()
             };
 

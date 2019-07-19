@@ -50,7 +50,7 @@ namespace TCC.Notification
         public string Channel { get; set; }
         public string Text { get; set; }
         [JsonProperty(PropertyName = "thread_ts")]
-        public string Thread_Ts { get; set; }
+        public string ThreadTs { get; set; }
         public List<Attachment> Attachments { get; set; }
 
     }

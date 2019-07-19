@@ -46,7 +46,7 @@ namespace TCC.Lib
             var job = await _databaseHelper.InitializeBackupJobAsync();
 
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
-            var ordered = PrepareCompressionBlocksAsync(blocks, job);
+            var ordered = PrepareCompressionBlocksAsync(blocks);
 
             var operationBlocks = await ordered
                 .AsAsyncStream(_cancellationTokenSource.Token)
@@ -188,7 +188,7 @@ namespace TCC.Lib
             return _serviceProvider.GetRequiredService<TccRestoreDbContext>();
         }
 
-        private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks, BackupJob job)
+        private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
         {
             var db = BackupDb();
 
@@ -199,11 +199,10 @@ namespace TCC.Lib
 
             lastFulls = lastFulls
                 .GroupBy(i => i.BackupSource.FullSourcePath)
-                .Select(i => i.OrderByDescending(i => i.StartTime).FirstOrDefault())
+                .Select(i => i.OrderByDescending(b => b.StartTime).FirstOrDefault())
                 .ToList();
 
-
-            if (lastFulls == null || lastFulls.Count == 0)
+            if (lastFulls.Count == 0)
             {
                 // no history ATM, we consider a backup full for each block
                 foreach (var b in blocks)
@@ -315,7 +314,7 @@ namespace TCC.Lib
 
         private void LogReport(CompressionBlock block, CommandResult result)
         {
-            _logger.LogInformation($"Compressed {block.Source} in {result?.Elapsed.HumanizedTimeSpan(2)}, {block.DestinationArchiveFileInfo.Length.HumanizeSize()}, {block.DestinationArchiveFileInfo.FullName}");
+            _logger.LogInformation($"Compressed {block.Source} in {result?.Elapsed.HumanizedTimeSpan()}, {block.DestinationArchiveFileInfo.Length.HumanizeSize()}, {block.DestinationArchiveFileInfo.FullName}");
 
             if (result?.Infos.Any() ?? false)
             {
@@ -330,7 +329,7 @@ namespace TCC.Lib
 
         private void LogReport(DecompressionBlock block, CommandResult result)
         {
-            _logger.LogInformation($"Decompressed {block.Source} in {result?.Elapsed.HumanizedTimeSpan(2)}, {block.SourceArchiveFileInfo.Length.HumanizeSize()}, {block.SourceArchiveFileInfo.FullName}");
+            _logger.LogInformation($"Decompressed {block.Source} in {result?.Elapsed.HumanizedTimeSpan()}, {block.SourceArchiveFileInfo.Length.HumanizeSize()}, {block.SourceArchiveFileInfo.FullName}");
 
             if (result?.Infos.Any() ?? false)
             {
