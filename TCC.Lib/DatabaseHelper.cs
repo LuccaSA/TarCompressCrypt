@@ -58,20 +58,25 @@ namespace TCC.Lib
             }
         }
 
-        public async Task AddBackupBlockJobAsync(OperationCompressionBlock ocb, BackupJob job)
+        public async Task AddBackupBlockJobAsync(OperationCompressionBlock ocb, BackupJob job, string fullPath)
         {
             try
             {
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<TccBackupDbContext>();
                 var theJob = await db.BackupJobs.Include(i=>i.BlockJobs).FirstOrDefaultAsync(i => i.Id == job.Id);
+                var thePath = await db.BackupSources.FirstOrDefaultAsync(i => i.FullSourcePath == fullPath);
+                if (thePath == null)
+                {
+                    thePath = new BackupSource {FullSourcePath = fullPath};
+                }
+
                 var bbj = new BackupBlockJob
                 {
                     Job = job,
                     StartTime = ocb.CompressionBlock.StartTime,
-                    FullSourcePath = ocb.CompressionBlock.SourceFileOrDirectory.FullPath,
-                    Duration =
-                        TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
+                    BackupSource = thePath,
+                    Duration = TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
                     Size = ocb.CompressionBlock.CompressedSize,
                     Exception = ocb.BlockResults.First().CommandResult.Errors,
                     Success = ocb.BlockResults.First().CommandResult.IsSuccess,
@@ -124,7 +129,7 @@ namespace TCC.Lib
             }
         }
 
-        public async Task AddRestoreBlockJobAsync(OperationDecompressionsBlock ocb, RestoreJob job)
+        public async Task AddRestoreBlockJobAsync(OperationDecompressionsBlock ocb, RestoreJob job, string fullPath)
         {
             try
             {
@@ -132,6 +137,11 @@ namespace TCC.Lib
                 var db = scope.ServiceProvider.GetRequiredService<TccRestoreDbContext>();
 
                 var theJob = await db.RestoreJobs.Include(i => i.BlockJobs).FirstOrDefaultAsync(i => i.Id == job.Id);
+                var thePath = await db.RestoreDestinations.FirstOrDefaultAsync(i => i.FullDestinationPath == fullPath);
+                if (thePath == null)
+                {
+                    thePath = new RestoreDestination { FullDestinationPath = fullPath };
+                }
 
                 if (ocb.Batch.BackupFull != null)
                 {
@@ -139,7 +149,7 @@ namespace TCC.Lib
                     {
                         Job = job,
                         StartTime = ocb.Batch.BackupFull.BlockDateTime,
-                        FullDestinationPath = ocb.Batch.DestinationFolder,
+                        RestoreDestination = thePath,
                         Duration = TimeSpan.FromMilliseconds(ocb.Batch.BackupFullCommandResult.ElapsedMilliseconds),
                         Size = ocb.Batch.BackupFull.CompressedSize,
                         Exception = ocb.Batch.BackupFullCommandResult.Errors,
@@ -159,7 +169,7 @@ namespace TCC.Lib
                         {
                             Job = job,
                             StartTime = b.BlockDateTime,
-                            FullDestinationPath = ocb.Batch.DestinationFolder,
+                            RestoreDestination = thePath,
                             Duration = TimeSpan.FromMilliseconds(ocb.Batch.BackupDiffCommandResult[index].ElapsedMilliseconds),
                             Size = b.CompressedSize,
                             Exception = ocb.Batch.BackupDiffCommandResult[index].Errors,

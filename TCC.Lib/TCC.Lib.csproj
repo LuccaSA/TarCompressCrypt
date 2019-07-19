@@ -20,6 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Migrations\TccRestoreDb\" />
+    <Folder Include="Migrations\TccBackupDb\" />
   </ItemGroup>
 </Project>

@@ -6,10 +6,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TCC.Lib.Database;
 
-namespace TCC.Lib.Migrations.TccRestoreDb
+namespace TCC.Lib.Migrations
 {
     [DbContext(typeof(TccRestoreDbContext))]
-    [Migration("20190718171013_Initial")]
+    [Migration("20190719090951_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -29,9 +29,9 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
                     b.Property<string>("Exception");
 
-                    b.Property<string>("FullDestinationPath");
-
                     b.Property<int>("JobId");
+
+                    b.Property<int>("RestoreDestinationId");
 
                     b.Property<long>("Size");
 
@@ -43,11 +43,26 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
                     b.HasIndex("JobId");
 
+                    b.HasIndex("RestoreDestinationId");
+
                     b.HasIndex("StartTime");
 
-                    b.HasIndex("FullDestinationPath", "StartTime");
-
                     b.ToTable("RestoreBlockJobs");
+                });
+
+            modelBuilder.Entity("TCC.Lib.Database.RestoreDestination", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("FullDestinationPath");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FullDestinationPath")
+                        .IsUnique();
+
+                    b.ToTable("RestoreDestinations");
                 });
 
             modelBuilder.Entity("TCC.Lib.Database.RestoreJob", b =>
@@ -69,6 +84,12 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                     b.HasOne("TCC.Lib.Database.RestoreJob", "Job")
                         .WithMany("BlockJobs")
                         .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TCC.Lib.Database.RestoreDestination", "RestoreDestination")
+                        .WithMany("RestoreBlockJobs")
+                        .HasForeignKey("RestoreDestinationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

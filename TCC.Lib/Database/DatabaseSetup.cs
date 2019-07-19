@@ -61,21 +61,20 @@ namespace TCC.Lib.Database
             if (commandMode.HasFlag(Mode.Compress))
             {
                 // Remove Full and Diff older than the last Full
-                var paths = await _tccBackupDbContext.BackupBlockJobs
-                    .Select(i => i.FullSourcePath)
-                    .Distinct()
+                var paths = await _tccBackupDbContext.BackupSources
                     .ToListAsync();
 
                 foreach (var p in paths)
                 {
                     var lastFull = await _tccBackupDbContext.BackupBlockJobs
-                                            .Where(i => i.FullSourcePath == p && i.BackupMode == BackupMode.Full)
+                                            .Where(i => i.BackupSource.Id == p.Id && i.BackupMode == BackupMode.Full)
                                             .OrderByDescending(i => i.StartTime)
                                             .FirstOrDefaultAsync();
+
                     if (lastFull != null)
                     {
                         var toDelete = await _tccBackupDbContext.BackupBlockJobs
-                            .Where(i => i.FullSourcePath == p && i.StartTime < lastFull.StartTime)
+                            .Where(i => i.BackupSource.Id == p.Id && i.StartTime < lastFull.StartTime)
                             .ToListAsync();
                         if (toDelete.Count != 0)
                         {
@@ -99,22 +98,20 @@ namespace TCC.Lib.Database
             if (commandMode.HasFlag(Mode.Decompress))
             {
                 // Remove Full and Diff older than the last Full
-                var paths = await _tccRestoreDbContext.RestoreBlockJobs
-                    .Select(i => i.FullDestinationPath)
-                    .Distinct()
+                var paths = await _tccRestoreDbContext.RestoreDestinations
                     .ToListAsync();
 
                 foreach (var p in paths)
                 {
                     var lastFull = await _tccRestoreDbContext.RestoreBlockJobs
-                        .Where(i => i.FullDestinationPath == p && i.BackupMode == BackupMode.Full)
+                        .Where(i => i.RestoreDestination.Id == p.Id && i.BackupMode == BackupMode.Full)
                         .OrderByDescending(i => i.StartTime)
                         .FirstOrDefaultAsync();
 
                     if (lastFull != null)
                     {
                         var toDelete = await _tccRestoreDbContext.RestoreBlockJobs
-                            .Where(i => i.FullDestinationPath == p && i.StartTime < lastFull.StartTime)
+                            .Where(i => i.RestoreDestination.Id == p.Id && i.StartTime < lastFull.StartTime)
                             .ToListAsync();
                         if (toDelete.Count != 0)
                         {

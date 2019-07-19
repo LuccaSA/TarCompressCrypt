@@ -8,7 +8,7 @@ namespace TCC.Lib.Database
         public int Id { get; set; }
         public BackupJob Job { get; set; }
         public BackupMode BackupMode { get; set; }
-        public String FullSourcePath { get; set; }
+        public BackupSource BackupSource { get; set; }
         public DateTime StartTime { get; set; }
         public TimeSpan Duration { get; set; }
         public long Size { get; set; }
@@ -24,12 +24,20 @@ namespace TCC.Lib.Database
         public ICollection<BackupBlockJob> BlockJobs { get; set; }
     }
 
+    public class BackupSource
+    {
+        public int Id { get; set; }
+        public String FullSourcePath { get; set; } 
+        public ICollection<BackupBlockJob> BackupBlockJobs { get; set; }
+    }
+
+
     public class RestoreBlockJob
     {
         public int Id { get; set; }
         public RestoreJob Job { get; set; }
         public BackupMode BackupMode { get; set; }
-        public String FullDestinationPath { get; set; }
+        public RestoreDestination RestoreDestination { get; set; }
         public DateTime StartTime { get; set; }
         public TimeSpan Duration { get; set; }
         public long Size { get; set; }
@@ -44,5 +52,12 @@ namespace TCC.Lib.Database
         public DateTime StartTime { get; set; }
         public TimeSpan Duration { get; set; }
         public ICollection<RestoreBlockJob> BlockJobs { get; set; }
+    }
+
+    public class RestoreDestination
+    {
+        public int Id { get; set; }
+        public String FullDestinationPath { get; set; }
+        public ICollection<RestoreBlockJob> RestoreBlockJobs { get; set; }
     }
 }

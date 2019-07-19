@@ -1,12 +1,25 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace TCC.Lib.Migrations.TccRestoreDb
+namespace TCC.Lib.Migrations
 {
     public partial class Initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "RestoreDestinations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    FullDestinationPath = table.Column<string>(nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RestoreDestinations", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "RestoreJobs",
                 columns: table => new
@@ -29,7 +42,7 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                         .Annotation("Sqlite:Autoincrement", true),
                     JobId = table.Column<int>(nullable: false),
                     BackupMode = table.Column<int>(nullable: false),
-                    FullDestinationPath = table.Column<string>(nullable: true),
+                    RestoreDestinationId = table.Column<int>(nullable: false),
                     StartTime = table.Column<DateTime>(nullable: false),
                     Duration = table.Column<TimeSpan>(nullable: false),
                     Size = table.Column<long>(nullable: false),
@@ -45,6 +58,12 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                         principalTable: "RestoreJobs",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_RestoreBlockJobs_RestoreDestinations_RestoreDestinationId",
+                        column: x => x.RestoreDestinationId,
+                        principalTable: "RestoreDestinations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -53,14 +72,20 @@ namespace TCC.Lib.Migrations.TccRestoreDb
                 column: "JobId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RestoreBlockJobs_RestoreDestinationId",
+                table: "RestoreBlockJobs",
+                column: "RestoreDestinationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RestoreBlockJobs_StartTime",
                 table: "RestoreBlockJobs",
                 column: "StartTime");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RestoreBlockJobs_FullDestinationPath_StartTime",
-                table: "RestoreBlockJobs",
-                columns: new[] { "FullDestinationPath", "StartTime" });
+                name: "IX_RestoreDestinations_FullDestinationPath",
+                table: "RestoreDestinations",
+                column: "FullDestinationPath",
+                unique: true);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -70,6 +95,9 @@ namespace TCC.Lib.Migrations.TccRestoreDb
 
             migrationBuilder.DropTable(
                 name: "RestoreJobs");
+
+            migrationBuilder.DropTable(
+                name: "RestoreDestinations");
         }
     }
 }

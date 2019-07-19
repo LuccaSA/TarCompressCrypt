@@ -82,7 +82,7 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync(async (i, ct) =>
                 {
-                    await _databaseHelper.AddBackupBlockJobAsync(i.Item, job);
+                    await _databaseHelper.AddBackupBlockJobAsync(i.Item, job, i.Item.CompressionBlock.SourceFileOrDirectory.FullPath);
                     await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
@@ -150,7 +150,7 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync(async (i, ct) =>
                 {
-                    await _databaseHelper.AddRestoreBlockJobAsync(i.Item, job);
+                    await _databaseHelper.AddRestoreBlockJobAsync(i.Item, job,i.Item.Batch.DestinationFolder);
                     await _blockListener.OnDecompressionBatchReportAsync(new DecompressionBlockReport(i.Item.Batch, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
@@ -191,13 +191,19 @@ namespace TCC.Lib
         private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks, BackupJob job)
         {
             var db = BackupDb();
-            var jobs = await db.BackupJobs
-                .Where(i => i.Id != job.Id)
-                .OrderByDescending(i => i.StartTime)
-                .Include(i => i.BlockJobs)
-                .FirstOrDefaultAsync();
 
-            if (jobs?.BlockJobs == null || jobs.BlockJobs.Count == 0)
+            var lastFulls = await db.BackupBlockJobs
+                .Include(i=>i.BackupSource)
+                .Where(j => j.BackupMode == BackupMode.Full)
+                .ToListAsync();
+
+            lastFulls = lastFulls
+                .GroupBy(i => i.BackupSource.FullSourcePath)
+                .Select(i => i.OrderByDescending(i => i.StartTime).FirstOrDefault())
+                .ToList();
+
+
+            if (lastFulls == null || lastFulls.Count == 0)
             {
                 // no history ATM, we consider a backup full for each block
                 foreach (var b in blocks)
@@ -207,12 +213,10 @@ namespace TCC.Lib
                 }
                 yield break;
             }
-
-            var blocksInHistory = jobs.BlockJobs.OrderByDescending(b => b.Size);
-
-            await foreach (var b in blocks.OrderBySequence(blocksInHistory,
+             
+            await foreach (var b in blocks.OrderBySequence(lastFulls,
                 b => b.SourceFileOrDirectory.FullPath,
-                p => p.FullSourcePath,
+                p => p.BackupSource.FullSourcePath,
                 async (b, p) =>
                 {
                     // If already Full here, it's a request from command line
@@ -222,7 +226,7 @@ namespace TCC.Lib
                     }
 
                     var lastBackup = await db.BackupBlockJobs
-                        .Where(i => i.FullSourcePath == b.SourceFileOrDirectory.FullPath)
+                        .Where(i => i.BackupSource.FullSourcePath == b.SourceFileOrDirectory.FullPath)
                         .OrderByDescending(i => i.StartTime)
                         .FirstOrDefaultAsync();
 
@@ -261,7 +265,7 @@ namespace TCC.Lib
                 }
 
                 var lastRestore = await db.RestoreBlockJobs
-                    .Where(i => i.FullDestinationPath == opFolder)
+                    .Where(i => i.RestoreDestination.FullDestinationPath == opFolder)
                     .OrderByDescending(i => i.StartTime)
                     .FirstOrDefaultAsync();
 
