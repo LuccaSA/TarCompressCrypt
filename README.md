@@ -6,6 +6,7 @@
 [![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=TarCompressCrypt&metric=alert_status)](https://sonarcloud.io/dashboard?id=TarCompressCrypt)
 [![Sonarcloud Debt](https://sonarcloud.io/api/project_badges/measure?project=TarCompressCrypt&metric=sqale_index)](https://sonarcloud.io/dashboard?id=TarCompressCrypt)
 [![Sonarcloud Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=TarCompressCrypt&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=TarCompressCrypt)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Frducom%2FTarCompressCrypt.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Frducom%2FTarCompressCrypt?ref=badge_shield)
 
 TarCompressCrypt (TCC) is a command line tool for blazing fast compression + encryption / decompression + decryption
 - package multiple files / folders with tar
@@ -73,3 +74,7 @@ All dependencies are downloaded on first TCC start, and are not included in TCC 
 Please consult the different project licences.
 
 TCC is inspired from the excellent Squash Compression Benchmark : https://quixdb.github.io/squash-benchmark/
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Frducom%2FTarCompressCrypt.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Frducom%2FTarCompressCrypt?ref=badge_large)
