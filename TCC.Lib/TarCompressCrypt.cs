@@ -150,7 +150,7 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync(async (i, ct) =>
                 {
-                    await _databaseHelper.AddRestoreBlockJobAsync(i.Item, job,i.Item.Batch.DestinationFolder);
+                    await _databaseHelper.AddRestoreBlockJobAsync(i.Item, job, i.Item.Batch.DestinationFolder);
                     await _blockListener.OnDecompressionBatchReportAsync(new DecompressionBlockReport(i.Item.Batch, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
@@ -193,18 +193,20 @@ namespace TCC.Lib
             var db = BackupDb();
 
             var lastFulls = await db.BackupBlockJobs
-                .Include(i=>i.BackupSource)
+                .Include(i => i.BackupSource)
                 .Where(j => j.BackupMode == BackupMode.Full)
                 .ToListAsync();
 
+            // order by size to optimize global time
             lastFulls = lastFulls
                 .GroupBy(i => i.BackupSource.FullSourcePath)
-                .Select(i => i.OrderByDescending(b => b.StartTime).FirstOrDefault())
+                .Select(i => i.OrderByDescending(b => b.Size).FirstOrDefault())
                 .ToList();
 
             if (lastFulls.Count == 0)
             {
                 // no history ATM, we consider a backup full for each block
+                _logger.LogInformation("No backup history, processing files in filesystem order");
                 foreach (var b in blocks)
                 {
                     b.BackupMode = BackupMode.Full;
@@ -212,7 +214,7 @@ namespace TCC.Lib
                 }
                 yield break;
             }
-             
+
             await foreach (var b in blocks.OrderBySequence(lastFulls,
                 b => b.SourceFileOrDirectory.FullPath,
                 p => p.BackupSource.FullSourcePath,
