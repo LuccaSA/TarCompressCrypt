@@ -61,5 +61,7 @@ namespace TCC.Lib.Blocks
             get => _startTime ?? throw new ArgumentOutOfRangeException( nameof(StartTime),"CompressionBlock StartTime undefined");
             set => _startTime = value;
         }
+
+        public long LastBackupSize { get; set; }
     }
 }

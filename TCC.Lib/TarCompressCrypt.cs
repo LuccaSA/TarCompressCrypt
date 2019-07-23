@@ -48,6 +48,13 @@ namespace TCC.Lib
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
             var ordered = PrepareCompressionBlocksAsync(blocks);
 
+            _logger.LogInformation("Requested order : ");
+            await foreach (var v in ordered)
+            {
+                _logger.LogInformation($"{v.BlockName} {v.LastBackupSize.HumanizeSize()}");
+            }
+            _logger.LogInformation("Starting compression job");
+
             var operationBlocks = await ordered
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
@@ -197,10 +204,11 @@ namespace TCC.Lib
                 .Where(j => j.BackupMode == BackupMode.Full)
                 .ToListAsync();
 
-            // order by size to optimize global time
+            // order by size of bigger backup full to optimize global time
             lastFulls = lastFulls
                 .GroupBy(i => i.BackupSource.FullSourcePath)
                 .Select(i => i.OrderByDescending(b => b.Size).FirstOrDefault())
+                .OrderByDescending(i => i.Size)
                 .ToList();
 
             if (lastFulls.Count == 0)
@@ -220,6 +228,8 @@ namespace TCC.Lib
                 p => p.BackupSource.FullSourcePath,
                 async (b, p) =>
                 {
+                    b.LastBackupSize = p.Size;
+
                     // If already Full here, it's a request from command line
                     if (b.BackupMode.HasValue && b.BackupMode.Value == BackupMode.Full)
                     {
