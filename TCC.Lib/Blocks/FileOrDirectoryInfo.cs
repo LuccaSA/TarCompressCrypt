@@ -10,13 +10,13 @@ namespace TCC.Lib.Blocks
         {
             if (File.Exists(fileOrDirectory))
             {
-                _fileInfo = new FileInfo(fileOrDirectory);
-                _kind = SourceKind.File;
+                FileInfo = new FileInfo(fileOrDirectory);
+                Kind = SourceKind.File;
             }
             else if (Directory.Exists(fileOrDirectory))
             {
-                _directoryInfo = new DirectoryInfo(fileOrDirectory);
-                _kind = SourceKind.Directory;
+                DirectoryInfo = new DirectoryInfo(fileOrDirectory);
+                Kind = SourceKind.Directory;
             }
             else
             {
@@ -26,25 +26,20 @@ namespace TCC.Lib.Blocks
 
         public FileOrDirectoryInfo(FileInfo fileInfo)
         {
-            _fileInfo = fileInfo;
-            _kind = SourceKind.File;
+            FileInfo = fileInfo;
+            Kind = SourceKind.File;
         }
 
         public FileOrDirectoryInfo(DirectoryInfo directoryInfo)
         {
-            _directoryInfo = directoryInfo;
-            _kind = SourceKind.Directory;
+            DirectoryInfo = directoryInfo;
+            Kind = SourceKind.Directory;
         }
 
-        private DirectoryInfo _directoryInfo;
-        private FileInfo _fileInfo;
-        private SourceKind _kind;
+        public DirectoryInfo DirectoryInfo { get; }
+        public FileInfo FileInfo { get; }
 
-        enum SourceKind
-        {
-            File,
-            Directory
-        }
+        public SourceKind Kind { get; }
 
         private long? _sourceSize;
         public long SourceSize => (_sourceSize ?? (_sourceSize = FullPath.GetDirectoryOrFileSize())).Value;
@@ -53,12 +48,12 @@ namespace TCC.Lib.Blocks
         {
             get
             {
-                switch (_kind)
+                switch (Kind)
                 {
                     case SourceKind.File:
-                        return _fileInfo.FullName;
+                        return FileInfo.FullName;
                     case SourceKind.Directory:
-                        return _directoryInfo.FullName;
+                        return DirectoryInfo.FullName;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
@@ -69,12 +64,12 @@ namespace TCC.Lib.Blocks
         {
             get
             {
-                switch (_kind)
+                switch (Kind)
                 {
                     case SourceKind.File:
-                        return _fileInfo.Name.Escape();
+                        return FileInfo.Name.Escape();
                     case SourceKind.Directory:
-                        return _directoryInfo.Name.Escape();
+                        return DirectoryInfo.Name.Escape();
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
@@ -85,16 +80,22 @@ namespace TCC.Lib.Blocks
         {
             get
             {
-                switch (_kind)
+                switch (Kind)
                 {
                     case SourceKind.File:
-                        return Path.GetFileNameWithoutExtension(_fileInfo.Name);
+                        return Path.GetFileNameWithoutExtension(FileInfo.Name);
                     case SourceKind.Directory:
-                        return _directoryInfo.Name;
+                        return DirectoryInfo.Name;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
         }
+    }
+
+    public enum SourceKind
+    {
+        File,
+        Directory
     }
 }

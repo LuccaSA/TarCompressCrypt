@@ -48,12 +48,11 @@ namespace TCC.Lib.Blocks
 
                 block.DestinationArchiveExtension = extension;
                 block.FolderProvider = compFolder;
-                block.SourceOperationFolder = srcDir;
                 yield return block;
             }
         }
 
-        private static string[] _extensions = { ".tarlz4aes", ".tarlz4", ".tarbraes", ".tarbr", ".tarzstdaes", ".tarzstd" };
+        private static readonly string[] _extensions = { ".tarlz4aes", ".tarlz4", ".tarbraes", ".tarbr", ".tarzstdaes", ".tarzstd" };
 
         public static IEnumerable<DecompressionBatch> GenerateDecompressBlocks(this DecompressOption decompressOption)
         {
@@ -238,6 +237,7 @@ namespace TCC.Lib.Blocks
                 yield return new CompressionBlock
                 {
                     SourceFileOrDirectory = new FileOrDirectoryInfo(di),
+                    SourceOperationFolder = srcDir
                 };
             }
 
@@ -256,15 +256,28 @@ namespace TCC.Lib.Blocks
                 yield return new CompressionBlock
                 {
                     SourceFileOrDirectory = new FileOrDirectoryInfo(fi),
+                    SourceOperationFolder = srcDir
                 };
             }
         }
 
         private static IEnumerable<CompressionBlock> PrepareCompressBlockExplicit(string sourceDir)
         {
+            var fod = new FileOrDirectoryInfo(sourceDir);
+
+            var rootDir = fod.Kind == SourceKind.Directory 
+                ? fod.DirectoryInfo?.Parent 
+                : fod.FileInfo?.Directory?.Parent;
+
+            if (rootDir == null)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sourceDir), "Invalid path provided");
+            }
+
             yield return new CompressionBlock
             {
-                SourceFileOrDirectory = new FileOrDirectoryInfo(sourceDir),
+                SourceFileOrDirectory = fod,
+                SourceOperationFolder = rootDir
             };
         }
     }
