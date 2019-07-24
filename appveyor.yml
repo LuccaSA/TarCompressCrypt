@@ -13,7 +13,7 @@ configuration: Release
 platform: Any CPU
  
 install:
-  - choco install dotnetcore-sdk --pre --version 3.0.100-preview6-012264
+  - choco install dotnetcore-sdk --pre --version 3.0.100-preview7-012821
   - ps: wget "https://raw.githubusercontent.com/rducom/ALM/master/build/ComputeVersion.ps1" -outfile "ComputeVersion.ps1"
   - ps: . .\ComputeVersion.ps1
   - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
