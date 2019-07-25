@@ -43,7 +43,7 @@ test_script:
 - Codecov.1.3.0\tools\codecov -f coverage.xml
 
 after_test:
-  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$GitVersion_MajorMinorPatch+";VersionSuffix="+$GitVersion_PreReleaseTag) /p:PackageVersion=$GitVersion_NuGetVersionV2 -o artifacts
+  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$env:GitVersion_MajorMinorPatch+";VersionSuffix="+$env:GitVersion_PreReleaseTag) /p:PackageVersion=$env:GitVersion_NuGetVersionV2 -o artifacts
 
 artifacts:
   - path: .\TCC\artifacts\**\*.nupkg
