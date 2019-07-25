@@ -34,7 +34,7 @@ before_build:
 
 build_script:
 - dotnet build -c Debug
-- dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover  /p:CoverletOutput='coverage.xml'
+- dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover  /p:CoverletOutput=..\coverage.xml
 - dotnet sonarscanner end /d:"sonar.login=%SONAR_TOKEN%"
 
 test_script:
