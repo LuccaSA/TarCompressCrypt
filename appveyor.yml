@@ -14,14 +14,16 @@ platform: Any CPU
  
 install:
   - choco install dotnetcore-sdk --pre --version 3.0.100-preview7-012821
-  - ps: wget "https://raw.githubusercontent.com/rducom/ALM/master/build/ComputeVersion.ps1" -outfile "ComputeVersion.ps1"
-  - ps: . .\ComputeVersion.ps1
-  - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
-  - ps: Update-AppveyorBuild -Version $version.Semver
+  # - ps: wget "https://raw.githubusercontent.com/rducom/ALM/master/build/ComputeVersion.ps1" -outfile "ComputeVersion.ps1"
+  # - ps: . .\ComputeVersion.ps1
+  # - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
+  # - ps: Update-AppveyorBuild -Version $version.Semver
   - dotnet tool install --global dotnet-sonarscanner
+  - dotnet tool install --global GitVersion.Tool --version 5.0.0-beta5.50
   - nuget install Codecov -Version 1.3.0 -Verbosity quiet
 
 before_build:
+- dotnet gitversion /l console /output buildserver /updateAssemblyInfo
 - dotnet restore TCC.sln --verbosity m
 - dotnet --list-sdks
 - dotnet --version
@@ -41,7 +43,7 @@ test_script:
 - Codecov.1.3.0\tools\codecov -f coverage.xml
 
 after_test:
-  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$version.Prefix+";VersionSuffix="+$version.Suffix) /p:PackageVersion=$env:APPVEYOR_BUILD_VERSION -o artifacts
+  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$GitVersion_MajorMinorPatch+";VersionSuffix="+$GitVersion_PreReleaseTag) /p:PackageVersion=$GitVersion_NuGetVersionV2 -o artifacts
 
 artifacts:
   - path: .\TCC\artifacts\**\*.nupkg
