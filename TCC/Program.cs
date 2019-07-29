@@ -142,7 +142,23 @@ namespace TCC
                 case Mode.Compress:
                     if (Directory.Exists(parsed.Option.SourceDirOrFile))
                     {
-                        return parsed.Option.SourceDirOrFile;
+                        var co = parsed.Option as CompressOption;
+                        if (co.BlockMode == BlockMode.Individual)
+                        {
+                            return parsed.Option.SourceDirOrFile;
+                        }
+                        else
+                        {
+                            var fod = new FileOrDirectoryInfo(parsed.Option.SourceDirOrFile);
+                            var rootDir = fod.Kind == SourceKind.Directory
+                                ? fod.DirectoryInfo?.Parent
+                                : fod.FileInfo?.Directory?.Parent;
+                            if (rootDir == null)
+                            {
+                                throw new ArgumentOutOfRangeException(nameof(parsed), "Invalid path provided");
+                            }
+                            return rootDir.FullName;
+                        }
                     }
                     else if (File.Exists(parsed.Option.SourceDirOrFile))
                     {
