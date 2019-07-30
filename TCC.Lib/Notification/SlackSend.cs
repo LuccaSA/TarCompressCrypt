@@ -31,14 +31,14 @@ namespace TCC.Lib.Notification
             var msgRoot = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
-                Text = $"*{Environment.MachineName}* : {mode} {blocksStats} {shell}",
+                Text = $"*{Environment.MachineName}* {parsedOption.BucketName} : {mode} {blocksStats} {shell}",
             };
             var response = await _slackClient.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
 
             var msgDetail = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
-                Text = $"*{mode}* details on {Environment.MachineName}",
+                Text = $"*{mode}* Details on {parsedOption.BucketName ?? Environment.MachineName}",
                 ThreadTs = response.Ts,
                 Attachments = new List<Attachment>()
             };
@@ -55,7 +55,7 @@ namespace TCC.Lib.Notification
                 case Mode.Compress:
                     blocksStats = string.Join(' ', op.OperationBlocks.OfType<OperationCompressionBlock>()
                         .GroupBy(i => i.CompressionBlock.BackupMode)
-                        .Select(i => new {Mode = i.Key, Count = i.Count()})
+                        .Select(i => new { Mode = i.Key, Count = i.Count() })
                         .OrderBy(i => i.Mode).Select(i => $"{i.Count} {i.Mode ?? BackupMode.Full}"));
                     break;
                 case Mode.Decompress:

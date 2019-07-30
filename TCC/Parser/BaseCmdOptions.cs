@@ -27,7 +27,11 @@ namespace TCC.Parser
 
         [Option('s', "slackSecret", HelpText = "Slack xoxp Secret")]
         public string SlackSecret { get; set; }
+
         [Option('c', "slackChannel", HelpText = "Slack #channel name")]
         public string SlackChannel { get; set; }
+
+        [Option('b', "bucketName", HelpText = "Slack notification bucket name")]
+        public string BucketName { get; set; }
     }
 }
