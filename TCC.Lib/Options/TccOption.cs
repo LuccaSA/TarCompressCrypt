@@ -15,5 +15,6 @@
 
         public string SlackChannel { get; set; }
         public string SlackSecret { get; set; }
+        public string BucketName { get; set; }
     }
 }
