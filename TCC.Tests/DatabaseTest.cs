@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +45,7 @@ namespace TCC.Tests
                 }
             });
             await _backupDbContext.SaveChangesAsync();
-            var found = await _backupDbContext.BackupJobs.LastOrDefaultAsync();
+            var found = await _backupDbContext.BackupJobs.OrderByDescending(i=>i.Id).FirstOrDefaultAsync();
             Assert.NotNull(found);
             Assert.Equal(2, found.BlockJobs.Count);
         }
