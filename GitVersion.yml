@@ -1,6 +1,1 @@
-mode: Mainline
-branches: 
-  master:
-    regex: ^master$
-    is-release-branch: true
-    is-mainline: true
+mode: ContinuousDeployment

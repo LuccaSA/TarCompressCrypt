@@ -11,7 +11,7 @@ skip_branch_with_pr: true
 
 configuration: Release
 platform: Any CPU
- 
+
 install:
   # - choco install dotnetcore-sdk --pre --version 3.0.100-preview7-012821
   # - ps: wget "https://raw.githubusercontent.com/rducom/ALM/master/build/ComputeVersion.ps1" -outfile "ComputeVersion.ps1"
@@ -19,7 +19,7 @@ install:
   # - ps: $version = Compute "TCC\TCC.csproj" $env:APPVEYOR_BUILD_NUMBER $env:APPVEYOR_REPO_TAG $env:APPVEYOR_PULL_REQUEST_NUMBER
   # - ps: Update-AppveyorBuild -Version $version.Semver
   - dotnet tool install --global dotnet-sonarscanner
-  - dotnet tool install --global GitVersion.Tool
+  - dotnet tool install --global GitVersion.Tool --version 5.1.4-beta1.21
   - nuget install Codecov -Version 1.9.0 -Verbosity quiet
 
 before_build:
@@ -43,7 +43,7 @@ test_script:
 - Codecov.1.9.0\tools\codecov -f coverage.xml
 
 after_test:
-  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$env:GitVersion_MajorMinorPatch+";VersionSuffix="+$env:GitVersion_PreReleaseTag) /p:PackageVersion=$env:GitVersion_NuGetVersionV2 -o artifacts
+  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$env:GitVersion_MajorMinorPatch) --version-suffix "$env:GitVersion_NuGetPreReleaseTagV2" /p:PackageVersion=$env:GitVersion_NuGetVersionV2 -o artifacts
 
 artifacts:
   - path: .\artifacts\**\*.nupkg
