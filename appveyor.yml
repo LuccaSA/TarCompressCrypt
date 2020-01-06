@@ -1,6 +1,7 @@
 image: Visual Studio 2019
 
 environment:
+  ASPNETCORE_ENVIRONMENT: test
   SONAR_TOKEN:
     secure: ZRrEwbfNERZYPsHvMxFC3kHLga6OzFHJQ7MpfUcqLcNCzNI112ZCyew/1zhL2SN1
   GITHUB_ACCESS_TOKEN:
@@ -43,7 +44,7 @@ test_script:
 - Codecov.1.9.0\tools\codecov -f coverage.xml
 
 after_test:
-  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$env:GitVersion_MajorMinorPatch) --version-suffix "$env:GitVersion_NuGetPreReleaseTagV2" /p:PackageVersion=$env:GitVersion_NuGetVersionV2 -o artifacts
+  - ps: dotnet pack TCC\TCC.csproj --configuration Release /p:$("VersionPrefix="+$env:GitVersion_MajorMinorPatch+";VersionSuffix="+$env:GitVersion_NuGetPreReleaseTagV2) /p:PackageVersion=$env:GitVersion_NuGetVersionV2 -o artifacts
 
 artifacts:
   - path: .\artifacts\**\*.nupkg

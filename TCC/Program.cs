@@ -29,7 +29,11 @@ namespace TCC
             TccCommand parsed = args.ParseCommandLine();
             if (parsed.ReturnCode == 1)
             {
-                Environment.Exit(1);
+                if (!IsTest())
+                {
+                    Environment.Exit(1);
+                }
+                return;
             }
 
             var workingPath = WorkingPath(parsed);
@@ -95,9 +99,14 @@ namespace TCC
             Serilog.Log.CloseAndFlush();
             if (op == null || !op.IsSuccess)
             {
-                Environment.Exit(1);
+                if (!IsTest())
+                {
+                    Environment.Exit(1);
+                }
             }
         }
+
+        private static bool IsTest() => Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "test";
 
         private static IEnumerable<string> ReportOperationStats(OperationSummary op, Mode mode)
         {
