@@ -115,8 +115,8 @@ namespace TCC.Lib.Dependencies
         private static readonly Dependency _lz4 = new Dependency
         {
             Name = "Lz4",
-            Url = @"https://github.com/lz4/lz4/releases/download/v1.8.3/lz4_v1_8_3_win64.zip",
-            ZipFilename = "lz4_v1_8_3_win64.zip",
+            Url = @"https://github.com/lz4/lz4/releases/download/v1.9.2/lz4_win64_v1_9_2.zip",
+            ZipFilename = "lz4_v1_9_2_win64.zip",
             ExtractFolder = "lz4_v183",
             ExeName = "lz4.exe"
         };
@@ -133,8 +133,8 @@ namespace TCC.Lib.Dependencies
         private static readonly Dependency _zStd = new Dependency
         {
             Name = "Zstandard",
-            Url = @"https://github.com/facebook/zstd/releases/download/v1.3.5/zstd-v1.3.5-win64.zip",
-            ZipFilename = "zstd-v1.3.5-win64.zip",
+            Url = @"https://github.com/facebook/zstd/releases/download/v1.4.4/zstd-v1.4.4-win64.zip",
+            ZipFilename = "zstd-v1.4.4-win64.zip",
             ExtractFolder = "zstd_v135",
             ExeName = "zstd.exe"
         };
@@ -144,10 +144,10 @@ namespace TCC.Lib.Dependencies
         private static readonly Dependency _openSsl = new Dependency
         {
             Name = "OpenSSL",
-            Url = @"https://bintray.com/vszakats/generic/download_file?file_path=openssl-1.1.1-win64-mingw.zip",
-            ZipFilename = "openssl-1.1.1-win64-mingw.zip",
-            ExtractFolder = "openssl_v111",
-            ExeName = "openssl-1.1.1-win64-mingw\\openssl.exe"
+            Url = @"https://bintray.com/vszakats/generic/download_file?file_path=openssl-1.1.1d-win64-mingw.zip",
+            ZipFilename = "openssl-1.1.1d-win64-mingw.zip",
+            ExtractFolder = "openssl_v111d",
+            ExeName = "openssl-1.1.1d-win64-mingw\\openssl.exe"
         };
 
         private static readonly Dependency _tar = new Dependency

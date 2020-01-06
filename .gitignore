@@ -8,3 +8,4 @@ launchSettings.json
 */logs/*
 *.db
 /TCC.Tests/'coverage.xml'
+/coverage.xml
