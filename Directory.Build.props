@@ -14,8 +14,9 @@
 
     <Authors>Raphael DUCOM</Authors>
     <Description>TCC : TarCompressCrypt, command line util for massive batch backup / restore operations</Description>
-    <PackageProjectUrl>https://github.com/rducom/TarCompressCrypt</PackageProjectUrl>
-    <Copyright>Copyright 2018 - Raphael DUCOM</Copyright>
+    <PackageProjectUrl>https://github.com/LuccaSA/TarCompressCrypt</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/LuccaSA/TarCompressCrypt</RepositoryUrl>
+    <Copyright>Copyright 2020 - Raphael DUCOM</Copyright>
   </PropertyGroup>
 
 

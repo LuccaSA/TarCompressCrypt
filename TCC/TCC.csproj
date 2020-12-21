@@ -5,7 +5,6 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>tcc</ToolCommandName>
     <ProjectGuid>{64E77240-F71E-492A-A725-1E2B0059B946}</ProjectGuid>
-    <LangVersion>8</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

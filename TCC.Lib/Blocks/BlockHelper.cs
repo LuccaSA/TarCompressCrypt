@@ -267,7 +267,7 @@ namespace TCC.Lib.Blocks
 
             var rootDir = fod.Kind == SourceKind.Directory 
                 ? fod.DirectoryInfo?.Parent 
-                : fod.FileInfo?.Directory?.Parent;
+                : fod.FileInfo?.Directory;
 
             if (rootDir == null)
             {
