@@ -65,7 +65,9 @@ jobs:
           
     - name: Nuget org push
       if: startsWith(github.ref, 'refs/tags/')
-      run: echo "Tag detected"
+      run: dotnet nuget push "artifacts/**/TCC*.nupkg" --skip-duplicate --source https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_PUBLISH }}
+      env:
+        NUGET_PUBLISH: ${{ secrets.NUGET_PUBLISH }}
 
     - name: Dump ref
       run: echo ${{github.ref}}

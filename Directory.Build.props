@@ -16,7 +16,7 @@
     <Description>TCC : TarCompressCrypt, command line util for massive batch backup / restore operations</Description>
     <PackageProjectUrl>https://github.com/LuccaSA/TarCompressCrypt</PackageProjectUrl>
     <RepositoryUrl>https://github.com/LuccaSA/TarCompressCrypt</RepositoryUrl>
-    <Copyright>Copyright 2020 - Raphael DUCOM</Copyright>
+    <Copyright>Copyright 2020 - Lucca SA</Copyright>
   </PropertyGroup>
 
 
