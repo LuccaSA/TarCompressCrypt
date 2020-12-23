@@ -3,25 +3,35 @@ using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib.Command;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace TCC.Tests.Command
 {
     public class CommandTest
     {
+        private readonly ITestOutputHelper _output;
+
+        public CommandTest(ITestOutputHelper output)
+        {
+            _output = output;
+        }
+
         [Fact]
         public async Task Timeout()
         {
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
-                await "TIMEOUT /T 42 /NOBREAK >NUL".Run(null, CancellationToken.None, TimeSpan.FromMilliseconds(100));
+                var cmd = await "ping -n 42 127.0.0.1 >NUL".Run(null, CancellationToken.None, TimeSpan.FromMilliseconds(100));
+                _output.WriteLine(cmd.Errors);
+                _output.WriteLine(cmd.Output);
             });
         }
 
         [Fact]
         public async Task Kill()
         {
-            CancellationTokenSource cts = new CancellationTokenSource();
-            var t1 = "TIMEOUT /T 5 /NOBREAK >NUL".Run(null, cts.Token, TimeSpan.FromSeconds(5));
+            var cts = new CancellationTokenSource();
+            var t1 = "ping -n 5 127.0.0.1 >NUL".Run(null, cts.Token, TimeSpan.FromSeconds(5));
 
 #pragma warning disable 4014
             Task.Run(async () =>
@@ -31,7 +41,12 @@ namespace TCC.Tests.Command
                 cts.Cancel();
             });
 
-            await Assert.ThrowsAsync<TaskCanceledException>(async () => { await t1; });
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            {
+                var cmd = await t1;
+                _output.WriteLine(cmd.Errors);
+                _output.WriteLine(cmd.Output);
+            });
         }
 
         [Fact]
@@ -42,8 +57,8 @@ namespace TCC.Tests.Command
             Assert.Equal("hello world", result.Output.Trim());
             Assert.True(result.IsSuccess);
             Assert.False(result.HasError);
-            Assert.Equal(0,result.ExitCode);
-            Assert.Equal(cmd,result.Command);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(cmd, result.Command);
         }
 
         [Fact]
