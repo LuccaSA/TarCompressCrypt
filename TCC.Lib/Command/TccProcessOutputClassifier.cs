@@ -21,6 +21,10 @@ namespace TCC.Lib.Command
             {
                 return true;
             }
+            if (line.StartsWith(@"/*stdin*\"))
+            {
+                return true;
+            }
             if (line.EndsWith(" bytes "))
             {
                 return true;
