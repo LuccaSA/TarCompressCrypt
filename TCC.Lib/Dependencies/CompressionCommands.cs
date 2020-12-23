@@ -57,7 +57,7 @@ namespace TCC.Lib.Dependencies
                             cmd.Append($" | {_ext.Brotli()} {ratio} - -o {block.DestinationArchive}");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($" | {_ext.Zstd()} {ratio} - -o {block.DestinationArchive}");
+                            cmd.Append($" | {_ext.Zstd()} --no-progress {ratio} - -o {block.DestinationArchive}");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
@@ -77,7 +77,7 @@ namespace TCC.Lib.Dependencies
                             cmd.Append($" | {_ext.Brotli()} {ratio} - ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($" | {_ext.Zstd()} {ratio} - ");
+                            cmd.Append($" | {_ext.Zstd()} --no-progress {ratio} - ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
@@ -106,7 +106,7 @@ namespace TCC.Lib.Dependencies
                             cmd.Append($"{_ext.Brotli()} {block.Source} -d -c ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($"{_ext.Zstd()} {block.Source} -d -c ");
+                            cmd.Append($"{_ext.Zstd()} --no-progress {block.Source} -d -c ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");
@@ -128,7 +128,7 @@ namespace TCC.Lib.Dependencies
                             cmd.Append($" | {_ext.Brotli()} - -d ");
                             break;
                         case CompressionAlgo.Zstd:
-                            cmd.Append($" | {_ext.Zstd()} - -d ");
+                            cmd.Append($" | {_ext.Zstd()} --no-progress - -d ");
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(block), "Unknown PasswordMode");

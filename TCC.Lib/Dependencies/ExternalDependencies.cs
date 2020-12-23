@@ -133,9 +133,9 @@ namespace TCC.Lib.Dependencies
         private static readonly Dependency _zStd = new Dependency
         {
             Name = "Zstandard",
-            Url = @"https://github.com/facebook/zstd/releases/download/v1.4.4/zstd-v1.4.4-win64.zip",
-            ZipFilename = "zstd-v1.4.4-win64.zip",
-            ExtractFolder = "zstd_v135",
+            Url = @"https://github.com/facebook/zstd/releases/download/v1.4.8/zstd-v1.4.8-win64.zip",
+            ZipFilename = "zstd-v1.4.8-win64.zip",
+            ExtractFolder = "zstd_v148",
             ExeName = "zstd.exe"
         };
 
