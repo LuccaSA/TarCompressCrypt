@@ -139,15 +139,15 @@ namespace TCC.Lib.Dependencies
             ExeName = "zstd.exe"
         };
 
-        // From : https://bintray.com/vszakats/generic/openssl
+        // From : https://curl.se/windows/
         // referenced from official OpenSSL wiki : https://wiki.openssl.org/index.php/Binaries
         private static readonly Dependency _openSsl = new Dependency
         {
             Name = "OpenSSL",
-            Url = @"https://bintray.com/vszakats/generic/download_file?file_path=openssl-1.1.1d-win64-mingw.zip",
-            ZipFilename = "openssl-1.1.1d-win64-mingw.zip",
-            ExtractFolder = "openssl_v111d",
-            ExeName = "openssl-1.1.1d-win64-mingw\\openssl.exe"
+            Url = @"https://curl.se/windows/dl-7.75.0_4/openssl-1.1.1j_4-win64-mingw.zip",
+            ZipFilename = "openssl-1.1.1j_4-win64-mingw.zip",
+            ExtractFolder = "openssl_v111j",
+            ExeName = "openssl-1.1.1j-win64-mingw\\openssl.exe"
         };
 
         private static readonly Dependency _tar = new Dependency

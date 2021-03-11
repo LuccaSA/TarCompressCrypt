@@ -195,7 +195,7 @@ namespace TCC.Lib.Notification
                         {
                             BlockName = v.Block.BlockName,
                             Message = inf,
-                            Alert = AlertLevel.Info
+                            Alert = AlertLevel.Warning
                         });
                     }
                 }
