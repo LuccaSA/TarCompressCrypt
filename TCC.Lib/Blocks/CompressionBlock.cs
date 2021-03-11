@@ -46,6 +46,9 @@ namespace TCC.Lib.Blocks
         public DirectoryInfo DestinationArchiveFolder =>
             FolderProvider.GetDirectory(BackupMode, SourceFileOrDirectory.Name);
 
+        public bool HaveFullFiles =>
+            FolderProvider.FullExists(SourceFileOrDirectory.Name);
+
         public BackupMode? BackupMode { get; set; }
 
         public override string BlockName => SourceFileOrDirectory.Name;
