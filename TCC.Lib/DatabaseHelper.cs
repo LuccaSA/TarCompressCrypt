@@ -60,15 +60,20 @@ namespace TCC.Lib
 
         public async Task AddBackupBlockJobAsync(OperationCompressionBlock ocb, BackupJob job, string fullPath)
         {
+            if (ocb.BlockResults.Any(b => b.CommandResult.HasError || b.CommandResult.HasWarning))
+            {
+                // we avoid to save a block with warning, in order to start it again the next time from scratch
+                return;
+            }
             try
             {
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<TccBackupDbContext>();
-                var theJob = await db.BackupJobs.Include(i=>i.BlockJobs).FirstOrDefaultAsync(i => i.Id == job.Id);
+                var theJob = await db.BackupJobs.Include(i => i.BlockJobs).FirstOrDefaultAsync(i => i.Id == job.Id);
                 var thePath = await db.BackupSources.FirstOrDefaultAsync(i => i.FullSourcePath == fullPath);
                 if (thePath == null)
                 {
-                    thePath = new BackupSource {FullSourcePath = fullPath};
+                    thePath = new BackupSource { FullSourcePath = fullPath };
                 }
 
                 var bbj = new BackupBlockJob
