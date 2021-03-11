@@ -241,7 +241,7 @@ namespace TCC.Lib
                         .OrderByDescending(i => i.StartTime)
                         .FirstOrDefaultAsync();
 
-                    if (lastBackup != null && string.IsNullOrEmpty(lastBackup.Exception))
+                    if (lastBackup != null && string.IsNullOrEmpty(lastBackup.Exception) && b.HaveFullFiles)
                     {
                         // If last backup found, we plan a backup diff
                         b.BackupMode = BackupMode.Diff;
