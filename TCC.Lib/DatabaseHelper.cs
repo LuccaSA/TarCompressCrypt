@@ -58,37 +58,47 @@ namespace TCC.Lib
             }
         }
 
-        public async Task AddBackupBlockJobAsync(OperationCompressionBlock ocb, BackupJob job, string fullPath)
+        public async Task AddBackupBlockJobAsync(IReadOnlyCollection<OperationCompressionBlock> blocks, BackupJob job)
         {
-            if (ocb.BlockResults.Any(b => b.CommandResult.HasError || b.CommandResult.HasWarning))
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TccBackupDbContext>();
+            foreach (OperationCompressionBlock i in blocks)
             {
-                // we avoid to save a block with warning, in order to start it again the next time from scratch
-                return;
+                OperationCompressionBlock ocb = i;
+                string fullPath = i.CompressionBlock.SourceFileOrDirectory.FullPath;
+                if (ocb.BlockResults.Any(b => b.CommandResult.HasError || b.CommandResult.HasWarning))
+                {
+                    // we avoid to save a block with warning, in order to start it again the next time from scratch
+                    return;
+                }
+                try
+                {
+                    var theJob = await db.BackupJobs.Include(i => i.BlockJobs).FirstOrDefaultAsync(i => i.Id == job.Id);
+                    var thePath = await db.BackupSources.FirstOrDefaultAsync(i => i.FullSourcePath == fullPath);
+                    if (thePath == null)
+                    {
+                        thePath = new BackupSource { FullSourcePath = fullPath };
+                    }
+                    var bbj = new BackupBlockJob
+                    {
+                        Job = job,
+                        StartTime = ocb.CompressionBlock.StartTime,
+                        BackupSource = thePath,
+                        Duration = TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
+                        Size = ocb.CompressionBlock.CompressedSize,
+                        Exception = ocb.BlockResults.First().CommandResult.Errors,
+                        Success = ocb.BlockResults.First().CommandResult.IsSuccess,
+                        BackupMode = ocb.CompressionBlock.BackupMode ?? BackupMode.Full
+                    };
+                    theJob.BlockJobs.Add(bbj);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogCritical("AddBackupBlockJobAsync", e);
+                }
             }
             try
             {
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<TccBackupDbContext>();
-                var theJob = await db.BackupJobs.Include(i => i.BlockJobs).FirstOrDefaultAsync(i => i.Id == job.Id);
-                var thePath = await db.BackupSources.FirstOrDefaultAsync(i => i.FullSourcePath == fullPath);
-                if (thePath == null)
-                {
-                    thePath = new BackupSource { FullSourcePath = fullPath };
-                }
-
-                var bbj = new BackupBlockJob
-                {
-                    Job = job,
-                    StartTime = ocb.CompressionBlock.StartTime,
-                    BackupSource = thePath,
-                    Duration = TimeSpan.FromMilliseconds(ocb.BlockResults.First().CommandResult.ElapsedMilliseconds),
-                    Size = ocb.CompressionBlock.CompressedSize,
-                    Exception = ocb.BlockResults.First().CommandResult.Errors,
-                    Success = ocb.BlockResults.First().CommandResult.IsSuccess,
-                    BackupMode = ocb.CompressionBlock.BackupMode ?? BackupMode.Full
-                };
-                theJob.BlockJobs.Add(bbj);
-                //db.BackupBlockJobs.Add(bbj);
                 await db.SaveChangesAsync();
             }
             catch (Exception e)
@@ -96,7 +106,7 @@ namespace TCC.Lib
                 _logger.LogCritical("AddBackupBlockJobAsync", e);
             }
         }
-
+        
         public async Task<RestoreJob> InitializeRestoreJobAsync()
         {
             var job = new RestoreJob

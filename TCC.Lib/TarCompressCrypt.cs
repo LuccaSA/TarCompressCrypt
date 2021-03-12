@@ -43,7 +43,7 @@ namespace TCC.Lib
         {
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
-            var job = await _databaseHelper.InitializeBackupJobAsync();
+            BackupJob job = await _databaseHelper.InitializeBackupJobAsync();
 
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
             var ordered = PrepareCompressionBlocksAsync(blocks);
@@ -89,11 +89,12 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync(async (i, ct) =>
                 {
-                    await _databaseHelper.AddBackupBlockJobAsync(i.Item, job, i.Item.CompressionBlock.SourceFileOrDirectory.FullPath);
                     await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
 
+            await _databaseHelper.AddBackupBlockJobAsync(operationBlocks, job);
+            
             sw.Stop();
 
             await _databaseHelper.UpdateBackupJobStatsAsync(sw, job);
