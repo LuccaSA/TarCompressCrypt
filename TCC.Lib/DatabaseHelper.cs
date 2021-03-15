@@ -144,7 +144,7 @@ namespace TCC.Lib
             }
         }
 
-        public async Task AddRestoreBlockJobAsync(OperationDecompressionsBlock ocb, RestoreJob job, string fullPath)
+        public async Task AddRestoreBlockJobAsync(RestoreJob job, IReadOnlyCollection<OperationDecompressionsBlock> blocks)
         {
             try
             {
@@ -152,50 +152,51 @@ namespace TCC.Lib
                 var db = scope.ServiceProvider.GetRequiredService<TccRestoreDbContext>();
 
                 var theJob = await db.RestoreJobs.Include(i => i.BlockJobs).FirstOrDefaultAsync(i => i.Id == job.Id);
-                var thePath = await db.RestoreDestinations.FirstOrDefaultAsync(i => i.FullDestinationPath == fullPath);
-                if (thePath == null)
-                {
-                    thePath = new RestoreDestination { FullDestinationPath = fullPath };
-                }
 
-                if (ocb.Batch.BackupFull != null)
+                foreach (OperationDecompressionsBlock odb in blocks)
                 {
-                    var rb = new RestoreBlockJob
+                    var thePath = await db.RestoreDestinations.FirstOrDefaultAsync(i => i.FullDestinationPath == odb.Batch.DestinationFolder);
+                    if (thePath == null)
                     {
-                        Job = job,
-                        StartTime = ocb.Batch.BackupFull.BlockDateTime,
-                        RestoreDestination = thePath,
-                        Duration = TimeSpan.FromMilliseconds(ocb.Batch.BackupFullCommandResult.ElapsedMilliseconds),
-                        Size = ocb.Batch.BackupFull.CompressedSize,
-                        Exception = ocb.Batch.BackupFullCommandResult.Errors,
-                        Success = ocb.Batch.BackupFullCommandResult.IsSuccess,
-                        BackupMode = BackupMode.Full
-                    };
-                    theJob.BlockJobs.Add(rb);
-                    //db.RestoreBlockJobs.Add(rb);
-                }
+                        thePath = new RestoreDestination { FullDestinationPath = odb.Batch.DestinationFolder };
+                    }
 
-                if (ocb.Batch.BackupsDiff != null)
-                {
-                    for (var index = 0; index < ocb.Batch.BackupsDiff.Length; index++)
+                    if (odb.Batch.BackupFull != null)
                     {
-                        var b = ocb.Batch.BackupsDiff[index];
                         var rb = new RestoreBlockJob
                         {
                             Job = job,
-                            StartTime = b.BlockDateTime,
+                            StartTime = odb.Batch.BackupFull.BlockDateTime,
                             RestoreDestination = thePath,
-                            Duration = TimeSpan.FromMilliseconds(ocb.Batch.BackupDiffCommandResult[index].ElapsedMilliseconds),
-                            Size = b.CompressedSize,
-                            Exception = ocb.Batch.BackupDiffCommandResult[index].Errors,
-                            Success = ocb.Batch.BackupDiffCommandResult[index].IsSuccess,
-                            BackupMode = BackupMode.Diff
+                            Duration = TimeSpan.FromMilliseconds(odb.Batch.BackupFullCommandResult.ElapsedMilliseconds),
+                            Size = odb.Batch.BackupFull.CompressedSize,
+                            Exception = odb.Batch.BackupFullCommandResult.Errors,
+                            Success = odb.Batch.BackupFullCommandResult.IsSuccess,
+                            BackupMode = BackupMode.Full
                         };
                         theJob.BlockJobs.Add(rb);
-                        //db.RestoreBlockJobs.Add(rb);
+                    }
+
+                    if (odb.Batch.BackupsDiff != null)
+                    {
+                        for (var index = 0; index < odb.Batch.BackupsDiff.Length; index++)
+                        {
+                            var b = odb.Batch.BackupsDiff[index];
+                            var rb = new RestoreBlockJob
+                            {
+                                Job = job,
+                                StartTime = b.BlockDateTime,
+                                RestoreDestination = thePath,
+                                Duration = TimeSpan.FromMilliseconds(odb.Batch.BackupDiffCommandResult[index].ElapsedMilliseconds),
+                                Size = b.CompressedSize,
+                                Exception = odb.Batch.BackupDiffCommandResult[index].Errors,
+                                Success = odb.Batch.BackupDiffCommandResult[index].IsSuccess,
+                                BackupMode = BackupMode.Diff
+                            };
+                            theJob.BlockJobs.Add(rb);
+                        }
                     }
                 }
-
                 await db.SaveChangesAsync();
             }
             catch (Exception e)

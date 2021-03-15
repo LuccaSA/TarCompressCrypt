@@ -46,7 +46,7 @@ namespace TCC.Lib.AsyncStreams
             });
             return new AsyncStream<T>(channel, source.CancellationToken, async () =>
             {
-                await CountInternalAsync(source, localCounter, channel); 
+                await CountInternalAsync(source, localCounter, channel);
             });
         }
 
@@ -57,10 +57,10 @@ namespace TCC.Lib.AsyncStreams
                 SingleWriter = false,
                 SingleReader = false
             });
-            return new AsyncStream<T>(channel,  source.CancellationToken, async () =>
-            {
-                await ForeachInternalAsync(source, action, channel); 
-            });
+            return new AsyncStream<T>(channel, source.CancellationToken, async () =>
+           {
+               await ForeachInternalAsync(source, action, channel);
+           });
         }
 
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Threading.Channels;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
@@ -48,17 +49,19 @@ namespace TCC.Lib
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
             var ordered = PrepareCompressionBlocksAsync(blocks);
 
+            var buffer = new List<CompressionBlock>();
             _logger.LogInformation("Requested order : ");
-            await foreach (var v in ordered)
+            await foreach (CompressionBlock block in ordered)
             {
-                _logger.LogInformation($"{v.BlockName} {v.LastBackupSize.HumanizeSize()}");
+                buffer.Add(block);
+                _logger.LogInformation($"{block.BlockName} {block.LastBackupSize.HumanizeSize()}");
             }
             _logger.LogInformation("Starting compression job");
 
-            var operationBlocks = await ordered
+            var operationBlocks = await buffer
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
-                // Prepare encyption
+                // Prepare encryption
                 .ParallelizeStreamAsync(async (b, token) =>
                 {
                     b.StartTime = DateTime.UtcNow;
@@ -66,21 +69,7 @@ namespace TCC.Lib
                     return b;
                 }, po)
                 // Core loop 
-                .ParallelizeStreamAsync(async (block, token) =>
-                {
-                    CommandResult result = null;
-                    try
-                    {
-                        string cmd = _compressionCommands.CompressCommand(block, option);
-                        result = await cmd.Run(block.OperationFolder, token);
-                        LogReport(block, result);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogCritical(e, $"Error compressing {block.Source}");
-                    }
-                    return new OperationCompressionBlock(block, result);
-                }, po)
+                .ParallelizeStreamAsync( (block, token) => CompressionBlockInternal(option, block, token), po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
@@ -92,17 +81,50 @@ namespace TCC.Lib
                     await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
-
-            await _databaseHelper.AddBackupBlockJobAsync(operationBlocks, job);
-            
             sw.Stop();
-
+            await _databaseHelper.AddBackupBlockJobAsync(operationBlocks, job);
             await _databaseHelper.UpdateBackupJobStatsAsync(sw, job);
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
         }
 
+        private async Task<OperationCompressionBlock> CompressionBlockInternal(CompressOption option, CompressionBlock block, CancellationToken token)
+        {
+            int retry = 0;
+            CommandResult result = null;
+            while (true)
+            {
+                bool hasError = false;
+                try
+                {
+                    string cmd = _compressionCommands.CompressCommand(block, option);
+                    result = await cmd.Run(block.OperationFolder, token);
+                    LogReport(block, result);
+                    if (result.HasError || result.HasWarning)
+                    {
+                        hasError = true;
+                    }
+                }
+                catch (Exception e)
+                {
+                    hasError = true;
+                    _logger.LogCritical(e, $"Error compressing {block.Source}");
+                }
+
+                if (hasError && Retry.CanRetryIn(out TimeSpan nextRetry, ref retry))
+                {
+                    _logger.LogWarning($"Retrying compressing {block.Source}, attempt #{retry}");
+                    await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();
+                    await Task.Delay(nextRetry);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            return new OperationCompressionBlock(block, result);
+        }
 
         public async Task<OperationSummary> Decompress(DecompressOption option)
         {
@@ -158,12 +180,12 @@ namespace TCC.Lib
                 }, po)
                 .ForEachAsync(async (i, ct) =>
                 {
-                    await _databaseHelper.AddRestoreBlockJobAsync(i.Item, job, i.Item.Batch.DestinationFolder);
                     await _blockListener.OnDecompressionBatchReportAsync(new DecompressionBlockReport(i.Item.Batch, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
+            await _databaseHelper.AddRestoreBlockJobAsync(job, operationBlocks);
             await _databaseHelper.UpdateRestoreJobStatsAsync(sw, job);
             _blockListener.Complete();
             return new OperationSummary(operationBlocks, option.Threads, sw);
