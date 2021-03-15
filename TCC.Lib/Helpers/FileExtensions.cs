@@ -70,8 +70,14 @@ namespace TCC.Lib.Helpers
         {
             if (retries <= 1)
                 throw new ArgumentOutOfRangeException(nameof(retries));
-
             return TryDeleteFileWithRetryInternalAsync(filePath, retries);
+        }
+
+        public static Task TryDeleteFileWithRetryAsync(this FileInfo filePath, int retries = 100)
+        {
+            if (retries <= 1)
+                throw new ArgumentOutOfRangeException(nameof(retries));
+            return TryDeleteFileWithRetryInternalAsync(filePath.FullName, retries);
         }
 
         private static async Task TryDeleteFileWithRetryInternalAsync(string filePath, int retries)
