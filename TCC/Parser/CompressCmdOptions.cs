@@ -24,5 +24,8 @@ namespace TCC.Parser
                                         "                      Full : force a full backup for all sources.\n" +
                                         "                      Diff : Archive delta since last full")]
         public BackupMode BackupMode { get; set; }
+
+        [Option("retries", HelpText = "Number of exponential retry. Max=4")]
+        public int? Retry { get; set; }
     }
 }

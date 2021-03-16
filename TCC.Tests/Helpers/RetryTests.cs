@@ -13,11 +13,11 @@ namespace TCC.Tests.Helpers
         {
             int retry = 0;
 
-            var ok1 = Retry.CanRetryIn(out TimeSpan retry1, ref retry);
-            var ok2 = Retry.CanRetryIn(out TimeSpan retry2, ref retry);
-            var ok3 = Retry.CanRetryIn(out TimeSpan retry3, ref retry);
-            var ok4 = Retry.CanRetryIn(out TimeSpan retry4, ref retry);
-            var ok5 = Retry.CanRetryIn(out TimeSpan retry5, ref retry);
+            var ok1 = Retry.CanRetryIn(out TimeSpan retry1, ref retry, 4);
+            var ok2 = Retry.CanRetryIn(out TimeSpan retry2, ref retry, 4);
+            var ok3 = Retry.CanRetryIn(out TimeSpan retry3, ref retry, 4);
+            var ok4 = Retry.CanRetryIn(out TimeSpan retry4, ref retry, 4);
+            var ok5 = Retry.CanRetryIn(out TimeSpan retry5, ref retry, 4);
 
             Assert.True(ok1);
             Assert.True(ok2);
@@ -29,8 +29,7 @@ namespace TCC.Tests.Helpers
             Assert.True(retry2 >= TimeSpan.FromSeconds(3) && retry2 <= TimeSpan.FromSeconds(4));
             Assert.True(retry3 >= TimeSpan.FromSeconds(14) && retry3 <= TimeSpan.FromSeconds(15));
             Assert.True(retry4 >= TimeSpan.FromSeconds(42) && retry4 <= TimeSpan.FromSeconds(43));
-            Assert.Equal(TimeSpan.Zero,retry5);
-            ;
+            Assert.Equal(TimeSpan.Zero, retry5);
         }
     }
 }
