@@ -31,6 +31,7 @@ namespace TCC.Parser
                             BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
                             Threads = ExtractThreads(opts),
                             BackupMode = opts.BackupMode,
+                            Retry = opts.Retry,
                             SlackChannel = opts.SlackChannel,
                             SlackSecret = opts.SlackSecret,
                             BucketName = opts.BucketName,

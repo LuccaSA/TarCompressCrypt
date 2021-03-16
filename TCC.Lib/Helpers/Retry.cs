@@ -11,10 +11,10 @@ namespace TCC.Lib.Helpers
         private static readonly int MaxRetries = 4;
         private static readonly Random RandomJitter = new Random();
 
-        public static bool CanRetryIn(out TimeSpan nextRetry, ref int retries)
+        public static bool CanRetryIn(out TimeSpan nextRetry, ref int retries, int maxRetries)
         {
             int i = Interlocked.Increment(ref retries);
-            if (i > MaxRetries)
+            if (i > maxRetries || i > MaxRetries)
             {
                 nextRetry = TimeSpan.Zero;
                 return false;

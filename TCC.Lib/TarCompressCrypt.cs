@@ -112,7 +112,8 @@ namespace TCC.Lib
                     _logger.LogCritical(e, $"Error compressing {block.Source}");
                 }
 
-                if (hasError && Retry.CanRetryIn(out TimeSpan nextRetry, ref retry))
+                if (option.Retry.HasValue && hasError && 
+                    Retry.CanRetryIn(out TimeSpan nextRetry, ref retry,option.Retry.Value))
                 {
                     _logger.LogWarning($"Retrying compressing {block.Source}, attempt #{retry}");
                     await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();

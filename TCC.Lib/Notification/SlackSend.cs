@@ -38,7 +38,7 @@ namespace TCC.Lib.Notification
             var msgRoot = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
-                Text = $"{shell} *{bucket}* : {mode} {blocksStats}",
+                Text = $"{shell} *{bucket}* : {mode} {blocksStats} in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}",
             };
             var response = await _slackClient.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
 
