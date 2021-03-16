@@ -33,7 +33,8 @@ namespace TCC.Parser
                             BackupMode = opts.BackupMode,
                             SlackChannel = opts.SlackChannel,
                             SlackSecret = opts.SlackSecret,
-                            BucketName = opts.BucketName
+                            BucketName = opts.BucketName,
+                            SlackOnlyOnError = opts.SlackOnlyOnError
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Compress);
@@ -55,7 +56,8 @@ namespace TCC.Parser
                             Threads = ExtractThreads(opts),
                             SlackChannel = opts.SlackChannel,
                             SlackSecret = opts.SlackSecret,
-                            BucketName = opts.BucketName
+                            BucketName = opts.BucketName,
+                            SlackOnlyOnError = opts.SlackOnlyOnError
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Decompress);

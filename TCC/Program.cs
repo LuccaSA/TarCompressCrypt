@@ -53,7 +53,8 @@ namespace TCC
                 IServiceProvider provider = serviceCollection.BuildServiceProvider();
                 using (var scope = provider.CreateScope())
                 {
-                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<TarCompressCrypt>>();
+                    var sp = scope.ServiceProvider;
+                    var logger = sp.GetRequiredService<ILogger<TarCompressCrypt>>();
 
                     if (!mutex.WaitOne(0, false))
                     {
@@ -62,20 +63,20 @@ namespace TCC
                         return;
                     }
 
-                    scope.ServiceProvider.GetRequiredService<CancellationTokenSource>().HookTermination();
-                    await scope.ServiceProvider.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
+                    sp.GetRequiredService<CancellationTokenSource>().HookTermination();
+                    await sp.GetRequiredService<ExternalDependencies>().EnsureAllDependenciesPresent();
 
                     logger.LogInformation($"Starting ------------------------------------------------- {DateTime.UtcNow}");
 
-                    op = await RunTcc(scope.ServiceProvider, parsed);
+                    op = await RunTcc(sp, parsed);
 
                     report = ReportOperationStats(op, parsed.Mode).ToList();
                     foreach (var line in report.Where(i => !string.IsNullOrEmpty(i)))
                     {
                         logger.LogInformation(line);
                     }
-
-                    var notifier = scope.ServiceProvider.GetRequiredService<SlackSender>();
+                     
+                    var notifier = sp.GetRequiredService<SlackSender>();
                     await notifier.ReportAsync(op, parsed.Option, parsed.Mode);
                 }
             }

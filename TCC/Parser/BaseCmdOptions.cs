@@ -33,5 +33,8 @@ namespace TCC.Parser
 
         [Option('b', "bucketName", HelpText = "Slack notification bucket name")]
         public string BucketName { get; set; }
+
+        [Option("slackOnlyOnError", HelpText = "Send slack message only on warning or error")]
+        public bool SlackOnlyOnError { get; set; }
     }
 }
