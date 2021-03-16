@@ -25,20 +25,27 @@ namespace TCC.Lib.Notification
                 return;
             }
 
+            if (parsedOption.SlackOnlyOnError && !op.OperationBlocks.SelectMany(i => i.BlockResults)
+                .Any(i => i.CommandResult.HasWarning || i.CommandResult.HasError))
+            {
+                return;
+            }
+
             string shell = SlackShell(op);
             string blocksStats = BlocksStats(op, mode);
+            string bucket = parsedOption.BucketName ?? Environment.MachineName;
 
             var msgRoot = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
-                Text = $"*{Environment.MachineName}* {parsedOption.BucketName} : {mode} {blocksStats} {shell}",
+                Text = $"{shell} *{bucket}* : {mode} {blocksStats}",
             };
             var response = await _slackClient.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
 
             var msgDetail = new SlackMessage
             {
                 Channel = parsedOption.SlackChannel,
-                Text = $"*{mode}* Details on {parsedOption.BucketName ?? Environment.MachineName}",
+                Text = $"*{mode}* Details on {bucket}",
                 ThreadTs = response.Ts,
                 Attachments = new List<Attachment>()
             };
@@ -84,7 +91,7 @@ namespace TCC.Lib.Notification
                         break;
                     }
 
-                    if (result.CommandResult.Infos.Any())
+                    if (result.CommandResult.HasWarning)
                     {
                         shell = ":warning:";
                     }

@@ -9,6 +9,5 @@ namespace TCC.Lib.Options
         public CompressionAlgo Algo { get; set; }
         public int CompressionRatio { get; set; }
         public BackupMode BackupMode { get; set; }
-       
     }
 }
