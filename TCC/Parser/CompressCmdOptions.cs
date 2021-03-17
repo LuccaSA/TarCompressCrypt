@@ -27,5 +27,8 @@ namespace TCC.Parser
 
         [Option("retries", HelpText = "Number of exponential retry. Max=4")]
         public int? Retry { get; set; }
+
+        [Option("filter", HelpText = "Optional filters")]
+        public IEnumerable<string> Filter { get; set; }
     }
 }
