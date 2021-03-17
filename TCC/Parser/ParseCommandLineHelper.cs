@@ -32,6 +32,7 @@ namespace TCC.Parser
                             Threads = ExtractThreads(opts),
                             BackupMode = opts.BackupMode,
                             Retry = opts.Retry,
+                            Filter = opts.Filter,
                             SlackChannel = opts.SlackChannel,
                             SlackSecret = opts.SlackSecret,
                             BucketName = opts.BucketName,

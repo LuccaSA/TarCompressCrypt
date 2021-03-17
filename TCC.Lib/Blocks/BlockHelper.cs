@@ -39,8 +39,19 @@ namespace TCC.Lib.Blocks
                     throw new NotImplementedException();
             }
 
+            HashSet<string> filters = null;
+            if (compressOption.Filter != null)
+            {
+                filters = compressOption.Filter.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+
             foreach (var block in blocks)
             {
+                if (filters != null && !filters.Contains(block.BlockName))
+                {
+                    continue;
+                }
+
                 if (compressOption.BackupMode == BackupMode.Full)
                 {
                     block.BackupMode = BackupMode.Full;
@@ -265,8 +276,8 @@ namespace TCC.Lib.Blocks
         {
             var fod = new FileOrDirectoryInfo(sourceDir);
 
-            var rootDir = fod.Kind == SourceKind.Directory 
-                ? fod.DirectoryInfo?.Parent 
+            var rootDir = fod.Kind == SourceKind.Directory
+                ? fod.DirectoryInfo?.Parent
                 : fod.FileInfo?.Directory;
 
             if (rootDir == null)
