@@ -43,8 +43,7 @@ namespace TCC.Lib
         public async Task<OperationSummary> Compress(CompressOption option)
         {
             var sw = Stopwatch.StartNew();
-            var po = ParallelizeOption(option);
-
+           
             var compFolder = new CompressionFolderProvider(new DirectoryInfo(option.DestinationDir), option.FolderPerDay);
 
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks(compFolder);
@@ -75,17 +74,23 @@ namespace TCC.Lib
             {
                 if (countFull == 0 && countDiff > 0)
                 {
-                    Console.WriteLine($"100% diff ({countDiff}), running with X3 more threads");
-                    // boost mode when 100% of diff, we want to saturate iops : 3X mode
-                    option.Threads = Math.Min(option.Threads * 3, countDiff);
+                    Console.WriteLine($"100% diff ({countDiff}), running with X4 more threads");
+                    // boost mode when 100% of diff, we want to saturate iops : 4X mode
+                    option.Threads = Math.Min(option.Threads * 4, countDiff);
                 }
-                else if (countFull != 0 && ((countDiff / (double)countFull) >= 0.95))
+                else if (countFull != 0 && (countDiff / (double)(countFull + countDiff) >= 0.9))
                 {
-                    Console.WriteLine($"{countFull} full, {countDiff} diffs, running with X3 more threads");
+                    Console.WriteLine($"{countFull} full, {countDiff} diffs, running with X4 more threads");
                     // boost mode when 95% of diff, we want to saturate iops
-                    option.Threads = Math.Min(option.Threads * 3, countDiff);
+                    option.Threads = Math.Min(option.Threads * 4, countDiff);
+                }
+                else
+                {
+                    Console.WriteLine($"No boost mode : {countFull} full, {countDiff} diffs");
                 }
             }
+            
+            var po = ParallelizeOption(option);
 
             var operationBlocks = await buffer
                 .AsAsyncStream(_cancellationTokenSource.Token)
