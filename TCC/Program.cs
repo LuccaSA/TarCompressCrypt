@@ -87,6 +87,7 @@ namespace TCC
             catch (Exception e)
             {
                 Console.WriteLine("Critical : " + e.Message);
+                Console.WriteLine(e.StackTrace);
             }
 
             if (report != null)
@@ -187,8 +188,8 @@ namespace TCC
 
         private static async Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {
-            var db = provider.GetRequiredService<DatabaseSetup>();
-            await db.EnsureDatabaseExistsAsync(command.Mode);
+            //var db = provider.GetRequiredService<DatabaseSetup>();
+            //await db.EnsureDatabaseExistsAsync(command.Mode);
             OperationSummary op;
             switch (command.Mode)
             {
@@ -210,7 +211,7 @@ namespace TCC
                 default:
                     throw new NotImplementedException();
             }
-            await db.CleanupDatabaseAsync(command.Mode);
+            //await db.CleanupDatabaseAsync(command.Mode);
             return op;
         }
     }

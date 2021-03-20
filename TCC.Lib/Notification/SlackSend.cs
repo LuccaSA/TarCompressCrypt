@@ -63,7 +63,7 @@ namespace TCC.Lib.Notification
                     blocksStats = string.Join(' ', op.OperationBlocks.OfType<OperationCompressionBlock>()
                         .GroupBy(i => i.CompressionBlock.BackupMode)
                         .Select(i => new { Mode = i.Key, Count = i.Count() })
-                        .OrderBy(i => i.Mode).Select(i => $"{i.Count} {i.Mode ?? BackupMode.Full}"));
+                        .OrderBy(i => i.Mode).Select(i => $"{i.Count} {i.Mode}"));
                     break;
                 case Mode.Decompress:
                     blocksStats = $"{op.OperationBlocks.Count()} blocks";

@@ -88,7 +88,7 @@ namespace TCC.Lib
                         Size = ocb.CompressionBlock.CompressedSize,
                         Exception = ocb.BlockResults.First().CommandResult.Errors,
                         Success = ocb.BlockResults.First().CommandResult.IsSuccess,
-                        BackupMode = ocb.CompressionBlock.BackupMode ?? BackupMode.Full
+                        BackupMode = ocb.CompressionBlock.BackupMode
                     };
                     theJob.BlockJobs.Add(bbj);
                 }

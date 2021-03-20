@@ -29,9 +29,7 @@ namespace TCC.Lib.Blocks
                         return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.diff";
                     case Database.BackupMode.Full:
                         return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.full";
-                    case null:
-                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}";
-                    default:
+                   default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
@@ -49,7 +47,7 @@ namespace TCC.Lib.Blocks
         public bool HaveFullFiles =>
             FolderProvider.FullExists(SourceFileOrDirectory.Name);
 
-        public BackupMode? BackupMode { get; set; }
+        public BackupMode BackupMode { get; set; }
 
         public override string BlockName => SourceFileOrDirectory.Name;
         public override FileInfo Archive => DestinationArchiveFileInfo;

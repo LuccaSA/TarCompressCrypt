@@ -30,6 +30,7 @@ namespace TCC.Parser
                             SourceDirOrFile = opts.Source.FirstOrDefault(),
                             BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
                             Threads = ExtractThreads(opts),
+                            FolderPerDay = opts.FolderPerDay,
                             BackupMode = opts.BackupMode,
                             Retry = opts.Retry,
                             Filter = opts.Filter,

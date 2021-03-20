@@ -20,15 +20,21 @@ namespace TCC.Parser
         [Option('r', "ratio", HelpText = "Compression ratio. Valid values are : lz4 [1,9], brotli [1,11], zstd [1,19] ")]
         public int Ratio { get; set; }
 
-        [Option('m', "mode", HelpText = "Backup mode : Full or Diff. (Default = Diff)\n" +
-                                        "                      Full : force a full backup for all sources.\n" +
-                                        "                      Diff : Archive delta since last full")]
-        public BackupMode BackupMode { get; set; }
+        [Option('m', "mode", HelpText = "Backup mode : Full or Diff. (Default = Full if no Diff, and Diff if Full already exists)\n" +
+                                        "Full : force a full backup for all sources.\n" +
+                                        "Diff : Archive delta since last full")]
+        public BackupMode? BackupMode { get; set; }
 
         [Option("retries", HelpText = "Number of exponential retry. Max=4")]
         public int? Retry { get; set; }
 
         [Option("filter", HelpText = "Optional filters")]
         public IEnumerable<string> Filter { get; set; }
+        
+        [Option("folderPerDay", HelpText = "Creates a sub folder per day")]
+        public bool FolderPerDay { get; set; }
+
+        [Option("maximumRetention", HelpText = "Maximum retention in minutes")]
+        public int MaximumRetentionMinutes { get; set; }
     }
 }

@@ -8,31 +8,40 @@ namespace TCC.Lib.Blocks
 {
     public class CompressionFolderProvider
     {
-        public CompressionFolderProvider(DirectoryInfo destinationRootFolder)
+        public CompressionFolderProvider(DirectoryInfo destinationRootFolder, bool folderPerDay)
         {
-            _destinationRootFolder = destinationRootFolder ?? throw new ArgumentNullException(nameof(destinationRootFolder));
+            RootFolder = destinationRootFolder ?? throw new ArgumentNullException(nameof(destinationRootFolder));
+            FolderPerDay = folderPerDay;
         }
 
-        private readonly DirectoryInfo _destinationRootFolder;
-        private DirectoryInfo _destinationRoot;
-        private DirectoryInfo DestinationRoot
+        public DirectoryInfo RootFolder { get; }
+        public bool FolderPerDay { get; }
+        private DirectoryInfo _compressDestination;
+        
+        private DirectoryInfo CompressDestinationRoot
         {
             get
             {
-                if (_destinationRoot != null)
+                if (_compressDestination != null)
                 {
-                    return _destinationRoot;
+                    return _compressDestination;
                 }
-                var root = _destinationRootFolder.CreateIfNotExists();
-                _destinationRoot = root.CreateSubDirectoryIfNotExists(_destinationRootFolder.Hostname());
-                return _destinationRoot;
+                var root = RootFolder.CreateIfNotExists();
+                if (FolderPerDay)
+                {
+                    var today = DateTime.Today;
+                    string subfolder = $"{today.Year:D4}-{today.Month:D2}-{today.Day:D2}";
+                    root = root.CreateSubDirectoryIfNotExists(subfolder);
+                }
+                _compressDestination = root.CreateSubDirectoryIfNotExists(RootFolder.Hostname());
+                return _compressDestination;
             }
         }
 
         public DirectoryInfo GetDirectory(BackupMode? backupMode, string directoryName)
         {
             if (string.IsNullOrWhiteSpace(directoryName)) throw new ArgumentNullException(nameof(directoryName));
-            var archiveRoot = DestinationRoot.CreateSubDirectoryIfNotExists(directoryName);
+            var archiveRoot = CompressDestinationRoot.CreateSubDirectoryIfNotExists(directoryName);
             switch (backupMode)
             {
                 case BackupMode.Diff:
@@ -48,8 +57,13 @@ namespace TCC.Lib.Blocks
 
         public bool FullExists(string directoryName)
         {
-            if (string.IsNullOrWhiteSpace(directoryName)) throw new ArgumentNullException(nameof(directoryName));
-            var archiveRoot = DestinationRoot.CreateSubDirectoryIfNotExists(directoryName);
+            if (string.IsNullOrWhiteSpace(directoryName)) 
+                throw new ArgumentNullException(nameof(directoryName));
+            var archiveRoot = CompressDestinationRoot.EnumerateDirectories(directoryName).FirstOrDefault();
+            if (archiveRoot == null)
+            {
+                return false;
+            }
             var fullFolder = archiveRoot.EnumerateDirectories(TccConst.Full).FirstOrDefault();
             if (fullFolder == null || !fullFolder.Exists)
             {
