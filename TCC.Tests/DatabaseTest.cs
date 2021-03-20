@@ -13,7 +13,7 @@ namespace TCC.Tests
     public class DatabaseTest
     {
         private readonly DatabaseSetup _db;
-        private TccBackupDbContext _backupDbContext;
+        private TccRestoreDbContext _dbContext;
 
         public DatabaseTest()
         {
@@ -21,34 +21,26 @@ namespace TCC.Tests
             services.AddTcc();
             services.PostConfigure<TccSettings>(i =>
             {
-                i.BackupConnectionString = "Data Source=:memory:";
                 i.RestoreConnectionString = "Data Source=:memory:";
                 i.Provider = Provider.SqLite;
             });
             var provider = services.BuildServiceProvider();
             _db = provider.GetRequiredService<DatabaseSetup>();
-            _backupDbContext = provider.GetRequiredService<TccBackupDbContext>();
+            _dbContext = provider.GetRequiredService<TccRestoreDbContext>();
         }
 
         [Fact]
         public async Task SimpleCrud()
         {
             await _db.EnsureDatabaseExistsAsync(Lib.Options.Mode.Compress | Lib.Options.Mode.Decompress);
-            _backupDbContext.BackupJobs.Add(new BackupJob
+            _dbContext.RestoreBlockJobs.Add(new RestoreBlockJob()
             {
                 StartTime = DateTime.UtcNow,
                 Duration = TimeSpan.FromMinutes(2),
-                BlockJobs = new List<BackupBlockJob>
-                {
-                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), BackupSource = new BackupSource{ FullSourcePath = "one"}, Success = true},
-                    new BackupBlockJob{ Size = 42, Duration = TimeSpan.FromMinutes(1), BackupSource = new BackupSource{ FullSourcePath = "two"}, Success = true}
-                }
             });
-            await _backupDbContext.SaveChangesAsync();
-            var found = await _backupDbContext.BackupJobs.OrderByDescending(i=>i.Id).FirstOrDefaultAsync();
+            await _dbContext.SaveChangesAsync();
+            var found = await _dbContext.RestoreBlockJobs.OrderByDescending(i=>i.Id).FirstOrDefaultAsync();
             Assert.NotNull(found);
-            Assert.Equal(2, found.BlockJobs.Count);
         }
-         
     }
 }

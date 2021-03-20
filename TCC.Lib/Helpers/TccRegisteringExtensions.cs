@@ -35,7 +35,6 @@ namespace TCC.Lib.Helpers
             services.AddScoped<SlackSender>();
             services.AddScoped<SlackClient>();
 
-            services.RegisterDbContext<TccBackupDbContext>(s => s.BackupConnectionString, workingPath);
             services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString, workingPath);
         }
 
@@ -88,7 +87,6 @@ namespace TCC.Lib.Helpers
 
     public class TccSettings
     {
-        public string BackupConnectionString { get; set; }
         public string RestoreConnectionString { get; set; }
         public Provider Provider { get; set; } = Provider.SqLite;
     }

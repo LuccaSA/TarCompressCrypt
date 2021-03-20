@@ -2,33 +2,6 @@
 
 namespace TCC.Lib.Database
 {
-    public class TccBackupDbContext : DbContext
-    {
-        public TccBackupDbContext(DbContextOptions<TccBackupDbContext> options) : base(options) { }
-
-        public DbSet<BackupBlockJob> BackupBlockJobs { get; set; }
-        public DbSet<BackupJob> BackupJobs { get; set; }
-        public DbSet<BackupSource> BackupSources { get; set; }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<BackupJob>()
-                .HasMany(i => i.BlockJobs)
-                .WithOne(i => i.Job)
-                .IsRequired();
-
-            modelBuilder.Entity<BackupSource>()
-                .HasMany(i => i.BackupBlockJobs)
-                .WithOne(i => i.BackupSource)
-                .IsRequired();
-
-            modelBuilder.Entity<BackupBlockJob>().HasIndex(i => i.StartTime);
-            modelBuilder.Entity<BackupSource>().HasIndex(p => p.FullSourcePath).IsUnique();
-
-            base.OnModelCreating(modelBuilder);
-        }
-    }
-
     public class TccRestoreDbContext : DbContext
     {
         public TccRestoreDbContext(DbContextOptions<TccRestoreDbContext> options) : base(options) { }

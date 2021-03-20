@@ -44,16 +44,11 @@ namespace TCC.Lib
         {
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
- 
+
             var compFolder = new CompressionFolderProvider(new DirectoryInfo(option.DestinationDir), option.FolderPerDay);
 
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks(compFolder);
-
-            IPrepareCompressBlocks prepare;
-
-            //prepare = new DatabasePreparedCompressionBlocks(_serviceProvider.GetRequiredService<TccBackupDbContext>(), option.BackupMode, _logger);
-            prepare = new FileSystemPrepareCompressBlocks(compFolder, option.BackupMode);
-
+            IPrepareCompressBlocks prepare = new FileSystemPrepareCompressBlocks(compFolder, option.BackupMode);
             var ordered = prepare.PrepareCompressionBlocksAsync(blocks);
 
             var buffer = new List<CompressionBlock>();
@@ -76,10 +71,20 @@ namespace TCC.Lib
             _logger.LogInformation("Starting compression job");
             Console.WriteLine("job prepared in " + sw.Elapsed.HumanizedTimeSpan());
 
-            if (option.Threads > 1 && countFull != 0 && (countDiff / (double) countFull >= 0.95))
+            if (option.Threads > 1)
             {
-                // boost mode when 95% of diff, we want to saturate iops
-                option.Threads *= 3;
+                if (countFull == 0 && countDiff > 0)
+                {
+                    Console.WriteLine($"100% diff ({countDiff}), running with X3 more threads");
+                    // boost mode when 100% of diff, we want to saturate iops : 3X mode
+                    option.Threads = Math.Min(option.Threads * 3, countDiff);
+                }
+                else if (countFull != 0 && ((countDiff / (double)countFull) >= 0.95))
+                {
+                    Console.WriteLine($"{countFull} full, {countDiff} diffs, running with X3 more threads");
+                    // boost mode when 95% of diff, we want to saturate iops
+                    option.Threads = Math.Min(option.Threads * 3, countDiff);
+                }
             }
 
             var operationBlocks = await buffer
@@ -106,8 +111,6 @@ namespace TCC.Lib
                 })
                 .AsReadOnlyCollectionAsync();
             sw.Stop();
-            //await _databaseHelper.AddBackupBlockJobAsync(operationBlocks, job);
-            //await _databaseHelper.UpdateBackupJobStatsAsync(sw, job);
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
@@ -234,10 +237,6 @@ namespace TCC.Lib
             return result;
         }
 
-        private TccBackupDbContext BackupDb()
-        {
-            return _serviceProvider.GetRequiredService<TccBackupDbContext>();
-        }
         private TccRestoreDbContext RestoreDb()
         {
             return _serviceProvider.GetRequiredService<TccRestoreDbContext>();
