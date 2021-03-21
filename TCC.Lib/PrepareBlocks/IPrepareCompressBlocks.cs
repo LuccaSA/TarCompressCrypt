@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -14,21 +15,24 @@ namespace TCC.Lib.PrepareBlocks
 {
     public interface IPrepareCompressBlocks
     {
-        public IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks);
+        public List<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks);
     }
 
     public class FileSystemPrepareCompressBlocks : IPrepareCompressBlocks
     {
         private readonly CompressionFolderProvider _compressionFolderProvider;
         private readonly BackupMode? _backupMode;
+        private readonly int? _cleanupTime;
 
-        public FileSystemPrepareCompressBlocks(CompressionFolderProvider compressionFolderProvider, BackupMode? backupMode)
+        public FileSystemPrepareCompressBlocks(CompressionFolderProvider compressionFolderProvider,
+            BackupMode? backupMode, int? cleanupTime)
         {
             _compressionFolderProvider = compressionFolderProvider;
             _backupMode = backupMode;
+            _cleanupTime = cleanupTime;
         }
 
-        public IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
+        public List<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
         {
             Dictionary<string, List<DirectoryInfo>> fulls;
             var hostname = _compressionFolderProvider.RootFolder.Hostname();
@@ -64,37 +68,71 @@ namespace TCC.Lib.PrepareBlocks
 
                 if (fulls.TryGetValue(b.BlockName, out var directories))
                 {
-                    var lastFull = directories
+                    var fullFiles = directories
                         .SelectMany(d => d.GetDirectories(TccConst.Full))
                         .SelectMany(d => d.EnumerateFiles())
-                        .Select(f => new { File = f, Date = ParseDateTime(f.Name) })
+                        .Select(f => new BlockFileWithTime { File = f, Date = ParseDateTime(f.Name) })
+                        .ToList();
+
+                    DateTime? dtLimit = null;
+                    if (_cleanupTime.HasValue)
+                    {
+                        dtLimit = DateTime.UtcNow - TimeSpan.FromHours(_cleanupTime.Value);
+                    }
+
+                    if (dtLimit.HasValue)
+                    {
+                        b.FullsToDelete = fullFiles
+                            .Where(f => f.Date != null && f.Date.Value < dtLimit.Value)
+                            .Select(f => f.File)
+                            .ToList();
+
+                        fullFiles = fullFiles
+                            .Where(f => f.Date == null || f.Date.Value >= dtLimit.Value)
+                            .ToList();
+                    }
+
+                    BlockFileWithTime mostRecentFull = fullFiles
                         .OrderByDescending(x => x.Date)
                         .FirstOrDefault();
 
-                    if (lastFull != null)
+                    if (mostRecentFull != null)
                     {
-                        size = lastFull.File.Length;
+                        size = mostRecentFull.File.Length;
 
                         if (_backupMode == null || _backupMode.Value == BackupMode.Diff)
                         {
                             // full found, get the last diff date
-                            var lastDiff = directories
+                            var diffFiles = directories
                                 .SelectMany(d => d.GetDirectories(TccConst.Diff))
                                 .SelectMany(d => d.EnumerateFiles())
                                 .Where(i => i.Length != 0)
-                                .Select(f => new { File = f, Date = ParseDateTime(f.Name) })
+                                .Select(f => new BlockFileWithTime { File = f, Date = ParseDateTime(f.Name) })
+                                .ToList();
+
+                            if (dtLimit.HasValue)
+                            {
+                                b.DiffsToDelete = diffFiles.Where(f => f.Date != null && f.Date.Value < dtLimit.Value)
+                                    .Select(f => f.File)
+                                    .ToList();
+
+                                diffFiles = diffFiles.Where(f => f.Date == null || f.Date.Value >= dtLimit.Value)
+                                    .ToList();
+                            }
+
+                            BlockFileWithTime mostRecentDiff = diffFiles
                                 .OrderByDescending(x => x.Date)
                                 .FirstOrDefault();
 
-                            if (lastDiff == null || lastDiff.Date < lastFull.Date)
+                            if (mostRecentDiff == null || mostRecentDiff.Date < mostRecentFull.Date)
                             {
                                 b.BackupMode = BackupMode.Diff;
-                                b.DiffDate = lastFull.Date;
+                                b.DiffDate = mostRecentFull.Date;
                             }
                             else
                             {
                                 b.BackupMode = BackupMode.Diff;
-                                b.DiffDate = lastDiff.Date;
+                                b.DiffDate = mostRecentDiff.Date;
                             }
                         }
                     }
@@ -105,7 +143,7 @@ namespace TCC.Lib.PrepareBlocks
             return bag
                 .OrderByDescending(i => i.Size)
                 .Select(i => i.Block)
-                .AsAsyncEnumerable();
+                .ToList();
         }
 
         private class BlockSized
@@ -114,7 +152,12 @@ namespace TCC.Lib.PrepareBlocks
             public long Size { get; set; }
         }
 
-        
+        private class BlockFileWithTime
+        {
+            public FileInfo File { get; set; }
+            public DateTime? Date { get; set; }
+        }
+
 
         private static DateTime? ParseDateTime(string str)
         {

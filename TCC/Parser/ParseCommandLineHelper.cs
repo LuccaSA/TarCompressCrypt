@@ -31,6 +31,8 @@ namespace TCC.Parser
                             BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
                             Threads = ExtractThreads(opts),
                             FolderPerDay = opts.FolderPerDay,
+                            BoostRatio = opts.BoostRatio,
+                            CleanupTime = opts.CleanupTime,
                             BackupMode = opts.BackupMode,
                             Retry = opts.Retry,
                             Filter = opts.Filter,

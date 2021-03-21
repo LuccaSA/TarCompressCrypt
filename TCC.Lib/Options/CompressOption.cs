@@ -13,5 +13,7 @@ namespace TCC.Lib.Options
         public int? Retry { get; set; }
         public IEnumerable<string> Filter { get; set; }
         public bool FolderPerDay { get; set; }
+        public int? BoostRatio { get; set; }
+        public int? CleanupTime { get; set; }
     }
 }

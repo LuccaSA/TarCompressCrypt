@@ -36,5 +36,12 @@ namespace TCC.Parser
 
         [Option("maximumRetention", HelpText = "Maximum retention in minutes")]
         public int MaximumRetentionMinutes { get; set; }
+
+        [Option("boostRatio", HelpText = "When more than 90% of Diff will be processed, allow to multiply the number of thread.\n" 
+                                         + "Ex : boostRatio 4 when having 8 thread will switch process on 32 threads")]
+        public int? BoostRatio { get; set; }
+
+        [Option("cleanupTime", HelpText = "Specify the time, in hours, after which the backup files are deleted. If no time is specified, then no backup files are deleted.")]
+        public int? CleanupTime { get; set; }
     }
 }

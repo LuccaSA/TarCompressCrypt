@@ -47,49 +47,11 @@ namespace TCC.Lib
             var compFolder = new CompressionFolderProvider(new DirectoryInfo(option.DestinationDir), option.FolderPerDay);
 
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks(compFolder);
-            IPrepareCompressBlocks prepare = new FileSystemPrepareCompressBlocks(compFolder, option.BackupMode);
-            var ordered = prepare.PrepareCompressionBlocksAsync(blocks);
-
-            var buffer = new List<CompressionBlock>();
-            _logger.LogInformation("Requested order : ");
-            int countFull = 0;
-            int countDiff = 0;
-            await foreach (CompressionBlock block in ordered)
-            {
-                if (block.BackupMode == BackupMode.Full)
-                {
-                    countFull++;
-                }
-                else
-                {
-                    countDiff++;
-                }
-                buffer.Add(block);
-                _logger.LogInformation($"{block.BlockName} {block.LastBackupSize.HumanizeSize()}");
-            }
+            IPrepareCompressBlocks prepare = new FileSystemPrepareCompressBlocks(compFolder, option.BackupMode, option.CleanupTime);
+            var buffer = prepare.PrepareCompressionBlocksAsync(blocks);
+            PrepareBoostRatio(option, buffer);
+            _logger.LogInformation("job prepared in " + sw.Elapsed.HumanizedTimeSpan());
             _logger.LogInformation("Starting compression job");
-            Console.WriteLine("job prepared in " + sw.Elapsed.HumanizedTimeSpan());
-
-            if (option.Threads > 1)
-            {
-                if (countFull == 0 && countDiff > 0)
-                {
-                    Console.WriteLine($"100% diff ({countDiff}), running with X4 more threads");
-                    // boost mode when 100% of diff, we want to saturate iops : 4X mode
-                    option.Threads = Math.Min(option.Threads * 4, countDiff);
-                }
-                else if (countFull != 0 && (countDiff / (double)(countFull + countDiff) >= 0.9))
-                {
-                    Console.WriteLine($"{countFull} full, {countDiff} diffs, running with X4 more threads");
-                    // boost mode when 95% of diff, we want to saturate iops
-                    option.Threads = Math.Min(option.Threads * 4, countDiff);
-                }
-                else
-                {
-                    Console.WriteLine($"No boost mode : {countFull} full, {countDiff} diffs");
-                }
-            }
-            
             var po = ParallelizeOption(option);
 
             var operationBlocks = await buffer
@@ -119,6 +81,43 @@ namespace TCC.Lib
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
+        }
+
+        private void PrepareBoostRatio(CompressOption option, IEnumerable<CompressionBlock> buffer)
+        {
+            _logger.LogInformation("Requested order : ");
+            int countFull = 0;
+            int countDiff = 0;
+            foreach (CompressionBlock block in buffer)
+            {
+                if (block.BackupMode == BackupMode.Full)
+                {
+                    countFull++;
+                }
+                else
+                {
+                    countDiff++;
+                }
+            }
+            if (option.Threads > 1 && option.BoostRatio.HasValue)
+            {
+                if (countFull == 0 && countDiff > 0)
+                {
+                    _logger.LogInformation($"100% diff ({countDiff}), running with X{option.BoostRatio.Value} more threads");
+                    // boost mode when 100% of diff, we want to saturate iops : X mode
+                    option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                }
+                else if (countFull != 0 && (countDiff / (double) (countFull + countDiff) >= 0.9))
+                {
+                    _logger.LogInformation($"{countFull} full, {countDiff} diffs, running with X{option.BoostRatio.Value} more threads");
+                    // boost mode when 95% of diff, we want to saturate iops
+                    option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                }
+                else
+                {
+                    _logger.LogInformation($"No boost mode : {countFull} full, {countDiff} diffs");
+                }
+            }
         }
 
         private async Task<OperationCompressionBlock> CompressionBlockInternal(CompressOption option, CompressionBlock block, CancellationToken token)

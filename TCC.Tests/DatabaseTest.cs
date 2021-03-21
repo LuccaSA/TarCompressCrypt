@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +11,7 @@ namespace TCC.Tests
     public class DatabaseTest
     {
         private readonly DatabaseSetup _db;
-        private TccRestoreDbContext _dbContext;
+        private readonly TccRestoreDbContext _dbContext;
 
         public DatabaseTest()
         {
@@ -32,15 +30,17 @@ namespace TCC.Tests
         [Fact]
         public async Task SimpleCrud()
         {
+            var dt = DateTime.UtcNow;
             await _db.EnsureDatabaseExistsAsync(Lib.Options.Mode.Compress | Lib.Options.Mode.Decompress);
-            _dbContext.RestoreBlockJobs.Add(new RestoreBlockJob()
+            _dbContext.RestoreJobs.Add(new RestoreJob
             {
-                StartTime = DateTime.UtcNow,
+                StartTime = dt,
                 Duration = TimeSpan.FromMinutes(2),
             });
             await _dbContext.SaveChangesAsync();
-            var found = await _dbContext.RestoreBlockJobs.OrderByDescending(i=>i.Id).FirstOrDefaultAsync();
+            var found = await _dbContext.RestoreJobs.FirstOrDefaultAsync();
             Assert.NotNull(found);
+            Assert.Equal(dt, found.StartTime);
         }
     }
 }
