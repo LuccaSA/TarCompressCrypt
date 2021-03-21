@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -9,7 +8,6 @@ using System.Threading.Tasks;
 using TCC.Lib.Blocks;
 using TCC.Lib.Database;
 using TCC.Lib.Helpers;
-using TCC.Lib.Options;
 
 namespace TCC.Lib.PrepareBlocks
 {

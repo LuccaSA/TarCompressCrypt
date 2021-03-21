@@ -43,7 +43,7 @@ namespace TCC.Lib
         public async Task<OperationSummary> Compress(CompressOption option)
         {
             var sw = Stopwatch.StartNew();
-           
+
             var compFolder = new CompressionFolderProvider(new DirectoryInfo(option.DestinationDir), option.FolderPerDay);
 
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks(compFolder);
@@ -69,6 +69,7 @@ namespace TCC.Lib
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
+                    await CleanupOldFiles(opb);
                     await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, opb.BlockResults.First().CommandResult, Mode.Compress);
                     return opb;
                 }, po)
@@ -81,6 +82,38 @@ namespace TCC.Lib
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
+        }
+
+        private async Task CleanupOldFiles(OperationCompressionBlock opb)
+        {
+            if (opb.CompressionBlock.FullsToDelete != null)
+            {
+                foreach (var full in opb.CompressionBlock.FullsToDelete)
+                {
+                    try
+                    {
+                        await full.TryDeleteFileWithRetryAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error while deleting FULL file ");
+                    }
+                }
+            }
+            if (opb.CompressionBlock.DiffsToDelete != null)
+            {
+                foreach (var diff in opb.CompressionBlock.DiffsToDelete)
+                {
+                    try
+                    {
+                        await diff.TryDeleteFileWithRetryAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error while deleting DIFF file ");
+                    }
+                }
+            }
         }
 
         private void PrepareBoostRatio(CompressOption option, IEnumerable<CompressionBlock> buffer)
@@ -107,7 +140,7 @@ namespace TCC.Lib
                     // boost mode when 100% of diff, we want to saturate iops : X mode
                     option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
                 }
-                else if (countFull != 0 && (countDiff / (double) (countFull + countDiff) >= 0.9))
+                else if (countFull != 0 && (countDiff / (double)(countFull + countDiff) >= 0.9))
                 {
                     _logger.LogInformation($"{countFull} full, {countDiff} diffs, running with X{option.BoostRatio.Value} more threads");
                     // boost mode when 95% of diff, we want to saturate iops
