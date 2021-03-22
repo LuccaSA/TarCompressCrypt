@@ -22,18 +22,14 @@ namespace TCC
     {
         private const string _tccMutex = "Global\\FD70BFC5-79C8-44DF-9629-65512A1CD0FC";
 
-        public static async Task Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
             using Mutex mutex = new Mutex(false, _tccMutex);
 
             TccCommand parsed = args.ParseCommandLine();
             if (parsed.ReturnCode == 1)
             {
-                if (!IsTest())
-                {
-                    Environment.Exit(1);
-                }
-                return;
+                return 1;
             }
 
             var workingPath = WorkingPath(parsed);
@@ -60,7 +56,7 @@ namespace TCC
                     {
                         Console.Error.WriteLine("Tcc is already running");
                         logger.LogError("Tcc is already running");
-                        return;
+                        return 0;
                     }
 
                     sp.GetRequiredService<CancellationTokenSource>().HookTermination();
@@ -101,15 +97,11 @@ namespace TCC
             Serilog.Log.CloseAndFlush();
             if (op == null || !op.IsSuccess)
             {
-                if (!IsTest())
-                {
-                    Environment.Exit(1);
-                }
+                return 1;
             }
+            return 0;
         }
-
-        private static bool IsTest() => Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "test";
-
+        
         private static IEnumerable<string> ReportOperationStats(OperationSummary op, Mode mode)
         {
             if (op == null)

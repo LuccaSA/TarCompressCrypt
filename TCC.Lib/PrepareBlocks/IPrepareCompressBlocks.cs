@@ -35,25 +35,32 @@ namespace TCC.Lib.PrepareBlocks
             Dictionary<string, List<DirectoryInfo>> fulls;
             var hostname = _compressionFolderProvider.RootFolder.Hostname();
 
-            // find fulls
-            if (_compressionFolderProvider.FolderPerDay)
+            if (_compressionFolderProvider.RootFolder.Exists)
             {
-                // root/date/hostname/item
-                fulls = _compressionFolderProvider.RootFolder.EnumerateDirectories()
-                    .Where(d => IsValidDate(d.Name))
-                    .SelectMany(d => d.EnumerateDirectories(hostname))
-                    .SelectMany(d => d.EnumerateDirectories())
-                    .GroupBy(i => i.Name)
-                    .ToDictionary(i => i.Key, v => v.ToList());
+                // find fulls
+                if (_compressionFolderProvider.FolderPerDay)
+                {
+                    // root/date/hostname/item
+                    fulls = _compressionFolderProvider.RootFolder.EnumerateDirectories()
+                        .Where(d => IsValidDate(d.Name))
+                        .SelectMany(d => d.EnumerateDirectories(hostname))
+                        .SelectMany(d => d.EnumerateDirectories())
+                        .GroupBy(i => i.Name)
+                        .ToDictionary(i => i.Key, v => v.ToList());
+                }
+                else
+                {
+                    // root/hostname/item
+                    fulls = _compressionFolderProvider.RootFolder
+                        .EnumerateDirectories(hostname)
+                        .SelectMany(d => d.EnumerateDirectories())
+                        .GroupBy(i => i.Name)
+                        .ToDictionary(i => i.Key, v => v.ToList());
+                }
             }
             else
             {
-                // root/hostname/item
-                fulls = _compressionFolderProvider.RootFolder
-                    .EnumerateDirectories(hostname)
-                    .SelectMany(d => d.EnumerateDirectories())
-                    .GroupBy(i => i.Name)
-                    .ToDictionary(i => i.Key, v => v.ToList());
+                fulls = new Dictionary<string, List<DirectoryInfo>>();
             }
 
             var bag = new ConcurrentBag<BlockSized>();
