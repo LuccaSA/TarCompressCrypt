@@ -48,7 +48,7 @@ namespace TCC
 
             if (r is CompressionBlockReport cb)
             {
-                var report = $"{count}/{r.Total} [{cb.CompressionBlock.BackupMode ?? BackupMode.Full}] : {cb.CompressionBlock.BlockName}";
+                var report = $"{count}/{r.Total} [{cb.CompressionBlock.BackupMode}] : {cb.CompressionBlock.BlockName}";
                 if (cb.CompressionBlock.BackupMode == BackupMode.Diff)
                 {
                     report += $"(from {cb.CompressionBlock.DiffDate})";

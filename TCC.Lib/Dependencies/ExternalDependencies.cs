@@ -103,7 +103,7 @@ namespace TCC.Lib.Dependencies
 
             if (!string.IsNullOrEmpty(dependency.ZipFilename))
             {
-                ZipFile.ExtractToDirectory(target, path);
+                ZipFile.ExtractToDirectory(target, path,true);
             }
 
             if (!File.Exists(exePath))

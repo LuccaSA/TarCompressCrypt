@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using TCC.Lib.Database;
 using TCC.Lib.Helpers;
+using TCC.Lib.PrepareBlocks;
 
 namespace TCC.Lib.Blocks
 {
@@ -29,9 +31,7 @@ namespace TCC.Lib.Blocks
                         return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.diff";
                     case Database.BackupMode.Full:
                         return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.full";
-                    case null:
-                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}";
-                    default:
+                   default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
@@ -49,7 +49,7 @@ namespace TCC.Lib.Blocks
         public bool HaveFullFiles =>
             FolderProvider.FullExists(SourceFileOrDirectory.Name);
 
-        public BackupMode? BackupMode { get; set; }
+        public BackupMode BackupMode { get; set; }
 
         public override string BlockName => SourceFileOrDirectory.Name;
         public override FileInfo Archive => DestinationArchiveFileInfo;
@@ -66,5 +66,7 @@ namespace TCC.Lib.Blocks
         }
 
         public long LastBackupSize { get; set; }
+        public List<FileInfo> FullsToDelete { get; set; }
+        public List<FileInfo> DiffsToDelete { get; set; }
     }
 }

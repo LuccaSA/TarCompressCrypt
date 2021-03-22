@@ -9,3 +9,4 @@ launchSettings.json
 *.db
 /TCC.Tests/'coverage.xml'
 /coverage.xml
+/published

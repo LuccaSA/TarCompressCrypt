@@ -10,7 +10,8 @@ namespace TCC.Lib.Blocks
 {
     public static class BlockHelper
     {
-        public static IEnumerable<CompressionBlock> GenerateCompressBlocks(this CompressOption compressOption)
+        public static IEnumerable<CompressionBlock> GenerateCompressBlocks(this CompressOption compressOption,
+            CompressionFolderProvider compressionFolderProvider)
         {
             IEnumerable<CompressionBlock> blocks;
             string extension = ExtensionFromAlgo(compressOption.Algo, compressOption.PasswordOption.PasswordMode != PasswordMode.None);
@@ -25,7 +26,7 @@ namespace TCC.Lib.Blocks
                 srcDir = new DirectoryInfo(compressOption.SourceDirOrFile);
             }
 
-            var compFolder = new CompressionFolderProvider(new DirectoryInfo(compressOption.DestinationDir));
+            var compFolder = new CompressionFolderProvider(new DirectoryInfo(compressOption.DestinationDir), compressOption.FolderPerDay);
 
             switch (compressOption.BlockMode)
             {
@@ -40,7 +41,7 @@ namespace TCC.Lib.Blocks
             }
 
             HashSet<string> filters = null;
-            if (compressOption.Filter != null)
+            if (compressOption.Filter != null && compressOption.Filter.Any())
             {
                 filters = compressOption.Filter.ToHashSet(StringComparer.OrdinalIgnoreCase);
             }
@@ -51,12 +52,6 @@ namespace TCC.Lib.Blocks
                 {
                     continue;
                 }
-
-                if (compressOption.BackupMode == BackupMode.Full)
-                {
-                    block.BackupMode = BackupMode.Full;
-                }
-
                 block.DestinationArchiveExtension = extension;
                 block.FolderProvider = compFolder;
                 yield return block;

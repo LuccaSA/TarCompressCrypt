@@ -20,15 +20,28 @@ namespace TCC.Parser
         [Option('r', "ratio", HelpText = "Compression ratio. Valid values are : lz4 [1,9], brotli [1,11], zstd [1,19] ")]
         public int Ratio { get; set; }
 
-        [Option('m', "mode", HelpText = "Backup mode : Full or Diff. (Default = Diff)\n" +
-                                        "                      Full : force a full backup for all sources.\n" +
-                                        "                      Diff : Archive delta since last full")]
-        public BackupMode BackupMode { get; set; }
+        [Option('m', "mode", HelpText = "Backup mode : Full or Diff. (Default = Full if no Diff, and Diff if Full already exists)\n" +
+                                        "Full : force a full backup for all sources.\n" +
+                                        "Diff : Archive delta since last full")]
+        public BackupMode? BackupMode { get; set; }
 
         [Option("retries", HelpText = "Number of exponential retry. Max=4")]
         public int? Retry { get; set; }
 
         [Option("filter", HelpText = "Optional filters")]
         public IEnumerable<string> Filter { get; set; }
+        
+        [Option("folderPerDay", HelpText = "Creates a sub folder per day")]
+        public bool FolderPerDay { get; set; }
+
+        [Option("maximumRetention", HelpText = "Maximum retention in minutes")]
+        public int MaximumRetentionMinutes { get; set; }
+
+        [Option("boostRatio", HelpText = "When more than 90% of Diff will be processed, allow to multiply the number of thread.\n" 
+                                         + "Ex : boostRatio 4 when having 8 thread will switch process on 32 threads")]
+        public int? BoostRatio { get; set; }
+
+        [Option("cleanupTime", HelpText = "Specify the time, in hours, after which the backup files are deleted. If no time is specified, then no backup files are deleted.")]
+        public int? CleanupTime { get; set; }
     }
 }

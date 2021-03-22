@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Threading.Channels;
+using System.IO;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
@@ -16,9 +14,11 @@ using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
+using TCC.Lib.PrepareBlocks;
 
 namespace TCC.Lib
 {
+
     public class TarCompressCrypt
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
@@ -43,20 +43,16 @@ namespace TCC.Lib
         public async Task<OperationSummary> Compress(CompressOption option)
         {
             var sw = Stopwatch.StartNew();
-            var po = ParallelizeOption(option);
-            BackupJob job = await _databaseHelper.InitializeBackupJobAsync();
 
-            IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks();
-            var ordered = PrepareCompressionBlocksAsync(blocks);
+            var compFolder = new CompressionFolderProvider(new DirectoryInfo(option.DestinationDir), option.FolderPerDay);
 
-            var buffer = new List<CompressionBlock>();
-            _logger.LogInformation("Requested order : ");
-            await foreach (CompressionBlock block in ordered)
-            {
-                buffer.Add(block);
-                _logger.LogInformation($"{block.BlockName} {block.LastBackupSize.HumanizeSize()}");
-            }
+            IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks(compFolder);
+            IPrepareCompressBlocks prepare = new FileSystemPrepareCompressBlocks(compFolder, option.BackupMode, option.CleanupTime);
+            var buffer = prepare.PrepareCompressionBlocksAsync(blocks);
+            PrepareBoostRatio(option, buffer);
+            _logger.LogInformation("job prepared in " + sw.Elapsed.HumanizedTimeSpan());
             _logger.LogInformation("Starting compression job");
+            var po = ParallelizeOption(option);
 
             var operationBlocks = await buffer
                 .AsAsyncStream(_cancellationTokenSource.Token)
@@ -69,10 +65,11 @@ namespace TCC.Lib
                     return b;
                 }, po)
                 // Core loop 
-                .ParallelizeStreamAsync( (block, token) => CompressionBlockInternal(option, block, token), po)
+                .ParallelizeStreamAsync((block, token) => CompressionBlockInternal(option, block, token), po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
+                    await CleanupOldFiles(opb);
                     await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, opb.BlockResults.First().CommandResult, Mode.Compress);
                     return opb;
                 }, po)
@@ -82,11 +79,78 @@ namespace TCC.Lib
                 })
                 .AsReadOnlyCollectionAsync();
             sw.Stop();
-            await _databaseHelper.AddBackupBlockJobAsync(operationBlocks, job);
-            await _databaseHelper.UpdateBackupJobStatsAsync(sw, job);
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
+        }
+
+        private async Task CleanupOldFiles(OperationCompressionBlock opb)
+        {
+            if (opb.CompressionBlock.FullsToDelete != null)
+            {
+                foreach (var full in opb.CompressionBlock.FullsToDelete)
+                {
+                    try
+                    {
+                        await full.TryDeleteFileWithRetryAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error while deleting FULL file ");
+                    }
+                }
+            }
+            if (opb.CompressionBlock.DiffsToDelete != null)
+            {
+                foreach (var diff in opb.CompressionBlock.DiffsToDelete)
+                {
+                    try
+                    {
+                        await diff.TryDeleteFileWithRetryAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error while deleting DIFF file ");
+                    }
+                }
+            }
+        }
+
+        private void PrepareBoostRatio(CompressOption option, IEnumerable<CompressionBlock> buffer)
+        {
+            _logger.LogInformation("Requested order : ");
+            int countFull = 0;
+            int countDiff = 0;
+            foreach (CompressionBlock block in buffer)
+            {
+                if (block.BackupMode == BackupMode.Full)
+                {
+                    countFull++;
+                }
+                else
+                {
+                    countDiff++;
+                }
+            }
+            if (option.Threads > 1 && option.BoostRatio.HasValue)
+            {
+                if (countFull == 0 && countDiff > 0)
+                {
+                    _logger.LogInformation($"100% diff ({countDiff}), running with X{option.BoostRatio.Value} more threads");
+                    // boost mode when 100% of diff, we want to saturate iops : X mode
+                    option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                }
+                else if (countFull != 0 && (countDiff / (double)(countFull + countDiff) >= 0.9))
+                {
+                    _logger.LogInformation($"{countFull} full, {countDiff} diffs, running with X{option.BoostRatio.Value} more threads");
+                    // boost mode when 95% of diff, we want to saturate iops
+                    option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                }
+                else
+                {
+                    _logger.LogInformation($"No boost mode : {countFull} full, {countDiff} diffs");
+                }
+            }
         }
 
         private async Task<OperationCompressionBlock> CompressionBlockInternal(CompressOption option, CompressionBlock block, CancellationToken token)
@@ -112,8 +176,8 @@ namespace TCC.Lib
                     _logger.LogCritical(e, $"Error compressing {block.Source}");
                 }
 
-                if (option.Retry.HasValue && hasError && 
-                    Retry.CanRetryIn(out TimeSpan nextRetry, ref retry,option.Retry.Value))
+                if (option.Retry.HasValue && hasError &&
+                    Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
                 {
                     _logger.LogWarning($"Retrying compressing {block.Source}, attempt #{retry}");
                     await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();
@@ -134,7 +198,8 @@ namespace TCC.Lib
             var job = await _databaseHelper.InitializeRestoreJobAsync();
 
             IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks();
-            IAsyncEnumerable<DecompressionBatch> ordered = PrepareDecompressionBlocksAsync(blocks);
+            var prepare = new DatabasePreparedDecompressionBlocks(_serviceProvider.GetRequiredService<TccRestoreDbContext>(), _logger);
+            IAsyncEnumerable<DecompressionBatch> ordered = prepare.PrepareDecompressionBlocksAsync(blocks);
 
             IReadOnlyCollection<OperationDecompressionsBlock> operationBlocks =
                 await ordered
@@ -209,134 +274,10 @@ namespace TCC.Lib
             return result;
         }
 
-
-        private TccBackupDbContext BackupDb()
-        {
-            return _serviceProvider.GetRequiredService<TccBackupDbContext>();
-        }
         private TccRestoreDbContext RestoreDb()
         {
             return _serviceProvider.GetRequiredService<TccRestoreDbContext>();
         }
-
-        private async IAsyncEnumerable<CompressionBlock> PrepareCompressionBlocksAsync(IEnumerable<CompressionBlock> blocks)
-        {
-            var db = BackupDb();
-
-            var lastFulls = await db.BackupBlockJobs
-                .Include(i => i.BackupSource)
-                .Where(j => j.BackupMode == BackupMode.Full)
-                .ToListAsync();
-
-            // order by size of bigger backup full to optimize global time
-            lastFulls = lastFulls
-                .GroupBy(i => i.BackupSource.FullSourcePath)
-                .Select(i => i.OrderByDescending(b => b.Size).FirstOrDefault())
-                .OrderByDescending(i => i.Size)
-                .ToList();
-
-            if (lastFulls.Count == 0)
-            {
-                // no history ATM, we consider a backup full for each block
-                _logger.LogInformation("No backup history, processing files in filesystem order");
-                foreach (var b in blocks)
-                {
-                    b.BackupMode = BackupMode.Full;
-                    yield return b;
-                }
-                yield break;
-            }
-
-            await foreach (var b in blocks.OrderBySequence(lastFulls,
-                b => b.SourceFileOrDirectory.FullPath,
-                p => p.BackupSource.FullSourcePath,
-                async (b, p) =>
-                {
-                    b.LastBackupSize = p.Size;
-
-                    // If already Full here, it's a request from command line
-                    if (b.BackupMode.HasValue && b.BackupMode.Value == BackupMode.Full)
-                    {
-                        return; // we respect command line
-                    }
-
-                    var lastBackup = await db.BackupBlockJobs
-                        .Where(i => i.BackupSource.FullSourcePath == b.SourceFileOrDirectory.FullPath)
-                        .OrderByDescending(i => i.StartTime)
-                        .FirstOrDefaultAsync();
-
-                    if (lastBackup != null && string.IsNullOrEmpty(lastBackup.Exception) && b.HaveFullFiles)
-                    {
-                        // If last backup found, we plan a backup diff
-                        b.BackupMode = BackupMode.Diff;
-                        b.DiffDate = lastBackup.StartTime;
-                    }
-                    else
-                    {
-                        // No previous backup, we start with a full
-                        b.BackupMode = BackupMode.Full;
-                    }
-                }))
-            {
-                yield return b;
-            }
-        }
-
-        private async IAsyncEnumerable<DecompressionBatch> PrepareDecompressionBlocksAsync(
-            IEnumerable<DecompressionBatch> blocks)
-        {
-            var db = RestoreDb();
-
-            foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.CompressedSize))
-            {
-                var opFolder = decompBlock.DestinationFolder;
-
-                // If target directory doesn't exists, then we restore FULL + DIFF
-                var dir = new DirectoryInfo(decompBlock.DestinationFolder);
-                if (!dir.Exists || !dir.EnumerateDirectories().Any() && !dir.EnumerateFiles().Any())
-                {
-                    yield return decompBlock;
-                    continue;
-                }
-
-                var lastRestore = await db.RestoreBlockJobs
-                    .Where(i => i.RestoreDestination.FullDestinationPath == opFolder)
-                    .OrderByDescending(i => i.StartTime)
-                    .FirstOrDefaultAsync();
-
-                if (lastRestore == null)
-                {
-                    if (decompBlock.BackupFull == null)
-                    {
-                        throw new Exception("missing backup full");
-                    }
-
-                    // no backup full in history : we decompress the FULL + DIFF
-                    yield return decompBlock;
-                    continue;
-                }
-
-                var d = new DecompressionBatch();
-
-                DateTime recent = lastRestore.StartTime;
-                // if more recent full, we take it
-                if (decompBlock.BackupFull.BackupDate > recent)
-                {
-                    recent = decompBlock.BackupFull.BackupDate.Value;
-                    // if no diff, check more recent full
-                    d.BackupFull = decompBlock.BackupFull;
-                }
-
-                // we yield all the DIFF archives more recent the the last restore or the last full
-                d.BackupsDiff = decompBlock.BackupsDiff?.Where(i => i.BackupDate > recent).ToArray();
-
-                yield return d;
-            }
-
-            // TODO next
-            // - si on déclenche un restore d'un FULL sur un dossier ou y'a deja des données, faut cleaner avant
-        }
-
 
         private static ParallelizeOption ParallelizeOption(TccOption option)
         {

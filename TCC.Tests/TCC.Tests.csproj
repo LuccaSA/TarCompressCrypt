@@ -3,6 +3,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework> 
     <ProjectGuid>{7890B9B9-7965-4295-85AE-332DFE3661E9}</ProjectGuid>
     <LangVersion>8</LangVersion>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>

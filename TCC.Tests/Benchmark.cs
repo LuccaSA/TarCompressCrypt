@@ -22,7 +22,6 @@ namespace TCC.Tests
             services.AddLogging();
             services.PostConfigure<TccSettings>(i =>
             {
-                i.BackupConnectionString = "Data Source=test_tcc.db";
                 i.RestoreConnectionString = "Data Source=test_tcc.db";
                 i.Provider = Provider.SqLite;
             });

@@ -65,8 +65,8 @@ namespace TCC.Tests
                 DestinationDir = _target,
                 BlockMode = BlockMode.Explicit
             };
-
-            var blocks = compressOption.GenerateCompressBlocks();
+            var compFolder = new CompressionFolderProvider(new DirectoryInfo(compressOption.DestinationDir), compressOption.FolderPerDay);
+            var blocks = compressOption.GenerateCompressBlocks(compFolder);
             var fi = new FileInfo(_root);
             Assert.Single(blocks);
             Assert.Equal(fi.Name, blocks.First().Source.Trim('"'));
@@ -83,8 +83,8 @@ namespace TCC.Tests
                 DestinationDir = _target,
                 BlockMode = BlockMode.Individual
             };
-
-            var blocks = compressOption.GenerateCompressBlocks();
+            var compFolder = new CompressionFolderProvider(new DirectoryInfo(compressOption.DestinationDir), compressOption.FolderPerDay);
+            var blocks = compressOption.GenerateCompressBlocks(compFolder);
 
             Assert.Equal(6, blocks.Count());
             await Cleanup();
