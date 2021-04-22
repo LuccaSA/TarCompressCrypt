@@ -17,35 +17,41 @@ namespace TCC.Lib.Dependencies
 
         private readonly ILogger<ExternalDependencies> _logger;
 
-        public string Tar() => GetPath(_tar);
-        public string Lz4() => GetPath(_lz4);
-        public string Brotli() => GetPath(_brotli);
-        public string Zstd() => GetPath(_zStd);
-        public string OpenSsl() => GetPath(_openSsl);
+        public string Tar() => GetPathEscaped(_tar);
+        public string Lz4() => GetPathEscaped(_lz4);
+        public string Brotli() => GetPathEscaped(_brotli);
+        public string Zstd() => GetPathEscaped(_zStd);
+        public string OpenSsl() => GetPathEscaped(_openSsl);
+        public string AzCopy() => GetPathEscaped(_azCopy);
 
         public async Task EnsureAllDependenciesPresent()
         {
-            var progress = new Progress<int>();
-            await EnsureDependency(_lz4, progress);
-            await EnsureDependency(_brotli, progress);
-            await EnsureDependency(_zStd, progress);
-            await EnsureDependency(_openSsl, progress);
-            await EnsureDependency(_tar, progress);
+            await EnsureDependency(_lz4);
+            await EnsureDependency(_brotli);
+            await EnsureDependency(_zStd);
+            await EnsureDependency(_openSsl);
+            await EnsureDependency(_tar);
+            await EnsureDependency(_azCopy);
         }
 
-        public string Root => Path.GetDirectoryName(typeof(ExternalDependencies).Assembly.CodeBase.Replace("file:///", ""));
+        private string Root => Path.GetDirectoryName(typeof(ExternalDependencies).Assembly.CodeBase.Replace("file:///", ""));
 
-        public string GetPath(Dependency dependency)
+        private string GetPathEscaped(Dependency dependency)
+        {
+            return GetPath(dependency).Escape();
+        }
+        
+        internal string GetPath(Dependency dependency)
         {
             string exePath = Path.Combine(Root, dependency.ExtractFolder, dependency.ExeName);
             if (!File.Exists(exePath))
             {
                 throw new FileNotFoundException(dependency.Name + " not found in " + exePath);
             }
-            return exePath.Escape();
+            return exePath;
         }
 
-        public async Task<string> EnsureDependency(Dependency dependency, IProgress<int> percent)
+        public async Task<string> EnsureDependency(Dependency dependency)
         {
             string path = Path.Combine(Root, dependency.ExtractFolder);
             string exePath = Path.Combine(Root, dependency.ExtractFolder, dependency.ExeName);
@@ -57,7 +63,7 @@ namespace TCC.Lib.Dependencies
                 {
                     try
                     {
-                        await DownloadDependencyInternal(dependency, percent, path, exePath);
+                        await DownloadDependencyInternal(dependency, path, exePath);
                     }
                     catch (Exception e)
                     {
@@ -65,16 +71,14 @@ namespace TCC.Lib.Dependencies
                     }
                 });
             }
-
-            percent.Report(100);
+             
             return exePath;
         }
 
-        private async Task DownloadDependencyInternal(Dependency dependency, IProgress<int> percent, string path, string exePath)
+        private async Task DownloadDependencyInternal(Dependency dependency, string path, string exePath)
         {
             if (File.Exists(exePath))
             {
-                percent.Report(100);
                 return;
             }
 
@@ -88,14 +92,6 @@ namespace TCC.Lib.Dependencies
 
             using (var wc = new WebClient())
             {
-                wc.DownloadProgressChanged += (s, e) =>
-                {
-                    percent.Report((int)(e.BytesReceived / e.TotalBytesToReceive * 100));
-                };
-                wc.DownloadFileCompleted += (s, e) =>
-                {
-                    percent.Report(100);
-                };
                 await wc.DownloadFileTaskAsync(dependency.Url, target);
             }
 
@@ -112,7 +108,7 @@ namespace TCC.Lib.Dependencies
             }
         }
 
-        private static readonly Dependency _lz4 = new Dependency
+        internal static readonly Dependency _lz4 = new Dependency
         {
             Name = "Lz4",
             Url = @"https://github.com/lz4/lz4/releases/download/v1.9.2/lz4_win64_v1_9_2.zip",
@@ -121,7 +117,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "lz4.exe"
         };
 
-        private static readonly Dependency _brotli = new Dependency
+        internal static readonly Dependency _brotli = new Dependency
         {
             Name = "Brotli",
             Url = @"https://github.com/google/brotli/releases/download/v1.0.4/brotli-v1.0.4-win_x86_64.zip",
@@ -130,7 +126,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "brotli.exe"
         };
 
-        private static readonly Dependency _zStd = new Dependency
+        internal static readonly Dependency _zStd = new Dependency
         {
             Name = "Zstandard",
             Url = @"https://github.com/facebook/zstd/releases/download/v1.4.8/zstd-v1.4.8-win64.zip",
@@ -141,7 +137,7 @@ namespace TCC.Lib.Dependencies
 
         // From : https://curl.se/windows/
         // referenced from official OpenSSL wiki : https://wiki.openssl.org/index.php/Binaries
-        private static readonly Dependency _openSsl = new Dependency
+        internal static readonly Dependency _openSsl = new Dependency
         {
             Name = "OpenSSL",
             Url = @"https://curl.se/windows/dl-7.75.0_4/openssl-1.1.1j_4-win64-mingw.zip",
@@ -150,7 +146,7 @@ namespace TCC.Lib.Dependencies
             ExeName = "openssl-1.1.1j-win64-mingw\\openssl.exe"
         };
 
-        private static readonly Dependency _tar = new Dependency
+        internal static readonly Dependency _tar = new Dependency
         {
             Name = "Tar",
             Url = @"https://github.com/LuccaSA/TarCompressCrypt/raw/master/Dependencies/tar_msys2_130.zip",
@@ -159,5 +155,13 @@ namespace TCC.Lib.Dependencies
             ExeName = "tar.exe"
         };
 
+        internal static readonly Dependency _azCopy = new Dependency
+        {
+            Name = "azcopy",
+            Url = @"https://azcopyvnext.azureedge.net/release20210415/azcopy_windows_amd64_10.10.0.zip",
+            ZipFilename = "azcopy_windows_amd64_10.10.0.zip",
+            ExtractFolder = "azcopy_windows_amd64_10.10.0",
+            ExeName = "azcopy_windows_amd64_10.10.0\\azcopy.exe"
+        };
     }
 }
