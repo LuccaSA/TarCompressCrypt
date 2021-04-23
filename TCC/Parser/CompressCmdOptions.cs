@@ -30,18 +30,28 @@ namespace TCC.Parser
 
         [Option("filter", HelpText = "Optional filters")]
         public IEnumerable<string> Filter { get; set; }
-        
+
         [Option("folderPerDay", HelpText = "Creates a sub folder per day")]
         public bool FolderPerDay { get; set; }
 
         [Option("maximumRetention", HelpText = "Maximum retention in minutes")]
         public int MaximumRetentionMinutes { get; set; }
 
-        [Option("boostRatio", HelpText = "When more than 90% of Diff will be processed, allow to multiply the number of thread.\n" 
+        [Option("boostRatio", HelpText = "When more than 90% of Diff will be processed, allow to multiply the number of thread.\n"
                                          + "Ex : boostRatio 4 when having 8 thread will switch process on 32 threads")]
         public int? BoostRatio { get; set; }
 
         [Option("cleanupTime", HelpText = "Specify the time, in hours, after which the backup files are deleted. If no time is specified, then no backup files are deleted.")]
         public int? CleanupTime { get; set; }
+
+
+        [Option("azBlob", HelpText = "Azure blob storage URL")]
+        public string AzBlob { get; set; }
+        [Option("azSaS", HelpText = "Azure blob storage SaS token")]
+        public string azSaS { get; set; }
+        [Option("AzMbps", HelpText = "Azure blob upload limit")]
+        public int? AzMbps { get; set; }
+        [Option("azThread", HelpText = "Azure blob maximum parallel threads")]
+        public int? AzThread { get; set; }
     }
 }

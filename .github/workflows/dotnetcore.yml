@@ -46,6 +46,9 @@ jobs:
 
     - name: Test
       run: dotnet test --configuration Release /p:CollectCoverage=true --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory:./coverage
+      env:
+        AZ_SAS_TOKEN: ${{ secrets.AZ_SAS_TOKEN }}
+        AZ_URL: ${{ secrets.AZ_URL }}
 
     - name: Merge coverages
       run: reportgenerator -reports:./coverage/*/*.xml -targetdir:./sonarCoverage -reporttypes:SonarQube
