@@ -48,7 +48,7 @@ namespace TCC.Parser
         [Option("azBlob", HelpText = "Azure blob storage URL")]
         public string AzBlob { get; set; }
         [Option("azSaS", HelpText = "Azure blob storage SaS token")]
-        public string azSaS { get; set; }
+        public string AzSaS { get; set; }
         [Option("AzMbps", HelpText = "Azure blob upload limit")]
         public int? AzMbps { get; set; }
         [Option("azThread", HelpText = "Azure blob maximum parallel threads")]
