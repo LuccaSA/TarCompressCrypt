@@ -78,9 +78,11 @@ namespace TCC.Tests
                 await TestFileHelper.NewFile(folder, sizeKb);
             }
             await Task.Delay(150); // for filesystem latency
+            var dir = new DirectoryInfo(folder);
             return new TestData
             {
-                Directories = new List<DirectoryInfo> { new DirectoryInfo(folder) }
+                Directories = new List<DirectoryInfo> { dir },
+                Files = new List<FileInfo>(dir.EnumerateFiles().ToList())
             };
         }
 

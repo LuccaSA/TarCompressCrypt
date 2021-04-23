@@ -25,6 +25,7 @@ namespace TCC.Lib.Helpers
             services.AddScoped<TarCompressCrypt>();
             services.AddScoped<EncryptionCommands>();
             services.AddScoped<CompressionCommands>();
+            services.AddScoped<UploadCommands>();
             services.AddScoped<BenchmarkRunner>();
             services.AddScoped<BenchmarkOptionHelper>();
             services.AddScoped<BenchmarkIterationGenerator>();

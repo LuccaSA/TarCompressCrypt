@@ -38,7 +38,7 @@ namespace TCC.Lib.Blocks
             }
         }
 
-        public DirectoryInfo GetDirectory(BackupMode? backupMode, string directoryName)
+        public DirectoryInfo GetTargetDirectory(BackupMode? backupMode, string directoryName)
         {
             if (string.IsNullOrWhiteSpace(directoryName)) throw new ArgumentNullException(nameof(directoryName));
             var archiveRoot = CompressDestinationRoot.CreateSubDirectoryIfNotExists(directoryName);

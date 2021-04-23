@@ -44,7 +44,7 @@ namespace TCC.Lib.Blocks
             => new FileInfo(Path.Combine(DestinationArchiveFolder.FullName, DestinationArchiveName + DestinationArchiveExtension));
 
         public DirectoryInfo DestinationArchiveFolder =>
-            FolderProvider.GetDirectory(BackupMode, SourceFileOrDirectory.Name);
+            FolderProvider.GetTargetDirectory(BackupMode, SourceFileOrDirectory.Name);
 
         public bool HaveFullFiles =>
             FolderProvider.FullExists(SourceFileOrDirectory.Name);

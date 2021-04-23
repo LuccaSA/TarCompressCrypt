@@ -18,7 +18,7 @@ namespace TCC.Lib
 
         public double BlockThroughputMbps()
         {
-            if (BlockResults.Sum(b => b.Block.CompressedSize) == 0 || BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds) == 0)
+            if (Size == 0 || ElapsedMilliseconds == 0)
             {
                 throw new TccException("Block operation not finished yet");
             }
@@ -26,7 +26,19 @@ namespace TCC.Lib
             {
                 return 0;
             }
-            return (double)BlockResults.Sum(b => b.Block.CompressedSize) * 1000 / BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds);
+            return (double)Size * 1000 / ElapsedMilliseconds;
+        }
+
+        private long? _size;
+        public long Size
+        {
+            get => _size ??= BlockResults.Sum(b => b.Block.CompressedSize);
+        }
+
+        private long? _elapsedMilliseconds;
+        public long ElapsedMilliseconds
+        {
+            get => _elapsedMilliseconds ??= BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds);
         }
     }
 

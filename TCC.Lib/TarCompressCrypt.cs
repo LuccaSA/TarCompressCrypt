@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
+using System.Text.Json;
+using System.Threading.Channels;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
@@ -28,8 +30,9 @@ namespace TCC.Lib
         private readonly CompressionCommands _compressionCommands;
         private readonly IServiceProvider _serviceProvider;
         private readonly DatabaseHelper _databaseHelper;
+        private readonly UploadCommands _uploadCommands;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper, UploadCommands uploadCommands)
         {
             _cancellationTokenSource = cancellationTokenSource;
             _blockListener = blockListener;
@@ -38,6 +41,7 @@ namespace TCC.Lib
             _compressionCommands = compressionCommands;
             _serviceProvider = serviceProvider;
             _databaseHelper = databaseHelper;
+            _uploadCommands = uploadCommands;
         }
 
         public async Task<OperationSummary> Compress(CompressOption option)
@@ -73,16 +77,68 @@ namespace TCC.Lib
                     await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, opb.BlockResults.First().CommandResult, Mode.Compress);
                     return opb;
                 }, po)
+                // Upload loop
+                .ParallelizeStreamAsync((block, token) => UploadBlockInternal(option, block, token), new ParallelizeOption { FailMode = Fail.Smart, MaxDegreeOfParallelism = option.AzThread ?? 1 })
+                // notif
                 .ForEachAsync(async (i, ct) =>
                 {
                     await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
                 })
                 .AsReadOnlyCollectionAsync();
+
+
+
             sw.Stop();
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
         }
+
+        private async Task<OperationCompressionBlock> UploadBlockInternal(CompressOption option, OperationCompressionBlock block, CancellationToken token)
+        {
+            if (string.IsNullOrEmpty(option.AzBlob) || string.IsNullOrEmpty(option.AzSaS))
+            {
+                return block;
+            }
+
+            var cmd = _uploadCommands.UploadCommand(option,
+                block.CompressionBlock.DestinationArchiveFileInfo,
+                block.CompressionBlock.FolderProvider.RootFolder);
+
+            var name = block.CompressionBlock.DestinationArchiveFileInfo.Name;
+            try
+            {
+                bool success = await UploadOnBlobAsync(block.CompressionBlock.OperationFolder, cmd, token);
+
+                LogUploadReport(name, block.CompressionBlock.DestinationArchiveFileInfo.Length, success);
+            }
+            catch (Exception e)
+            {
+                _logger.LogCritical(e, $"Error uploading {name}");
+            }
+            return block;
+        }
+
+        internal static async Task<bool> UploadOnBlobAsync(string opFolder, string cmd, CancellationToken token)
+        {
+            var result = await cmd.Run(opFolder, token);
+
+            var infos = result.Output
+                .Split(Environment.NewLine)
+                .Select(i => JsonSerializer.Deserialize<AzCopyResponse>(i))
+                .FirstOrDefault(i => i.MessageType == "EndOfJob");
+
+            if (infos == null)
+            {
+                Console.WriteLine(result.Output);
+                return false;
+            }
+            
+            var jobResult = JsonSerializer.Deserialize<AzCopyJobCompleted>(infos.MessageContent);
+
+            return jobResult.TransfersCompleted == "1";
+        }
+
 
         private async Task CleanupOldFiles(OperationCompressionBlock opb)
         {
@@ -164,7 +220,7 @@ namespace TCC.Lib
                 {
                     string cmd = _compressionCommands.CompressCommand(block, option);
                     result = await cmd.Run(block.OperationFolder, token);
-                    LogReport(block, result);
+                    LogCompressionReport(block, result);
                     if (result.HasError || result.HasWarning)
                     {
                         hasError = true;
@@ -289,7 +345,7 @@ namespace TCC.Lib
             return po;
         }
 
-        private void LogReport(CompressionBlock block, CommandResult result)
+        private void LogCompressionReport(CompressionBlock block, CommandResult result)
         {
             _logger.LogInformation($"Compressed {block.Source} in {result?.Elapsed.HumanizedTimeSpan()}, {block.DestinationArchiveFileInfo.Length.HumanizeSize()}, {block.DestinationArchiveFileInfo.FullName}");
 
@@ -301,6 +357,16 @@ namespace TCC.Lib
             if (result?.HasError ?? false)
             {
                 _logger.LogError($"Compressed {block.Source} with errors : {result.Errors}");
+            }
+        }
+
+        private void LogUploadReport(string fileName, long length, bool success)
+        {
+            _logger.LogInformation($"Uploaded {fileName}");
+
+            if (!success)
+            {
+                _logger.LogError($"Uploaded {fileName} with errors");
             }
         }
 
@@ -319,4 +385,5 @@ namespace TCC.Lib
             }
         }
     }
+
 }
