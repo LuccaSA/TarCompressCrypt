@@ -72,7 +72,7 @@ namespace TCC.Lib.Command
                 KillProcessAndChilds(process);
                 OnDispose();
             });
-            
+
             try
             {
                 stopwatch.Start();
@@ -153,7 +153,7 @@ namespace TCC.Lib.Command
             {
                 standardOutput.Add(e.Data);
             }
-        }   
+        }
 
         private static Process CreateProcess(string command, string workingDirectory)
         {
@@ -174,21 +174,24 @@ namespace TCC.Lib.Command
 
         private static void KillProcessAndChildren(int pid)
         {
-            using var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid);
-            var moc = searcher.Get();
-            foreach (var o in moc)
+            if (OperatingSystem.IsWindows())
             {
-                var mo = (ManagementObject)o;
-                KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
-            }
-            try
-            {
-                var proc = Process.GetProcessById(pid);
-                proc.Kill();
-            }
-            catch (Exception)
-            {
-                // Process already exited.
+                using var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid);
+                var moc = searcher.Get();
+                foreach (var o in moc)
+                {
+                    var mo = (ManagementObject)o;
+                    KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
+                }
+                try
+                {
+                    var proc = Process.GetProcessById(pid);
+                    proc.Kill();
+                }
+                catch (Exception)
+                {
+                    // Process already exited.
+                }
             }
         }
     }

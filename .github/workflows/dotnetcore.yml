@@ -18,7 +18,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '3.1.x'
+        dotnet-version: '5.0.x'
 
     - name: Install GitVersion
       uses: gittools/actions/gitversion/setup@v0.9.7
@@ -57,8 +57,8 @@ jobs:
       run: artifacts/dotnet-sonarscanner end /d:sonar.login=${{ secrets.SONAR_TOKEN }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
- 
-    - name: Pack
+
+    - name: Pack dotnet tool
       run: dotnet pack TCC\TCC.csproj --configuration Release -o artifacts -p:PackageVersion=${{ steps.gitversion.outputs.nuGetVersionV2 }}
 
     - name: Nuget prerelease push
@@ -72,5 +72,33 @@ jobs:
       env:
         NUGET_PUBLISH: ${{ secrets.NUGET_PUBLISH }}
 
-    - name: Dump ref
-      run: echo ${{github.ref}}
+    - name: Pack exe
+      if: startsWith(github.ref, 'refs/tags/')
+      run: dotnet publish TCC\TCC.csproj -c Release -o published -r win10-x64 /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:VersionPrefix="${{ env.GitVersion_SemVer }}" /p:AssemblyVersion="${{ env.GitVersion_AssemblySemVer }}"
+
+    - name: Zip
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        Remove-Item "artifact" -Recurse -ErrorAction Ignore
+        New-Item -Name "artifact" -ItemType Directory
+        Compress-Archive -Path published\* -DestinationPath artifact\TCC-${{ env.GitVersion_SemVer }}.zip
+      shell: powershell
+
+    - name: Get release
+      if: startsWith(github.ref, 'refs/tags/')
+      id: get_release
+      uses: bruceadams/get-release@v1.2.2
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Upload Release Asset
+      if: startsWith(github.ref, 'refs/tags/')
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }}
+        asset_path: artifact\TCC-${{ env.GitVersion_SemVer }}.zip
+        asset_name: TCC-${{ env.GitVersion_SemVer }}.zip
+        asset_content_type: application/zip

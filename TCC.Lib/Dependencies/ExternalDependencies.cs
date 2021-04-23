@@ -34,7 +34,7 @@ namespace TCC.Lib.Dependencies
             await EnsureDependency(_azCopy);
         }
 
-        private string Root => Path.GetDirectoryName(typeof(ExternalDependencies).Assembly.CodeBase.Replace("file:///", ""));
+        private string Root => Path.GetDirectoryName(AppContext.BaseDirectory);
 
         private string GetPathEscaped(Dependency dependency)
         {
