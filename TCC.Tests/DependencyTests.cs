@@ -47,7 +47,7 @@ namespace TCC.Tests
 
             string GetEnvVar(string key)
             {
-                var s = Environment.GetEnvironmentVariable("AZ_URL");
+                var s = Environment.GetEnvironmentVariable(key);
                 Assert.NotNull(s);
                 Assert.NotEmpty(s);
                 return s;
