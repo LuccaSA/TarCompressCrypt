@@ -41,6 +41,10 @@ namespace TCC.Tests
         [Fact]
         public async Task AzureUploadTest()
         {
+            var dep = new ExternalDependencies(new NullLogger<ExternalDependencies>());
+            await dep.EnsureDependency(ExternalDependencies._azCopy);
+            dep.GetPath(ExternalDependencies._azCopy).EnsureFileExists();
+
             string GetEnvVar(string key)
             {
                 var s = Environment.GetEnvironmentVariable("AZ_URL");
