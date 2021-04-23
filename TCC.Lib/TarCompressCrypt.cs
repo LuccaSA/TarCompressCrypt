@@ -126,8 +126,14 @@ namespace TCC.Lib
             var infos = result.Output
                 .Split(Environment.NewLine)
                 .Select(i => JsonSerializer.Deserialize<AzCopyResponse>(i))
-                .First(i => i.MessageType == "EndOfJob");
+                .FirstOrDefault(i => i.MessageType == "EndOfJob");
 
+            if (infos == null)
+            {
+                Console.WriteLine(result.Output);
+                return false;
+            }
+            
             var jobResult = JsonSerializer.Deserialize<AzCopyJobCompleted>(infos.MessageContent);
 
             return jobResult.TransfersCompleted == "1";
