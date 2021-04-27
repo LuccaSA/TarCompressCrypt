@@ -79,8 +79,8 @@ namespace TCC.Tests
         string GetEnvVar(string key)
         {
             var s = Environment.GetEnvironmentVariable(key);
-            Assert.NotNull(s);
-            Assert.NotEmpty(s);
+            Assert.True(s != null, key);
+            Assert.True(!string.IsNullOrWhiteSpace(s),key);
             return s;
         }
 
