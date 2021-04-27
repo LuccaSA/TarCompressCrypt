@@ -40,10 +40,12 @@ namespace TCC.Parser
                             SlackSecret = opts.SlackSecret,
                             BucketName = opts.BucketName,
                             SlackOnlyOnError = opts.SlackOnlyOnError,
-                            AzBlob = opts.AzBlob,
+                            AzBlobUrl = opts.AzBlobUrl,
+                            AzBlobContainer = opts.AzBlobContainer,
                             AzSaS = opts.AzSaS,
                             AzMbps = opts.AzMbps,
-                            AzThread = opts.AzThread
+                            AzThread = opts.AzThread,
+                            UploadMode = opts.UploadMode
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Compress);

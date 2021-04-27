@@ -24,15 +24,14 @@ namespace TCC.Lib.Dependencies
             {
                 throw new TccException("Incoherent file to upload");
             }
-            var targetPath = fullPath.Replace(root.FullName, string.Empty, StringComparison.InvariantCultureIgnoreCase).Trim('\\').Trim('/');
-            targetPath = targetPath.Replace('\\', '/');
+            string targetPath = file.GetRelativeTargetPathTo(root);
 
             var sb = new StringBuilder();
             sb.Append(_ext.AzCopy());
             sb.Append(" copy ");
             sb.Append(file.FullName.Escape());
             sb.Append(" ");
-            string target = $"{option.AzBlob}/{targetPath}?{option.AzSaS}";
+            string target = $"{option.AzBlobUrl}/{option.AzBlobContainer}/{targetPath}?{option.AzSaS}";
             sb.Append(target.Escape());
 
             if (option.AzMbps.HasValue)
@@ -42,6 +41,19 @@ namespace TCC.Lib.Dependencies
             sb.Append(" --output-type json");
 
             return sb.ToString();
+        }
+    }
+    
+    public static class UploadHelper
+    {
+        public static string GetRelativeTargetPathTo(this FileInfo file, DirectoryInfo root )
+        {
+            var targetPath = file.FullName.Replace(root.FullName, string.Empty, StringComparison.InvariantCultureIgnoreCase)
+                .Trim('\\').Trim('/');
+
+            targetPath = targetPath.Replace('\\', '/');
+
+            return targetPath;
         }
     }
 
