@@ -100,60 +100,83 @@ namespace TCC.Lib
             if (string.IsNullOrEmpty(option.AzBlobUrl)
                 || string.IsNullOrEmpty(option.AzBlobContainer)
                 || string.IsNullOrEmpty(option.AzSaS)
-                || !option.UploadMode.HasValue)
+                || option.UploadMode == null)
             {
                 return block;
             }
 
             var file = block.CompressionBlock.DestinationArchiveFileInfo;
             var name = file.Name;
-
-
-            switch (option.UploadMode)
+            int retry = 0;
+            while (true)
             {
-                case UploadMode.AzCopy:
-                    try
+                bool hasError = false;
+                try
+                {
+                    var sw = Stopwatch.StartNew();
+                    bool success = false;
+                    string reason = null;
+
+                    switch (option.UploadMode)
                     {
-                        var cmd = _uploadCommands.UploadCommand(option,
-                            file,
-                            block.CompressionBlock.FolderProvider.RootFolder);
-
-                        bool success = await AzCopyUploadOnBlobAsync(block.CompressionBlock.FolderProvider.RootFolder.FullName, cmd, token);
-
-                        LogUploadReport(name, file.Length, success);
+                        case UploadMode.AzCopy:
+                            var cmd = _uploadCommands.UploadCommand(option,
+                                file,
+                                block.CompressionBlock.FolderProvider.RootFolder);
+                            success = await AzCopyUploadOnBlobAsync(block.CompressionBlock.FolderProvider.RootFolder.FullName, cmd, token);
+                            break;
+                        case UploadMode.AzureSdk:
+                            var result = await SdkUploadOnBlobAsync(option, block.CompressionBlock.FolderProvider.RootFolder, file, token);
+                            success = result.success;
+                            reason = result.reason;
+                            hasError = !success;
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
-                    catch (Exception e)
+                    sw.Stop();
+
+                    if (success)
                     {
-                        _logger.LogCritical(e, $"Error uploading {name}");
+                        double speed = file.Length / sw.Elapsed.TotalSeconds;
+                        _logger.LogInformation($"Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                     }
+                    else
+                    {
+                        _logger.LogError($"Uploaded {file.Name} with errors. {reason}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    hasError = true;
+                    _logger.LogCritical(e, $"Error uploading {name}");
+                }
 
+                if (option.Retry.HasValue && hasError &&
+                    Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
+                {
+                    _logger.LogWarning($"Retrying uploading {name}, attempt #{retry}");
+                    await Task.Delay(nextRetry);
+                }
+                else
+                {
                     break;
-                case UploadMode.AzureSdk:
-                    try
-                    {
-                        await SdkUploadOnBlobAsync(option, block.CompressionBlock.FolderProvider.RootFolder, file, token);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogCritical(e, $"Error uploading {name}");
-                    }
-                    break;
+                }
             }
-
-
             return block;
         }
 
-        internal static async Task<bool> SdkUploadOnBlobAsync(CompressOption option, DirectoryInfo rootFolder,
+        internal static async Task<(bool success, string reason)> SdkUploadOnBlobAsync(CompressOption option, DirectoryInfo rootFolder,
              FileInfo file, CancellationToken token)
         {
             var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzSaS));
-            
+
             var container = client.GetBlobContainerClient(option.AzBlobContainer);
             string targetPath = file.GetRelativeTargetPathTo(rootFolder);
             using FileStream uploadFileStream = File.OpenRead(file.FullName);
-            var response = await container.UploadBlobAsync(targetPath, uploadFileStream, token);
-            return response.GetRawResponse().Status == 201;
+            var result = await container.UploadBlobAsync(targetPath, uploadFileStream, token);
+            var response = result.GetRawResponse();
+            return (response.Status == 201, response.ReasonPhrase);
         }
 
         internal static async Task<bool> AzCopyUploadOnBlobAsync(string opFolder, string cmd, CancellationToken token)
@@ -406,15 +429,6 @@ namespace TCC.Lib
             }
         }
 
-        private void LogUploadReport(string fileName, long length, bool success)
-        {
-            _logger.LogInformation($"Uploaded {fileName}");
-
-            if (!success)
-            {
-                _logger.LogError($"Uploaded {fileName} with errors");
-            }
-        }
 
         private void LogReport(DecompressionBlock block, CommandResult result)
         {

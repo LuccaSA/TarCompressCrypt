@@ -73,7 +73,7 @@ namespace TCC.Tests
                 data.Files.First(),
                 CancellationToken.None);
            
-           Assert.True(ok);
+           Assert.True(ok.success);
         }
 
         string GetEnvVar(string key)
