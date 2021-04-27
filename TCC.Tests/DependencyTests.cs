@@ -37,39 +37,6 @@ namespace TCC.Tests
             await dep.EnsureDependency(ExternalDependencies._azCopy);
             dep.GetPath(ExternalDependencies._azCopy).EnsureFileExists();
         }
-
-        [Fact]
-        public async Task AzureUploadTest()
-        {
-            var dep = new ExternalDependencies(new NullLogger<ExternalDependencies>());
-            await dep.EnsureDependency(ExternalDependencies._azCopy);
-            dep.GetPath(ExternalDependencies._azCopy).EnsureFileExists();
-
-            string GetEnvVar(string key)
-            {
-                var s = Environment.GetEnvironmentVariable(key);
-                Assert.NotNull(s);
-                Assert.NotEmpty(s);
-                return s;
-            }
-
-            var up = new UploadCommands(new ExternalDependencies(new NullLogger<ExternalDependencies>()));
-
-            string toCompressFolder = TestFileHelper.NewFolder();
-            var data = await TestData.CreateFiles(1, 1024, toCompressFolder);
-
-            var opt = new CompressOption()
-            {
-                AzBlob = GetEnvVar("AZ_URL"),
-                AzSaS = GetEnvVar("AZ_SAS_TOKEN")
-            };
-           
-            var cmd = up.UploadCommand(opt, data.Files.First(), new DirectoryInfo(toCompressFolder));
-
-            bool success = await TarCompressCrypt.UploadOnBlobAsync(toCompressFolder, cmd, CancellationToken.None);
-
-            Assert.True(success);
-        }
     }
 
     public static class DependencyHelper

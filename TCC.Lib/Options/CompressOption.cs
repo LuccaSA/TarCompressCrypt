@@ -17,9 +17,11 @@ namespace TCC.Lib.Options
         public int? CleanupTime { get; set; }
         
         
-        public string AzBlob { get; set; }
+        public string AzBlobUrl { get; set; }
+        public string AzBlobContainer { get; set; }
         public string AzSaS { get; set; }
         public int? AzMbps { get; set; }
         public int? AzThread { get; set; }
+        public UploadMode? UploadMode { get; set; }
     }
 }

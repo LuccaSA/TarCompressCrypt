@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -86,8 +89,6 @@ namespace TCC.Lib
                 })
                 .AsReadOnlyCollectionAsync();
 
-
-
             sw.Stop();
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
@@ -96,30 +97,66 @@ namespace TCC.Lib
 
         private async Task<OperationCompressionBlock> UploadBlockInternal(CompressOption option, OperationCompressionBlock block, CancellationToken token)
         {
-            if (string.IsNullOrEmpty(option.AzBlob) || string.IsNullOrEmpty(option.AzSaS))
+            if (string.IsNullOrEmpty(option.AzBlobUrl)
+                || string.IsNullOrEmpty(option.AzBlobContainer)
+                || string.IsNullOrEmpty(option.AzSaS)
+                || !option.UploadMode.HasValue)
             {
                 return block;
             }
 
-            var cmd = _uploadCommands.UploadCommand(option,
-                block.CompressionBlock.DestinationArchiveFileInfo,
-                block.CompressionBlock.FolderProvider.RootFolder);
+            var file = block.CompressionBlock.DestinationArchiveFileInfo;
+            var name = file.Name;
 
-            var name = block.CompressionBlock.DestinationArchiveFileInfo.Name;
-            try
-            {
-                bool success = await UploadOnBlobAsync(block.CompressionBlock.OperationFolder, cmd, token);
 
-                LogUploadReport(name, block.CompressionBlock.DestinationArchiveFileInfo.Length, success);
-            }
-            catch (Exception e)
+            switch (option.UploadMode)
             {
-                _logger.LogCritical(e, $"Error uploading {name}");
+                case UploadMode.AzCopy:
+                    try
+                    {
+                        var cmd = _uploadCommands.UploadCommand(option,
+                            file,
+                            block.CompressionBlock.FolderProvider.RootFolder);
+
+                        bool success = await AzCopyUploadOnBlobAsync(block.CompressionBlock.FolderProvider.RootFolder.FullName, cmd, token);
+
+                        LogUploadReport(name, file.Length, success);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogCritical(e, $"Error uploading {name}");
+                    }
+
+                    break;
+                case UploadMode.AzureSdk:
+                    try
+                    {
+                        await SdkUploadOnBlobAsync(option, block.CompressionBlock.FolderProvider.RootFolder, file, token);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogCritical(e, $"Error uploading {name}");
+                    }
+                    break;
             }
+
+
             return block;
         }
 
-        internal static async Task<bool> UploadOnBlobAsync(string opFolder, string cmd, CancellationToken token)
+        internal static async Task<bool> SdkUploadOnBlobAsync(CompressOption option, DirectoryInfo rootFolder,
+             FileInfo file, CancellationToken token)
+        {
+            var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzSaS));
+            
+            var container = client.GetBlobContainerClient(option.AzBlobContainer);
+            string targetPath = file.GetRelativeTargetPathTo(rootFolder);
+            using FileStream uploadFileStream = File.OpenRead(file.FullName);
+            var response = await container.UploadBlobAsync(targetPath, uploadFileStream, token);
+            return response.GetRawResponse().Status == 201;
+        }
+
+        internal static async Task<bool> AzCopyUploadOnBlobAsync(string opFolder, string cmd, CancellationToken token)
         {
             var result = await cmd.Run(opFolder, token);
 
@@ -133,11 +170,12 @@ namespace TCC.Lib
                 Console.WriteLine(result.Output);
                 return false;
             }
-            
+
             var jobResult = JsonSerializer.Deserialize<AzCopyJobCompleted>(infos.MessageContent);
 
             return jobResult.TransfersCompleted == "1";
         }
+
 
 
         private async Task CleanupOldFiles(OperationCompressionBlock opb)
@@ -195,12 +233,20 @@ namespace TCC.Lib
                     _logger.LogInformation($"100% diff ({countDiff}), running with X{option.BoostRatio.Value} more threads");
                     // boost mode when 100% of diff, we want to saturate iops : X mode
                     option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                    if (option.AzThread.HasValue)
+                    {
+                        option.AzThread = Math.Min(option.AzThread.Value * option.BoostRatio.Value, countDiff);
+                    }
                 }
                 else if (countFull != 0 && (countDiff / (double)(countFull + countDiff) >= 0.9))
                 {
                     _logger.LogInformation($"{countFull} full, {countDiff} diffs, running with X{option.BoostRatio.Value} more threads");
                     // boost mode when 95% of diff, we want to saturate iops
                     option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                    if (option.AzThread.HasValue)
+                    {
+                        option.AzThread = Math.Min(option.AzThread.Value * option.BoostRatio.Value, countDiff);
+                    }
                 }
                 else
                 {
@@ -386,4 +432,9 @@ namespace TCC.Lib
         }
     }
 
+    public enum UploadMode
+    {
+        AzCopy,
+        AzureSdk
+    }
 }
