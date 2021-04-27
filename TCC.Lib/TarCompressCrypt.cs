@@ -89,8 +89,6 @@ namespace TCC.Lib
                 })
                 .AsReadOnlyCollectionAsync();
 
-
-
             sw.Stop();
             _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
@@ -235,12 +233,20 @@ namespace TCC.Lib
                     _logger.LogInformation($"100% diff ({countDiff}), running with X{option.BoostRatio.Value} more threads");
                     // boost mode when 100% of diff, we want to saturate iops : X mode
                     option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                    if (option.AzThread.HasValue)
+                    {
+                        option.AzThread = Math.Min(option.AzThread.Value * option.BoostRatio.Value, countDiff);
+                    }
                 }
                 else if (countFull != 0 && (countDiff / (double)(countFull + countDiff) >= 0.9))
                 {
                     _logger.LogInformation($"{countFull} full, {countDiff} diffs, running with X{option.BoostRatio.Value} more threads");
                     // boost mode when 95% of diff, we want to saturate iops
                     option.Threads = Math.Min(option.Threads * option.BoostRatio.Value, countDiff);
+                    if (option.AzThread.HasValue)
+                    {
+                        option.AzThread = Math.Min(option.AzThread.Value * option.BoostRatio.Value, countDiff);
+                    }
                 }
                 else
                 {
