@@ -6,6 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
@@ -35,12 +38,11 @@ namespace TCC
             var workingPath = WorkingPath(parsed);
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddTcc(workingPath);
-            serviceCollection.AddSerilog(parsed.Mode != Mode.Benchmark && parsed.Option.Verbose, workingPath);
-
-            if (parsed.Mode != Mode.Benchmark)
+            serviceCollection.AddLogging(lb =>
             {
-                serviceCollection.AddSingleton<IBlockListener, CommandLineBlockListener>();
-            }
+                var logger = CreateLogger(parsed.Mode,parsed.Option.Verbose, parsed.Option.LogPaths ?? workingPath);
+                lb.AddSerilog(logger,true);
+            });
 
             OperationSummary op = null;
             List<string> report = null;
@@ -71,7 +73,7 @@ namespace TCC
                     {
                         logger.LogInformation(line);
                     }
-                     
+
                     var notifier = sp.GetRequiredService<SlackSender>();
                     await notifier.ReportAsync(op, parsed.Option, parsed.Mode);
                 }
@@ -101,7 +103,7 @@ namespace TCC
             }
             return 0;
         }
-        
+
         private static IEnumerable<string> ReportOperationStats(OperationSummary op, Mode mode)
         {
             if (op == null)
@@ -205,6 +207,28 @@ namespace TCC
             }
             await db.CleanupDatabaseAsync(command.Mode);
             return op;
+        }
+
+        private static Logger CreateLogger(Mode mode, bool verbose, string logDirectoryPath)
+        {
+            string logFileName = mode switch
+            {
+                Mode.Compress => "compress.log",
+                Mode.Decompress => "decompress.log",
+                _ => null
+            };
+
+            var level = verbose ? LogEventLevel.Debug : LogEventLevel.Information;
+            var loggerConf = new LoggerConfiguration()
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+                .WriteTo.Async(conf =>
+                {
+                    //var path = commandInfos.LogsPath?.Exists == true ? Path.Combine(commandInfos.LogsPath.FullName, logFileName) : "logs/" + logFileName;
+                    conf.File(logDirectoryPath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
+                    conf.Console();
+                }).MinimumLevel.Is(level);
+
+            return loggerConf.CreateLogger();
         }
     }
 }

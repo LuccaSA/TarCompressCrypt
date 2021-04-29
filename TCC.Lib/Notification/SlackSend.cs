@@ -180,32 +180,12 @@ namespace TCC.Lib.Notification
 
             foreach (var v in block.BlockResults.Where(i => i.CommandResult.Infos.Any()))
             {
-                foreach (var inf in v.CommandResult.Infos)
+                reports.Add(new SlackReport
                 {
-                    if (String.IsNullOrWhiteSpace(inf))
-                    {
-                        continue;
-                    }
-
-                    if (inf.EndsWith("file changed as we read it"))
-                    {
-                        reports.Add(new SlackReport
-                        {
-                            BlockName = v.Block.BlockName,
-                            Message = "Files created or modified while compressing",
-                            Alert = AlertLevel.Warning
-                        });
-                    }
-                    else
-                    {
-                        reports.Add(new SlackReport
-                        {
-                            BlockName = v.Block.BlockName,
-                            Message = inf,
-                            Alert = AlertLevel.Warning
-                        });
-                    }
-                }
+                    BlockName = v.Block.BlockName,
+                    Message = v.CommandResult.Infos,
+                    Alert = AlertLevel.Warning
+                });
             }
         }
 

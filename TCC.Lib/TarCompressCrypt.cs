@@ -27,18 +27,19 @@ namespace TCC.Lib
     public class TarCompressCrypt
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly IBlockListener _blockListener;
         private readonly ILogger<TarCompressCrypt> _logger;
         private readonly EncryptionCommands _encryptionCommands;
         private readonly CompressionCommands _compressionCommands;
         private readonly IServiceProvider _serviceProvider;
         private readonly DatabaseHelper _databaseHelper;
         private readonly UploadCommands _uploadCommands;
+        private int _compressCounter;
+        private int _uploadCounter;
+        private int _totalCounter;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper, UploadCommands uploadCommands)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper, UploadCommands uploadCommands)
         {
             _cancellationTokenSource = cancellationTokenSource;
-            _blockListener = blockListener;
             _logger = logger;
             _encryptionCommands = encryptionCommands;
             _compressionCommands = compressionCommands;
@@ -56,6 +57,7 @@ namespace TCC.Lib
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks(compFolder);
             IPrepareCompressBlocks prepare = new FileSystemPrepareCompressBlocks(compFolder, option.BackupMode, option.CleanupTime);
             var buffer = prepare.PrepareCompressionBlocksAsync(blocks);
+            _totalCounter = buffer.Count;
             PrepareBoostRatio(option, buffer);
             _logger.LogInformation("job prepared in " + sw.Elapsed.HumanizedTimeSpan());
             _logger.LogInformation("Starting compression job");
@@ -77,20 +79,14 @@ namespace TCC.Lib
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
                     await CleanupOldFiles(opb);
-                    await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, opb.BlockResults.First().CommandResult, Mode.Compress);
+                    await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, Mode.Compress);
                     return opb;
                 }, po)
                 // Upload loop
                 .ParallelizeStreamAsync((block, token) => UploadBlockInternal(option, block, token), new ParallelizeOption { FailMode = Fail.Smart, MaxDegreeOfParallelism = option.AzThread ?? 1 })
-                // notif
-                .ForEachAsync(async (i, ct) =>
-                {
-                    await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
-                })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
-            _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
         }
@@ -105,9 +101,13 @@ namespace TCC.Lib
                 return block;
             }
 
+            int count = Interlocked.Increment(ref _uploadCounter);
+            string progress = $"{count}/{_totalCounter}";
+
             var file = block.CompressionBlock.DestinationArchiveFileInfo;
             var name = file.Name;
             int retry = 0;
+
             while (true)
             {
                 bool hasError = false;
@@ -139,23 +139,23 @@ namespace TCC.Lib
                     if (success)
                     {
                         double speed = file.Length / sw.Elapsed.TotalSeconds;
-                        _logger.LogInformation($"Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
+                        _logger.LogInformation($"{progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                     }
                     else
                     {
-                        _logger.LogError($"Uploaded {file.Name} with errors. {reason}");
+                        _logger.LogError($"{progress} Uploaded {file.Name} with errors. {reason}");
                     }
                 }
                 catch (Exception e)
                 {
                     hasError = true;
-                    _logger.LogCritical(e, $"Error uploading {name}");
+                    _logger.LogCritical(e, $"{progress} Error uploading {name}");
                 }
 
                 if (option.Retry.HasValue && hasError &&
                     Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
                 {
-                    _logger.LogWarning($"Retrying uploading {name}, attempt #{retry}");
+                    _logger.LogWarning($"{progress} Retrying uploading {name}, attempt #{retry}");
                     await Task.Delay(nextRetry);
                 }
                 else
@@ -163,6 +163,7 @@ namespace TCC.Lib
                     break;
                 }
             }
+            
             return block;
         }
 
@@ -280,6 +281,9 @@ namespace TCC.Lib
 
         private async Task<OperationCompressionBlock> CompressionBlockInternal(CompressOption option, CompressionBlock block, CancellationToken token)
         {
+
+            int count = Interlocked.Increment(ref _compressCounter);
+            string progress = $"{count}/{_totalCounter}";
             int retry = 0;
             CommandResult result = null;
             while (true)
@@ -290,21 +294,29 @@ namespace TCC.Lib
                     string cmd = _compressionCommands.CompressCommand(block, option);
                     result = await cmd.Run(block.OperationFolder, token);
                     LogCompressionReport(block, result);
+                    
                     if (result.HasError || result.HasWarning)
                     {
                         hasError = true;
                     }
+                    var report = $"{progress} [{block.BackupMode}] : {block.BlockName}";
+                    if (block.BackupMode == BackupMode.Diff)
+                    {
+                        report += $"(from {block.DiffDate})";
+                    }
+                    _logger.LogInformation(report);
+                    
                 }
                 catch (Exception e)
                 {
                     hasError = true;
-                    _logger.LogCritical(e, $"Error compressing {block.Source}");
+                    _logger.LogCritical(e, $"{progress} Error compressing {block.Source}");
                 }
 
                 if (option.Retry.HasValue && hasError &&
                     Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
                 {
-                    _logger.LogWarning($"Retrying compressing {block.Source}, attempt #{retry}");
+                    _logger.LogWarning($"{progress} Retrying compressing {block.Source}, attempt #{retry}");
                     await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();
                     await Task.Delay(nextRetry);
                 }
@@ -340,6 +352,9 @@ namespace TCC.Lib
                 // Core loop 
                 .ParallelizeStreamAsync(async (batch, token) =>
                 {
+                    int count = Interlocked.Increment(ref _compressCounter);
+                    string progress = $"{count}/{_totalCounter}";
+
                     var blockResults = new List<BlockResult>();
 
                     if (batch.BackupFull != null)
@@ -358,6 +373,20 @@ namespace TCC.Lib
                         }
                     }
 
+                    if (batch.BackupFull != null)
+                    {
+                        var report = $"{progress} [{BackupMode.Full}] : {batch.BackupFull.BlockName} (from {batch.BackupFull.BlockDate})";
+                        _logger.LogInformation(report);
+                    }
+                    if (batch.BackupsDiff != null)
+                    {
+                        foreach (var dec in batch.BackupsDiff)
+                        {
+                            var report = $"{progress} [{BackupMode.Diff}] : {dec.BlockName} (from {dec.BlockDate})";
+                            _logger.LogInformation(report);
+                        }
+                    }
+
                     return new OperationDecompressionsBlock(blockResults, batch);
                 }, po)
                 // Cleanup loop
@@ -365,20 +394,15 @@ namespace TCC.Lib
                 {
                     foreach (var b in odb.BlockResults)
                     {
-                        await _encryptionCommands.CleanupKey(b.Block, option, b.CommandResult, Mode.Compress);
+                        await _encryptionCommands.CleanupKey(b.Block, option, Mode.Compress);
                     }
                     return odb;
                 }, po)
-                .ForEachAsync(async (i, ct) =>
-                {
-                    await _blockListener.OnDecompressionBatchReportAsync(new DecompressionBlockReport(i.Item.Batch, counter.Count));
-                })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
             await _databaseHelper.AddRestoreBlockJobAsync(job, operationBlocks);
             await _databaseHelper.UpdateRestoreJobStatsAsync(sw, job);
-            _blockListener.Complete();
             return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 

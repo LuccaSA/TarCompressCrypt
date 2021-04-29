@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
 using TCC.Lib.Helpers;
@@ -47,11 +48,40 @@ namespace TCC.Lib
         public BlockResult(Block block, CommandResult commandResult)
         {
             Block = block;
-            CommandResult = commandResult;
+            CommandResult = new StepResult()
+            {
+                StepName = "command",
+                Duration = commandResult.Elapsed,
+                Warning = string.Join(Environment.NewLine, commandResult.Infos),
+                Errors = commandResult.Errors
+            };
         }
 
         public Block Block { get; }
-        public CommandResult CommandResult { get;  }
+        public StepResult CommandResult { get; }
+    }
+    
+    public class StepResult
+    {
+        public string StepName { get; set; }
+        public TimeSpan Duration { get; set; }
+        public long ElapsedMilliseconds => (long)Duration.TotalMilliseconds;
+        public string Errors { get; set; }
+        public string Warning { get; set; }
+        public string Infos { get; set; }
+        public bool IsSuccess => Errors != null && Warning != null;
+        public bool HasError => Errors != null;
+        public bool HasWarning => Warning != null;
+        public void ThrowOnError()
+        {
+            if (HasError)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("step : " + StepName);
+                sb.AppendLine("error : " + Errors);
+                throw new TccException(sb.ToString());
+            }
+        }
     }
 
     public class OperationCompressionBlock : OperationBlock

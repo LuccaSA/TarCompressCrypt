@@ -22,9 +22,6 @@ namespace TCC.Parser
         [Option('k', "key", HelpText = "Public key for compression, private key for decompression")]
         public string PasswordKey { get; set; }
 
-        [Option('v', "verbose", HelpText = "Verbose output", Default = false)]
-        public bool Verbose { get; set; }
-
         [Option('s', "slackSecret", HelpText = "Slack xoxp Secret")]
         public string SlackSecret { get; set; }
 
@@ -36,5 +33,11 @@ namespace TCC.Parser
 
         [Option("slackOnlyOnError", HelpText = "Send slack message only on warning or error")]
         public bool SlackOnlyOnError { get; set; }
+
+        [Option('v', "verbose", HelpText = "Verbose output", Default = false)]
+        public bool Verbose { get; set; }
+
+        [Option( "logPath", HelpText = "Log path")]
+        public string LogPaths { get; set; }
     }
 }
