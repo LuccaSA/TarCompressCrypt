@@ -40,8 +40,8 @@ namespace TCC
             serviceCollection.AddTcc(workingPath);
             serviceCollection.AddLogging(lb =>
             {
-                var logger = CreateLogger(parsed.Mode,parsed.Option.Verbose, parsed.Option.LogPaths ?? workingPath);
-                lb.AddSerilog(logger,true);
+                var logger = CreateLogger(parsed.Mode, parsed.Option?.Verbose ?? false, parsed.Option?.LogPaths ?? workingPath);
+                lb.AddSerilog(logger, true);
             });
 
             OperationSummary op = null;
@@ -218,13 +218,32 @@ namespace TCC
                 _ => null
             };
 
+            string path = string.Empty;
+            if (logDirectoryPath != null && Directory.Exists(logDirectoryPath))
+            {
+                path = logDirectoryPath;
+            }
+            else
+            {
+                try
+                {
+                    Directory.CreateDirectory(logDirectoryPath);
+                }
+                catch (Exception)
+                {
+                    path = "logs";
+                }
+            }
+
             var level = verbose ? LogEventLevel.Debug : LogEventLevel.Information;
             var loggerConf = new LoggerConfiguration()
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
                 .WriteTo.Async(conf =>
                 {
-                    //var path = commandInfos.LogsPath?.Exists == true ? Path.Combine(commandInfos.LogsPath.FullName, logFileName) : "logs/" + logFileName;
-                    conf.File(logDirectoryPath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
+                    if (logFileName != null)
+                    {
+                        conf.File(Path.Combine(path, logFileName), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
+                    }
                     conf.Console();
                 }).MinimumLevel.Is(level);
 

@@ -19,12 +19,13 @@ namespace TCC.Lib
         }
 
         public IEnumerable<OperationBlock> OperationBlocks { get; }
-        public bool IsSuccess => OperationBlocks.All(c => c.BlockResults.All(b => b.CommandResult.IsSuccess));
+        public bool IsSuccess => OperationBlocks.All(c => c.BlockResults.All(b => b.StepResults.All(s => s.IsSuccess)));
         public Stopwatch Stopwatch { get; }
 
         public void ThrowOnError()
         {
-            foreach (var result in OperationBlocks.SelectMany(o => o.BlockResults.Select(b => b.CommandResult)))
+            foreach (var result in OperationBlocks
+                .SelectMany(o => o.BlockResults.SelectMany(b => b.StepResults)))
             {
                 result.ThrowOnError();
             }
@@ -40,7 +41,7 @@ namespace TCC.Lib
                 }
                 var opStat = new OperationStatistic();
                 int count = OperationBlocks.Count();
-                double sum = OperationBlocks.Sum(o => o.BlockThroughputMbps());
+                double sum = OperationBlocks.Sum(o => o.BlockFileThroughputMbps());
                 opStat.Mean = sum / count;
                 opStat.Variance = Variance(OperationBlocks, count, opStat.Mean);
                 opStat.StandardDeviation = Math.Sqrt(opStat.Variance);
@@ -52,7 +53,7 @@ namespace TCC.Lib
         }
 
         public TimeSpan MeanTime => TimeSpan.FromMilliseconds(
-            OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds)) /
+            OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.StepResults.Sum(s => s.ElapsedMilliseconds))) /
             (double)Math.Min(_threads, OperationBlocks.Count()));
 
         public long UncompressedSize => OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.Block.UncompressedSize));
@@ -75,7 +76,7 @@ namespace TCC.Lib
         {
             if (count == 1)
                 return 0;
-            return operations.Sum(o => (o.BlockThroughputMbps() - mean) * (o.BlockThroughputMbps() - mean) / (count - 1));
+            return operations.Sum(o => (o.BlockFileThroughputMbps() - mean) * (o.BlockFileThroughputMbps() - mean) / (count - 1));
         }
     }
 }

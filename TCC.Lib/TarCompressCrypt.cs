@@ -295,7 +295,7 @@ namespace TCC.Lib
                     result = await cmd.Run(block.OperationFolder, token);
                     LogCompressionReport(block, result);
                     
-                    if (result.HasError || result.HasWarning)
+                    if (result.HasError)
                     {
                         hasError = true;
                     }
