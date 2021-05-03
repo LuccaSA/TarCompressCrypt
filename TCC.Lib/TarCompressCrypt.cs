@@ -312,7 +312,7 @@ namespace TCC.Lib
                     var report = $"{progress} [{block.BackupMode}] : {block.BlockName}";
                     if (block.BackupMode == BackupMode.Diff)
                     {
-                        report += $"(from {block.DiffDate})";
+                        report += $" (from {block.DiffDate})";
                     }
                     _logger.LogInformation(report);
                     

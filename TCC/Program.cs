@@ -18,6 +18,7 @@ using TCC.Lib.Helpers;
 using TCC.Lib.Notification;
 using TCC.Lib.Options;
 using TCC.Parser;
+using TCC.SerilogAsync;
 
 namespace TCC
 {
@@ -213,8 +214,8 @@ namespace TCC
         {
             string logFileName = mode switch
             {
-                Mode.Compress => "compress.log",
-                Mode.Decompress => "decompress.log",
+                Mode.Compress => "tcc.log",
+                Mode.Decompress => "tcc.log",
                 _ => null
             };
 
