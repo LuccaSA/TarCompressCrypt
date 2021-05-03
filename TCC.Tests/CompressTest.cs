@@ -70,31 +70,29 @@ namespace TCC.Tests
 
             string warnings = string.Join(Environment.NewLine,
                 resultCompress.OperationBlocks
-                    .SelectMany(i => i.BlockResults.SelectMany(b => b.StepResults))
+                    .SelectMany(i=>i.StepResults)
                     .Where(s => s.HasWarning)
                     .Select(s => s.Warning)
                 );
 
             Assert.True(resultCompress.IsSuccess, warnings);
-            Assert.NotEmpty(resultCompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b => b.Block)));
-            Assert.NotEmpty(resultCompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b => b.StepResults)));
+            Assert.NotEmpty(resultCompress.OperationBlocks.SelectMany(i => i.StepResults));
 
             var decomp = new TestData
             {
                 Directories = new List<DirectoryInfo>
-            {
-                new DirectoryInfo(compressedFolder)
-                    .EnumerateDirectories(Environment.MachineName,SearchOption.TopDirectoryOnly)
-                    .First()
-            }
+                {
+                    new DirectoryInfo(compressedFolder)
+                        .EnumerateDirectories(Environment.MachineName,SearchOption.TopDirectoryOnly)
+                        .First()
+                }
             };
 
             OperationSummary resultDecompress = await Decompress(mode, decompressedFolder, keysFolder, decomp);
             resultDecompress.ThrowOnError();
 
             Assert.True(resultDecompress.IsSuccess);
-            Assert.NotEmpty(resultDecompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b => b.Block)));
-            Assert.NotEmpty(resultDecompress.OperationBlocks.SelectMany(i => i.BlockResults.Select(b => b.StepResults)));
+            Assert.NotEmpty(resultDecompress.OperationBlocks.SelectMany(i => i.StepResults));
 
             FileInfo src = new DirectoryInfo(toCompressFolder).EnumerateFiles().FirstOrDefault();
             FileInfo dst = new DirectoryInfo(decompressedFolder).EnumerateFiles().FirstOrDefault();

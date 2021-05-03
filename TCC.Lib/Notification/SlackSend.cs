@@ -26,8 +26,6 @@ namespace TCC.Lib.Notification
             }
 
             if (parsedOption.SlackOnlyOnError && !op.OperationBlocks
-                .SelectMany(i => i.BlockResults)
-                .SelectMany(i=>i.StepResults)
                 .Any(i => i.HasWarning || i.HasError))
             {
                 return;
@@ -85,9 +83,7 @@ namespace TCC.Lib.Notification
             }
             else
             {
-                foreach (var result in op.OperationBlocks
-                    .SelectMany(i => i.BlockResults)
-                    .SelectMany(i=>i.StepResults))
+                foreach (var result in op.OperationBlocks.SelectMany(o=> o.StepResults))
                 {
                     if (result.HasError)
                     {
@@ -145,10 +141,7 @@ namespace TCC.Lib.Notification
                         },
                         new Field
                         {
-                            Value = $@"Job size : {op.OperationBlocks
-                                .SelectMany(i => i.BlockResults)
-                                .Sum(i => i.Block.CompressedSize)
-                                .HumanizeSize()}",
+                            Value = $@"Job size : {op.OperationBlocks.Sum(i=>i.CompressedSize).HumanizeSize()}",
                             Short = true
                         },
                         new Field
@@ -173,32 +166,27 @@ namespace TCC.Lib.Notification
             }
         }
 
-        private static void ExtractSlackReports(OperationBlock block, List<SlackReport> reports)
+        private static void ExtractSlackReports(IIterationResult block, List<SlackReport> reports)
         {
-            foreach (var v in block.BlockResults)
+
+            foreach (var k in block.StepResults.Where(i => i.HasError))
             {
-                foreach (var k in v.StepResults.Where(i => i.HasError))
+                reports.Add(new SlackReport
                 {
-                    reports.Add(new SlackReport
-                    {
-                        BlockName = $"{k.Type} {v.Block.BlockName}",
-                        Message = k.Errors,
-                        Alert = AlertLevel.Error
-                    });
-                }
+                    BlockName = $"{k.Type} {k.Name}",
+                    Message = k.Errors,
+                    Alert = AlertLevel.Error
+                });
             }
 
-            foreach (var v in block.BlockResults)
+            foreach (var k in block.StepResults.Where(i => i.HasWarning))
             {
-                foreach (var k in v.StepResults.Where(i => i.HasWarning))
+                reports.Add(new SlackReport
                 {
-                    reports.Add(new SlackReport
-                    {
-                        BlockName = $"{k.Type} {v.Block.BlockName}",
-                        Message = k.Warning,
-                        Alert = AlertLevel.Warning
-                    });
-                }
+                    BlockName = $"{k.Type} {k.Name}",
+                    Message = k.Warning,
+                    Alert = AlertLevel.Warning
+                });
             }
         }
 

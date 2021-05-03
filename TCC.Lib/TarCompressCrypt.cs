@@ -74,12 +74,15 @@ namespace TCC.Lib
                     return b;
                 }, po)
                 // Core loop 
-                .ParallelizeStreamAsync((block, token) => CompressionBlockInternal(option, block, token), po)
+                .ParallelizeStreamAsync((block, token) =>
+                {
+                    return CompressionBlockInternal(option, block, token);
+                }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
                     await CleanupOldFiles(opb);
-                    await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, Mode.Compress);
+                    await _encryptionCommands.CleanupKey(opb.BlockResult.Block, option, Mode.Compress);
                     return opb;
                 }, po)
                 // Upload loop
@@ -130,6 +133,13 @@ namespace TCC.Lib
                             success = result.success;
                             reason = result.reason;
                             hasError = !success;
+
+                            block.BlockResult.StepResults.Add(new StepResult()
+                            {
+                                Type = StepType.Upload,
+                                Errors = result.success ? null : result.reason,
+                                Infos = result.success ? result.reason : null
+                            });
                             break;
                         default:
                             throw new ArgumentOutOfRangeException();
