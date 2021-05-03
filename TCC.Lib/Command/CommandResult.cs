@@ -12,7 +12,7 @@ namespace TCC.Lib.Command
         public string Output { get; set; }
         public string Errors { get; set; }
         public bool HasError => !String.IsNullOrWhiteSpace(Errors);
-        public bool HasWarning => Infos != null && Infos.Count != 0 && Infos.Any(i => !string.IsNullOrWhiteSpace(i));
+        public bool HasInfos => Infos != null && Infos.Count != 0 && Infos.Any(i => !string.IsNullOrWhiteSpace(i));
         public string Command { get; set; }
         public List<string> Infos { get; set; }
         public long ElapsedMilliseconds => (long)Elapsed.TotalMilliseconds;

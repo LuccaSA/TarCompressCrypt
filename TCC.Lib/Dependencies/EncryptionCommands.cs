@@ -18,7 +18,7 @@ namespace TCC.Lib.Dependencies
             _ext = externalDependencies;
         }
 
-        public Task CleanupKey(Block block, TccOption option, CommandResult result, Mode mode)
+        public Task CleanupKey(Block block, TccOption option, Mode mode)
         {
             if (block.EncryptionKey?.Key == null || block.EncryptionKey?.KeyCrypted == null)
             {
@@ -36,7 +36,7 @@ namespace TCC.Lib.Dependencies
                 return Path.Combine(block.ArchiveFolder.FullName, block.EncryptionKey.Key).TryDeleteFileWithRetryAsync();
             }
             // if error in compression, also delete encrypted passfile
-            if (mode == Mode.Compress && (result == null || result.HasError) && !String.IsNullOrEmpty(block.EncryptionKey.KeyCrypted))
+            if (mode == Mode.Compress && !String.IsNullOrEmpty(block.EncryptionKey.KeyCrypted))
             {
                 return Path.Combine(block.ArchiveFolder.FullName, block.EncryptionKey.KeyCrypted).TryDeleteFileWithRetryAsync();
             }

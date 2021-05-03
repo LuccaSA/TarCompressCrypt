@@ -27,18 +27,19 @@ namespace TCC.Lib
     public class TarCompressCrypt
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly IBlockListener _blockListener;
         private readonly ILogger<TarCompressCrypt> _logger;
         private readonly EncryptionCommands _encryptionCommands;
         private readonly CompressionCommands _compressionCommands;
         private readonly IServiceProvider _serviceProvider;
         private readonly DatabaseHelper _databaseHelper;
         private readonly UploadCommands _uploadCommands;
+        private int _compressCounter;
+        private int _uploadCounter;
+        private int _totalCounter;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, IBlockListener blockListener, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper, UploadCommands uploadCommands)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper, UploadCommands uploadCommands)
         {
             _cancellationTokenSource = cancellationTokenSource;
-            _blockListener = blockListener;
             _logger = logger;
             _encryptionCommands = encryptionCommands;
             _compressionCommands = compressionCommands;
@@ -56,6 +57,7 @@ namespace TCC.Lib
             IEnumerable<CompressionBlock> blocks = option.GenerateCompressBlocks(compFolder);
             IPrepareCompressBlocks prepare = new FileSystemPrepareCompressBlocks(compFolder, option.BackupMode, option.CleanupTime);
             var buffer = prepare.PrepareCompressionBlocksAsync(blocks);
+            _totalCounter = buffer.Count;
             PrepareBoostRatio(option, buffer);
             _logger.LogInformation("job prepared in " + sw.Elapsed.HumanizedTimeSpan());
             _logger.LogInformation("Starting compression job");
@@ -72,25 +74,22 @@ namespace TCC.Lib
                     return b;
                 }, po)
                 // Core loop 
-                .ParallelizeStreamAsync((block, token) => CompressionBlockInternal(option, block, token), po)
+                .ParallelizeStreamAsync((block, token) =>
+                {
+                    return CompressionBlockInternal(option, block, token);
+                }, po)
                 // Cleanup loop
                 .ParallelizeStreamAsync(async (opb, token) =>
                 {
                     await CleanupOldFiles(opb);
-                    await _encryptionCommands.CleanupKey(opb.BlockResults.First().Block, option, opb.BlockResults.First().CommandResult, Mode.Compress);
+                    await _encryptionCommands.CleanupKey(opb.BlockResult.Block, option, Mode.Compress);
                     return opb;
                 }, po)
                 // Upload loop
                 .ParallelizeStreamAsync((block, token) => UploadBlockInternal(option, block, token), new ParallelizeOption { FailMode = Fail.Smart, MaxDegreeOfParallelism = option.AzThread ?? 1 })
-                // notif
-                .ForEachAsync(async (i, ct) =>
-                {
-                    await _blockListener.OnCompressionBlockReportAsync(new CompressionBlockReport(i.Item.BlockResults.First().CommandResult, i.Item.CompressionBlock, counter.Count));
-                })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
-            _blockListener.Complete();
             var ops = new OperationSummary(operationBlocks, option.Threads, sw);
             return ops;
         }
@@ -100,60 +99,95 @@ namespace TCC.Lib
             if (string.IsNullOrEmpty(option.AzBlobUrl)
                 || string.IsNullOrEmpty(option.AzBlobContainer)
                 || string.IsNullOrEmpty(option.AzSaS)
-                || !option.UploadMode.HasValue)
+                || option.UploadMode == null)
             {
                 return block;
             }
 
+            int count = Interlocked.Increment(ref _uploadCounter);
+            string progress = $"{count}/{_totalCounter}";
+
             var file = block.CompressionBlock.DestinationArchiveFileInfo;
             var name = file.Name;
+            int retry = 0;
 
-
-            switch (option.UploadMode)
+            while (true)
             {
-                case UploadMode.AzCopy:
-                    try
+                bool hasError = false;
+                try
+                {
+                    var sw = Stopwatch.StartNew();
+                    bool success = false;
+                    string reason = null;
+
+                    switch (option.UploadMode)
                     {
-                        var cmd = _uploadCommands.UploadCommand(option,
-                            file,
-                            block.CompressionBlock.FolderProvider.RootFolder);
+                        case UploadMode.AzCopy:
+                            var cmd = _uploadCommands.UploadCommand(option,
+                                file,
+                                block.CompressionBlock.FolderProvider.RootFolder);
+                            success = await AzCopyUploadOnBlobAsync(block.CompressionBlock.FolderProvider.RootFolder.FullName, cmd, token);
+                            break;
+                        case UploadMode.AzureSdk:
+                            var result = await SdkUploadOnBlobAsync(option, block.CompressionBlock.FolderProvider.RootFolder, file, token);
+                            success = result.success;
+                            reason = result.reason;
+                            hasError = !success;
 
-                        bool success = await AzCopyUploadOnBlobAsync(block.CompressionBlock.FolderProvider.RootFolder.FullName, cmd, token);
-
-                        LogUploadReport(name, file.Length, success);
+                            block.BlockResult.StepResults.Add(new StepResult()
+                            {
+                                Type = StepType.Upload,
+                                Errors = result.success ? null : result.reason,
+                                Infos = result.success ? result.reason : null
+                            });
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
-                    catch (Exception e)
+                    sw.Stop();
+
+                    if (success)
                     {
-                        _logger.LogCritical(e, $"Error uploading {name}");
+                        double speed = file.Length / sw.Elapsed.TotalSeconds;
+                        _logger.LogInformation($"{progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                     }
+                    else
+                    {
+                        _logger.LogError($"{progress} Uploaded {file.Name} with errors. {reason}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    hasError = true;
+                    _logger.LogCritical(e, $"{progress} Error uploading {name}");
+                }
 
+                if (option.Retry.HasValue && hasError &&
+                    Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
+                {
+                    _logger.LogWarning($"{progress} Retrying uploading {name}, attempt #{retry}");
+                    await Task.Delay(nextRetry);
+                }
+                else
+                {
                     break;
-                case UploadMode.AzureSdk:
-                    try
-                    {
-                        await SdkUploadOnBlobAsync(option, block.CompressionBlock.FolderProvider.RootFolder, file, token);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogCritical(e, $"Error uploading {name}");
-                    }
-                    break;
+                }
             }
-
-
+            
             return block;
         }
 
-        internal static async Task<bool> SdkUploadOnBlobAsync(CompressOption option, DirectoryInfo rootFolder,
+        internal static async Task<(bool success, string reason)> SdkUploadOnBlobAsync(CompressOption option, DirectoryInfo rootFolder,
              FileInfo file, CancellationToken token)
         {
             var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzSaS));
-            
+
             var container = client.GetBlobContainerClient(option.AzBlobContainer);
             string targetPath = file.GetRelativeTargetPathTo(rootFolder);
             using FileStream uploadFileStream = File.OpenRead(file.FullName);
-            var response = await container.UploadBlobAsync(targetPath, uploadFileStream, token);
-            return response.GetRawResponse().Status == 201;
+            var result = await container.UploadBlobAsync(targetPath, uploadFileStream, token);
+            var response = result.GetRawResponse();
+            return (response.Status == 201, response.ReasonPhrase);
         }
 
         internal static async Task<bool> AzCopyUploadOnBlobAsync(string opFolder, string cmd, CancellationToken token)
@@ -257,6 +291,9 @@ namespace TCC.Lib
 
         private async Task<OperationCompressionBlock> CompressionBlockInternal(CompressOption option, CompressionBlock block, CancellationToken token)
         {
+
+            int count = Interlocked.Increment(ref _compressCounter);
+            string progress = $"{count}/{_totalCounter}";
             int retry = 0;
             CommandResult result = null;
             while (true)
@@ -267,21 +304,29 @@ namespace TCC.Lib
                     string cmd = _compressionCommands.CompressCommand(block, option);
                     result = await cmd.Run(block.OperationFolder, token);
                     LogCompressionReport(block, result);
-                    if (result.HasError || result.HasWarning)
+                    
+                    if (result.HasError)
                     {
                         hasError = true;
                     }
+                    var report = $"{progress} [{block.BackupMode}] : {block.BlockName}";
+                    if (block.BackupMode == BackupMode.Diff)
+                    {
+                        report += $" (from {block.DiffDate})";
+                    }
+                    _logger.LogInformation(report);
+                    
                 }
                 catch (Exception e)
                 {
                     hasError = true;
-                    _logger.LogCritical(e, $"Error compressing {block.Source}");
+                    _logger.LogCritical(e, $"{progress} Error compressing {block.Source}");
                 }
 
                 if (option.Retry.HasValue && hasError &&
                     Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
                 {
-                    _logger.LogWarning($"Retrying compressing {block.Source}, attempt #{retry}");
+                    _logger.LogWarning($"{progress} Retrying compressing {block.Source}, attempt #{retry}");
                     await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();
                     await Task.Delay(nextRetry);
                 }
@@ -317,6 +362,9 @@ namespace TCC.Lib
                 // Core loop 
                 .ParallelizeStreamAsync(async (batch, token) =>
                 {
+                    int count = Interlocked.Increment(ref _compressCounter);
+                    string progress = $"{count}/{_totalCounter}";
+
                     var blockResults = new List<BlockResult>();
 
                     if (batch.BackupFull != null)
@@ -335,6 +383,20 @@ namespace TCC.Lib
                         }
                     }
 
+                    if (batch.BackupFull != null)
+                    {
+                        var report = $"{progress} [{BackupMode.Full}] : {batch.BackupFull.BlockName} (from {batch.BackupFull.BlockDate})";
+                        _logger.LogInformation(report);
+                    }
+                    if (batch.BackupsDiff != null)
+                    {
+                        foreach (var dec in batch.BackupsDiff)
+                        {
+                            var report = $"{progress} [{BackupMode.Diff}] : {dec.BlockName} (from {dec.BlockDate})";
+                            _logger.LogInformation(report);
+                        }
+                    }
+
                     return new OperationDecompressionsBlock(blockResults, batch);
                 }, po)
                 // Cleanup loop
@@ -342,20 +404,15 @@ namespace TCC.Lib
                 {
                     foreach (var b in odb.BlockResults)
                     {
-                        await _encryptionCommands.CleanupKey(b.Block, option, b.CommandResult, Mode.Compress);
+                        await _encryptionCommands.CleanupKey(b.Block, option, Mode.Compress);
                     }
                     return odb;
                 }, po)
-                .ForEachAsync(async (i, ct) =>
-                {
-                    await _blockListener.OnDecompressionBatchReportAsync(new DecompressionBlockReport(i.Item.Batch, counter.Count));
-                })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
             await _databaseHelper.AddRestoreBlockJobAsync(job, operationBlocks);
             await _databaseHelper.UpdateRestoreJobStatsAsync(sw, job);
-            _blockListener.Complete();
             return new OperationSummary(operationBlocks, option.Threads, sw);
         }
 
@@ -406,15 +463,6 @@ namespace TCC.Lib
             }
         }
 
-        private void LogUploadReport(string fileName, long length, bool success)
-        {
-            _logger.LogInformation($"Uploaded {fileName}");
-
-            if (!success)
-            {
-                _logger.LogError($"Uploaded {fileName} with errors");
-            }
-        }
 
         private void LogReport(DecompressionBlock block, CommandResult result)
         {

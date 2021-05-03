@@ -25,8 +25,8 @@ namespace TCC.Lib.Notification
                 return;
             }
 
-            if (parsedOption.SlackOnlyOnError && !op.OperationBlocks.SelectMany(i => i.BlockResults)
-                .Any(i => i.CommandResult.HasWarning || i.CommandResult.HasError))
+            if (parsedOption.SlackOnlyOnError && !op.OperationBlocks
+                .Any(i => i.HasWarning || i.HasError))
             {
                 return;
             }
@@ -83,15 +83,15 @@ namespace TCC.Lib.Notification
             }
             else
             {
-                foreach (var result in op.OperationBlocks.SelectMany(i => i.BlockResults))
+                foreach (var result in op.OperationBlocks.SelectMany(o=> o.StepResults))
                 {
-                    if (result.CommandResult.HasError)
+                    if (result.HasError)
                     {
                         shell = ":redshell:";
                         break;
                     }
 
-                    if (result.CommandResult.HasWarning)
+                    if (result.HasWarning)
                     {
                         shell = ":warning:";
                     }
@@ -141,7 +141,7 @@ namespace TCC.Lib.Notification
                         },
                         new Field
                         {
-                            Value = $"Job size : {op.OperationBlocks.SelectMany(i => i.BlockResults).Sum(i => i.Block.CompressedSize).HumanizeSize()}",
+                            Value = $@"Job size : {op.OperationBlocks.Sum(i=>i.CompressedSize).HumanizeSize()}",
                             Short = true
                         },
                         new Field
@@ -151,7 +151,7 @@ namespace TCC.Lib.Notification
 
                         new Field
                         {
-                            Value = $"Throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}", Short = true
+                            Value = $"File throughput : {op.Statistics.AverageThroughput.HumanizedBandwidth()}", Short = true
                         }
                     }
                 });
@@ -166,46 +166,27 @@ namespace TCC.Lib.Notification
             }
         }
 
-        private static void ExtractSlackReports(OperationBlock block, List<SlackReport> reports)
+        private static void ExtractSlackReports(IIterationResult block, List<SlackReport> reports)
         {
-            foreach (var v in block.BlockResults.Where(i => i.CommandResult.HasError))
+
+            foreach (var k in block.StepResults.Where(i => i.HasError))
             {
                 reports.Add(new SlackReport
                 {
-                    BlockName = v.Block.BlockName,
-                    Message = v.CommandResult.Errors,
+                    BlockName = $"{k.Type} {k.Name}",
+                    Message = k.Errors,
                     Alert = AlertLevel.Error
                 });
             }
 
-            foreach (var v in block.BlockResults.Where(i => i.CommandResult.Infos.Any()))
+            foreach (var k in block.StepResults.Where(i => i.HasWarning))
             {
-                foreach (var inf in v.CommandResult.Infos)
+                reports.Add(new SlackReport
                 {
-                    if (String.IsNullOrWhiteSpace(inf))
-                    {
-                        continue;
-                    }
-
-                    if (inf.EndsWith("file changed as we read it"))
-                    {
-                        reports.Add(new SlackReport
-                        {
-                            BlockName = v.Block.BlockName,
-                            Message = "Files created or modified while compressing",
-                            Alert = AlertLevel.Warning
-                        });
-                    }
-                    else
-                    {
-                        reports.Add(new SlackReport
-                        {
-                            BlockName = v.Block.BlockName,
-                            Message = inf,
-                            Alert = AlertLevel.Warning
-                        });
-                    }
-                }
+                    BlockName = $"{k.Type} {k.Name}",
+                    Message = k.Warning,
+                    Alert = AlertLevel.Warning
+                });
             }
         }
 

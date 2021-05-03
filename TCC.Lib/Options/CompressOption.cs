@@ -15,8 +15,6 @@ namespace TCC.Lib.Options
         public bool FolderPerDay { get; set; }
         public int? BoostRatio { get; set; }
         public int? CleanupTime { get; set; }
-        
-        
         public string AzBlobUrl { get; set; }
         public string AzBlobContainer { get; set; }
         public string AzSaS { get; set; }

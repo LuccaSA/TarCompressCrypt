@@ -11,20 +11,20 @@ namespace TCC.Lib
         private OperationStatistic _statistics;
         private double? _compressionRatio;
 
-        public OperationSummary(IEnumerable<OperationBlock> operationBlocks, int threads, Stopwatch stopwatch)
+        public OperationSummary(IEnumerable<IIterationResult> operationBlocks, int threads, Stopwatch stopwatch)
         {
             _threads = threads;
             Stopwatch = stopwatch;
             OperationBlocks = operationBlocks ?? throw new ArgumentNullException(nameof(operationBlocks));
         }
 
-        public IEnumerable<OperationBlock> OperationBlocks { get; }
-        public bool IsSuccess => OperationBlocks.All(c => c.BlockResults.All(b => b.CommandResult.IsSuccess));
+        public IEnumerable<IIterationResult> OperationBlocks { get; }
+        public bool IsSuccess => OperationBlocks.All(c => c.IsSuccess);
         public Stopwatch Stopwatch { get; }
 
         public void ThrowOnError()
         {
-            foreach (var result in OperationBlocks.SelectMany(o => o.BlockResults.Select(b => b.CommandResult)))
+            foreach (var result in OperationBlocks)
             {
                 result.ThrowOnError();
             }
@@ -40,7 +40,7 @@ namespace TCC.Lib
                 }
                 var opStat = new OperationStatistic();
                 int count = OperationBlocks.Count();
-                double sum = OperationBlocks.Sum(o => o.BlockThroughputMbps());
+                double sum = OperationBlocks.Sum(o => o.FileThroughputMbps());
                 opStat.Mean = sum / count;
                 opStat.Variance = Variance(OperationBlocks, count, opStat.Mean);
                 opStat.StandardDeviation = Math.Sqrt(opStat.Variance);
@@ -52,12 +52,12 @@ namespace TCC.Lib
         }
 
         public TimeSpan MeanTime => TimeSpan.FromMilliseconds(
-            OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.CommandResult.ElapsedMilliseconds)) /
+            OperationBlocks.Sum(o => o.TotalMilliseconds) /
             (double)Math.Min(_threads, OperationBlocks.Count()));
 
-        public long UncompressedSize => OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.Block.UncompressedSize));
+        public long UncompressedSize => OperationBlocks.Sum(o => o.UncompressedSize);
 
-        public long CompressedSize => OperationBlocks.Sum(o => o.BlockResults.Sum(b => b.Block.CompressedSize));
+        public long CompressedSize => OperationBlocks.Sum(o => o.CompressedSize);
 
         public double CompressionRatio
         {
@@ -71,11 +71,11 @@ namespace TCC.Lib
             }
         }
 
-        private static double Variance(IEnumerable<OperationBlock> operations, int count, double mean)
+        private static double Variance(IEnumerable<IIterationResult> operations, int count, double mean)
         {
             if (count == 1)
                 return 0;
-            return operations.Sum(o => (o.BlockThroughputMbps() - mean) * (o.BlockThroughputMbps() - mean) / (count - 1));
+            return operations.Sum(o => (o.FileThroughputMbps() - mean) * (o.FileThroughputMbps() - mean) / (count - 1));
         }
     }
 }
