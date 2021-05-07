@@ -12,6 +12,7 @@ namespace TCC.Lib.Options
         public BackupMode? BackupMode { get; set; }
         public int? Retry { get; set; }
         public IEnumerable<string> Filter { get; set; }
+        public IEnumerable<string> Exclude { get; set; }
         public bool FolderPerDay { get; set; }
         public int? BoostRatio { get; set; }
         public int? CleanupTime { get; set; }

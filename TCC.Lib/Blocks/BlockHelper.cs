@@ -46,9 +46,20 @@ namespace TCC.Lib.Blocks
                 filters = compressOption.Filter.ToHashSet(StringComparer.OrdinalIgnoreCase);
             }
 
+            HashSet<string> excludes = null;
+            if (compressOption.Exclude != null && compressOption.Exclude.Any())
+            {
+                excludes = compressOption.Exclude.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+
             foreach (var block in blocks)
             {
                 if (filters != null && !filters.Contains(block.BlockName))
+                {
+                    continue;
+                }
+
+                if (excludes != null && excludes.Contains(block.BlockName))
                 {
                     continue;
                 }

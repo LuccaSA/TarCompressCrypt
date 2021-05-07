@@ -32,6 +32,9 @@ namespace TCC.Parser
         [Option("filter", HelpText = "Optional filters")]
         public IEnumerable<string> Filter { get; set; }
 
+        [Option("exclude", HelpText = "Exclusion filters")]
+        public IEnumerable<string> Exclude { get; set; }
+
         [Option("folderPerDay", HelpText = "Creates a sub folder per day")]
         public bool FolderPerDay { get; set; }
 
