@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
+using TCC.Lib.Command;
 using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Notification;
@@ -34,34 +35,40 @@ namespace TCC.Lib.Helpers
             services.AddScoped<SlackSender>();
             services.AddScoped<SlackClient>();
 
-            services.RegisterDbContext<TccRestoreDbContext>(s => s.RestoreConnectionString, workingPath);
+            services.RegisterDbContext<TccRestoreDbContext>(workingPath);
         }
 
-        private static void RegisterDbContext<TDbContext>(this IServiceCollection services, Func<TccSettings, string> connectionString, string workingPath)
+        private static void RegisterDbContext<TDbContext>(this IServiceCollection services, string workingPath)
             where TDbContext : DbContext
         {
             services.AddDbContextPool<TDbContext>((s, options) =>
             {
                 var setting = s.GetRequiredService<IOptions<TccSettings>>().Value;
-
-                switch (setting.Provider)
+                try
                 {
-                    case Provider.SqlServer:
+                    switch (setting.Provider)
+                    {
+                        case Provider.SqlServer:
                         {
-                            var cs = connectionString(setting);
+                            var cs = setting.RestoreConnectionString;
                             options.UseSqlServer(cs);
                             break;
                         }
-                    case Provider.SqLite:
+                        case Provider.SqLite:
                         {
-                            string cs = GetSqLiteConnectionString(connectionString(setting), workingPath);
+                            string cs = GetSqLiteConnectionString(setting.RestoreConnectionString, workingPath);
                             var sqLite = new SqliteConnection(cs);
                             sqLite.Open();
                             options.UseSqlite(sqLite);
                             break;
                         }
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+                catch (Exception e)
+                {
+                    throw new TccException($"{setting.Provider} : Error connecting on {setting.RestoreConnectionString}", e);
                 }
             });
         }

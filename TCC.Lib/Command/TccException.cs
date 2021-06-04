@@ -10,6 +10,11 @@ namespace TCC.Lib.Command
             : base(errors)
         {
         }
+        
+        public TccException(string errors, Exception exception)
+            : base(errors, exception)
+        {
+        }
 
         private TccException(SerializationInfo info, StreamingContext context)
             : base(info, context)
