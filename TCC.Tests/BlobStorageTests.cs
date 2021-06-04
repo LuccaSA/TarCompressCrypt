@@ -25,7 +25,7 @@ namespace TCC.Tests
             _envVarFixture = envVarFixture;
         }
 
-        [Fact]
+        [Fact(Skip = "desactivated accound")]
         public async Task AzcopyUploadTest()
         {
             var dep = new ExternalDependencies(new NullLogger<ExternalDependencies>());
@@ -51,7 +51,7 @@ namespace TCC.Tests
             Assert.True(success);
         }
 
-        [Fact]
+        [Fact(Skip = "desactivated accound")]
         public async Task SdkUploadTest()
         {
             var dep = new ExternalDependencies(new NullLogger<ExternalDependencies>());
