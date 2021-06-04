@@ -183,8 +183,6 @@ namespace TCC
 
         private static async Task<OperationSummary> RunTcc(IServiceProvider provider, TccCommand command)
         {
-            var db = provider.GetRequiredService<DatabaseSetup>();
-            await db.EnsureDatabaseExistsAsync(command.Mode);
             OperationSummary op;
             switch (command.Mode)
             {
@@ -194,9 +192,14 @@ namespace TCC
                         .Compress(command.Option as CompressOption);
                     break;
                 case Mode.Decompress:
+                    var db = provider.GetRequiredService<DatabaseSetup>();
+                    await db.EnsureDatabaseExistsAsync(command.Mode);
+                    
                     op = await provider
                         .GetRequiredService<TarCompressCrypt>()
                         .Decompress(command.Option as DecompressOption);
+                    
+                    await db.CleanupDatabaseAsync(command.Mode);
                     break;
                 case Mode.Benchmark:
                     op = await provider
@@ -206,7 +209,6 @@ namespace TCC
                 default:
                     throw new NotImplementedException();
             }
-            await db.CleanupDatabaseAsync(command.Mode);
             return op;
         }
 
