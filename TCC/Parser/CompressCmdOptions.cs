@@ -51,14 +51,22 @@ namespace TCC.Parser
 
         [Option("azBlobUrl", HelpText = "Azure blob storage URL")]
         public string AzBlobUrl { get; set; }
+
         [Option("azBlobContainer", HelpText = "Azure blob storage container id")]
         public string AzBlobContainer { get; set; }
+
         [Option("azBlobSaS", HelpText = "Azure blob storage SaS token")]
         public string AzSaS { get; set; }
-        [Option("AzMbps", HelpText = "Azure blob upload limit")]
-        public int? AzMbps { get; set; }
+
+        [Option("googleStorageBucketName", HelpText = "Google Cloud Storage destination bucket")]
+        public string GoogleStorageBucketName { get; set; }
+
+        [Option("googleStorageCredential", HelpText = "Google Cloud Storage credential json, either full path or base64")]
+        public string GoogleStorageCredentialFile { get; set; }
+
         [Option("azThread", HelpText = "Azure blob maximum parallel threads")]
         public int? AzThread { get; set; }
+
         [Option("uploadMode", HelpText = "Upload mode")]
         public UploadMode? UploadMode { get; set; }
     }

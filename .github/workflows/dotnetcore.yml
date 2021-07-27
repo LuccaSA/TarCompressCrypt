@@ -50,6 +50,8 @@ jobs:
         AZ_SAS_TOKEN: ${{ secrets.AZ_SAS_TOKEN }}
         AZ_URL: ${{ secrets.AZ_URL }}
         AZ_CONTAINER: ${{ secrets.AZ_CONTAINER }}
+        GoogleBucket: ${{ secrets.GoogleBucket }}
+        GoogleCredential: ${{ secrets.GoogleCredential }}
 
     - name: Merge coverages
       run: reportgenerator -reports:./coverage/*/*.xml -targetdir:./sonarCoverage -reporttypes:SonarQube

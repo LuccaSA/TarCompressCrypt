@@ -19,8 +19,9 @@ namespace TCC.Lib.Options
         public string AzBlobUrl { get; set; }
         public string AzBlobContainer { get; set; }
         public string AzSaS { get; set; }
-        public int? AzMbps { get; set; }
         public int? AzThread { get; set; }
+        public string GoogleStorageBucketName { get; set; }
+        public string GoogleStorageCredentialFile { get; set; }
         public UploadMode? UploadMode { get; set; }
     }
 }
