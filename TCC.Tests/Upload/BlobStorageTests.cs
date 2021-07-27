@@ -11,22 +11,23 @@ using System.Threading.Tasks;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Dependencies;
+using TCC.Lib.ObjectStorage;
 using TCC.Lib.Options;
 using Xunit;
 
 namespace TCC.Tests
 {
-    public class BlobStorageTests : IClassFixture<EnvVarFixture>
+    public class UploadToStorageTests : IClassFixture<EnvVarFixture>
     {
         private EnvVarFixture _envVarFixture;
 
-        public BlobStorageTests(EnvVarFixture envVarFixture)
+        public UploadToStorageTests(EnvVarFixture envVarFixture)
         {
             _envVarFixture = envVarFixture;
         }
- 
+
         [Fact(Skip = "desactivated accound")]
-        public async Task SdkUploadTest()
+        public async Task AzureUploadTest()
         {
             string toCompressFolder = TestFileHelper.NewFolder();
             var data = await TestData.CreateFiles(1, 1024, toCompressFolder);
@@ -37,20 +38,42 @@ namespace TCC.Tests
                 AzBlobContainer = GetEnvVar("AZ_CONTAINER"),
                 AzSaS = GetEnvVar("AZ_SAS_TOKEN")
             };
+            opt.UploadMode = UploadMode.AzureSdk;
+            var uploader = await opt.CreateRemoteServerAsync(CancellationToken.None);
 
-           var ok = await TarCompressCrypt.SdkUploadOnBlobAsync(opt,
-                new DirectoryInfo(toCompressFolder),
-                data.Files.First(),
-                CancellationToken.None);
-           
-           Assert.True(ok.success);
+            var ok = await uploader.UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
+
+            Assert.True(ok.IsSuccess);
+        }
+
+        [Fact]
+        public async Task GoogleUploadTest()
+        {
+            string toCompressFolder = TestFileHelper.NewFolder();
+            var data = await TestData.CreateFiles(1, 1024, toCompressFolder);
+
+            var opt = new CompressOption()
+            {
+                GoogleStorageBucketName = GetEnvVar("GoogleBucket"),
+                GoogleStorageCredentialFile = GetEnvVar("GoogleCredential")
+            };
+
+            opt.UploadMode = UploadMode.GoogleCloudStorage;
+            var uploader = await opt.CreateRemoteServerAsync(CancellationToken.None);
+
+            var ok = await uploader.UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
+
+            Assert.True(ok.IsSuccess);
+
+            var gs = uploader as GoogleRemoteServer;
+            await gs.Storage.DeleteObjectAsync(gs.BucketName, ok.RemoteFilePath);
         }
 
         string GetEnvVar(string key)
         {
             var s = Environment.GetEnvironmentVariable(key);
             Assert.True(s != null, key);
-            Assert.True(!string.IsNullOrWhiteSpace(s),key);
+            Assert.True(!string.IsNullOrWhiteSpace(s), key);
             return s;
         }
 

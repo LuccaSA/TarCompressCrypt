@@ -1,6 +1,6 @@
-﻿using Azure;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
+﻿using Azure.Storage.Blobs;
+using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Storage.V1;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -10,20 +10,19 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
-using System.Text.Json;
-using System.Threading.Channels;
+using System.Text;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
 using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
+using TCC.Lib.ObjectStorage;
 using TCC.Lib.Options;
 using TCC.Lib.PrepareBlocks;
 
 namespace TCC.Lib
 {
-
     public class TarCompressCrypt
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
@@ -61,6 +60,8 @@ namespace TCC.Lib
             _logger.LogInformation("Starting compression job");
             var po = ParallelizeOption(option);
 
+            IObjectStorageRemoteServer uploader = await option.CreateRemoteServerAsync(_cancellationTokenSource.Token);
+
             var operationBlocks = await buffer
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
@@ -84,7 +85,7 @@ namespace TCC.Lib
                     return opb;
                 }, po)
                 // Upload loop
-                .ParallelizeStreamAsync((block, token) => UploadBlockInternal(option, block, token), new ParallelizeOption { FailMode = Fail.Smart, MaxDegreeOfParallelism = option.AzThread ?? 1 })
+                .ParallelizeStreamAsync((block, token) => UploadBlockInternal(uploader, option, block, token), new ParallelizeOption { FailMode = Fail.Smart, MaxDegreeOfParallelism = option.AzThread ?? 1 })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
@@ -92,7 +93,7 @@ namespace TCC.Lib
             return ops;
         }
 
-        private async Task<OperationCompressionBlock> UploadBlockInternal(CompressOption option, OperationCompressionBlock block, CancellationToken token)
+        private async Task<OperationCompressionBlock> UploadBlockInternal(IObjectStorageRemoteServer uploader, CompressOption option, OperationCompressionBlock block, CancellationToken token)
         {
             if (string.IsNullOrEmpty(option.AzBlobUrl)
                 || string.IsNullOrEmpty(option.AzBlobContainer)
@@ -111,41 +112,31 @@ namespace TCC.Lib
 
             while (true)
             {
-                bool hasError = false;
+                bool hasError;
                 try
                 {
                     var sw = Stopwatch.StartNew();
-                    bool success = false;
-                    string reason = null;
 
-                    switch (option.UploadMode)
+                    var result = await uploader.UploadAsync(file, block.CompressionBlock.FolderProvider.RootFolder, token);
+                    hasError = !result.IsSuccess;
+
+                    block.BlockResult.StepResults.Add(new StepResult()
                     {
-                        case UploadMode.AzureSdk:
-                            var result = await SdkUploadOnBlobAsync(option, block.CompressionBlock.FolderProvider.RootFolder, file, token);
-                            success = result.success;
-                            reason = result.reason;
-                            hasError = !success;
-
-                            block.BlockResult.StepResults.Add(new StepResult()
-                            {
-                                Type = StepType.Upload,
-                                Errors = result.success ? null : result.reason,
-                                Infos = result.success ? result.reason : null
-                            });
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
+                        Type = StepType.Upload,
+                        Errors = result.IsSuccess ? null : result.ErrorMessage,
+                        Infos = result.IsSuccess ? result.ErrorMessage : null
+                    });
+                    
                     sw.Stop();
 
-                    if (success)
+                    if (result.IsSuccess)
                     {
                         double speed = file.Length / sw.Elapsed.TotalSeconds;
                         _logger.LogInformation($"{progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                     }
                     else
                     {
-                        _logger.LogError($"{progress} Uploaded {file.Name} with errors. {reason}");
+                        _logger.LogError($"{progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
                     }
                 }
                 catch (Exception e)
@@ -165,23 +156,9 @@ namespace TCC.Lib
                     break;
                 }
             }
-            
+
             return block;
         }
-
-        internal static async Task<(bool success, string reason)> SdkUploadOnBlobAsync(CompressOption option, DirectoryInfo rootFolder,
-             FileInfo file, CancellationToken token)
-        {
-            var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzSaS));
-
-            var container = client.GetBlobContainerClient(option.AzBlobContainer);
-            string targetPath = file.GetRelativeTargetPathTo(rootFolder);
-            using FileStream uploadFileStream = File.OpenRead(file.FullName);
-            var result = await container.UploadBlobAsync(targetPath, uploadFileStream, token);
-            var response = result.GetRawResponse();
-            return (response.Status == 201, response.ReasonPhrase);
-        }
-
 
         private async Task CleanupOldFiles(OperationCompressionBlock opb)
         {
@@ -275,7 +252,7 @@ namespace TCC.Lib
                     string cmd = _compressionCommands.CompressCommand(block, option);
                     result = await cmd.Run(block.OperationFolder, token);
                     LogCompressionReport(block, result);
-                    
+
                     if (result.HasError)
                     {
                         hasError = true;
@@ -286,7 +263,7 @@ namespace TCC.Lib
                         report += $" (from {block.DiffDate})";
                     }
                     _logger.LogInformation(report);
-                    
+
                 }
                 catch (Exception e)
                 {
@@ -449,10 +426,5 @@ namespace TCC.Lib
                 _logger.LogError($"Decompressed {block.Source} with errors : {result.Errors}");
             }
         }
-    }
-
-    public enum UploadMode
-    {
-        AzureSdk
     }
 }

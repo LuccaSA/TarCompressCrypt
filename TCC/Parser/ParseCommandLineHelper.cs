@@ -45,7 +45,8 @@ namespace TCC.Parser
                             AzBlobUrl = opts.AzBlobUrl,
                             AzBlobContainer = opts.AzBlobContainer,
                             AzSaS = opts.AzSaS,
-                            AzMbps = opts.AzMbps,
+                            GoogleStorageBucketName = opts.GoogleStorageBucketName,
+                            GoogleStorageCredentialFile = opts.GoogleStorageCredentialFile,
                             AzThread = opts.AzThread,
                             UploadMode = opts.UploadMode
                         };
