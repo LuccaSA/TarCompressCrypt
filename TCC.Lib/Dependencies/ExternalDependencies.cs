@@ -22,7 +22,6 @@ namespace TCC.Lib.Dependencies
         public string Brotli() => GetPathEscaped(_brotli);
         public string Zstd() => GetPathEscaped(_zStd);
         public string OpenSsl() => GetPathEscaped(_openSsl);
-        public string AzCopy() => GetPathEscaped(_azCopy);
 
         public async Task EnsureAllDependenciesPresent()
         {
@@ -31,7 +30,6 @@ namespace TCC.Lib.Dependencies
             await EnsureDependency(_zStd);
             await EnsureDependency(_openSsl);
             await EnsureDependency(_tar);
-            await EnsureDependency(_azCopy);
         }
 
         private string Root => Path.GetDirectoryName(AppContext.BaseDirectory);
@@ -153,15 +151,6 @@ namespace TCC.Lib.Dependencies
             ZipFilename = "tar_msys2_130.zip",
             ExtractFolder = "tar_v130",
             ExeName = "tar.exe"
-        };
-
-        internal static readonly Dependency _azCopy = new Dependency
-        {
-            Name = "azcopy",
-            Url = @"https://azcopyvnext.azureedge.net/release20210415/azcopy_windows_amd64_10.10.0.zip",
-            ZipFilename = "azcopy_windows_amd64_10.10.0.zip",
-            ExtractFolder = "azcopy_windows_amd64_10.10.0",
-            ExeName = "azcopy_windows_amd64_10.10.0\\azcopy.exe"
         };
     }
 }

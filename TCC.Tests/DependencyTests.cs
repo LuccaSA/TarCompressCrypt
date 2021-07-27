@@ -33,9 +33,6 @@ namespace TCC.Tests
 
             await dep.EnsureDependency(ExternalDependencies._tar);
             dep.GetPath(ExternalDependencies._tar).EnsureFileExists();
-
-            await dep.EnsureDependency(ExternalDependencies._azCopy);
-            dep.GetPath(ExternalDependencies._azCopy).EnsureFileExists();
         }
     }
 

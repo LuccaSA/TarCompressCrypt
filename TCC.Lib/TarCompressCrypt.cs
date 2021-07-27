@@ -32,12 +32,11 @@ namespace TCC.Lib
         private readonly CompressionCommands _compressionCommands;
         private readonly IServiceProvider _serviceProvider;
         private readonly DatabaseHelper _databaseHelper;
-        private readonly UploadCommands _uploadCommands;
         private int _compressCounter;
         private int _uploadCounter;
         private int _totalCounter;
 
-        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper, UploadCommands uploadCommands)
+        public TarCompressCrypt(CancellationTokenSource cancellationTokenSource, ILogger<TarCompressCrypt> logger, EncryptionCommands encryptionCommands, CompressionCommands compressionCommands, IServiceProvider serviceProvider, DatabaseHelper databaseHelper)
         {
             _cancellationTokenSource = cancellationTokenSource;
             _logger = logger;
@@ -45,7 +44,6 @@ namespace TCC.Lib
             _compressionCommands = compressionCommands;
             _serviceProvider = serviceProvider;
             _databaseHelper = databaseHelper;
-            _uploadCommands = uploadCommands;
         }
 
         public async Task<OperationSummary> Compress(CompressOption option)
@@ -122,12 +120,6 @@ namespace TCC.Lib
 
                     switch (option.UploadMode)
                     {
-                        case UploadMode.AzCopy:
-                            var cmd = _uploadCommands.UploadCommand(option,
-                                file,
-                                block.CompressionBlock.FolderProvider.RootFolder);
-                            success = await AzCopyUploadOnBlobAsync(block.CompressionBlock.FolderProvider.RootFolder.FullName, cmd, token);
-                            break;
                         case UploadMode.AzureSdk:
                             var result = await SdkUploadOnBlobAsync(option, block.CompressionBlock.FolderProvider.RootFolder, file, token);
                             success = result.success;
@@ -189,27 +181,6 @@ namespace TCC.Lib
             var response = result.GetRawResponse();
             return (response.Status == 201, response.ReasonPhrase);
         }
-
-        internal static async Task<bool> AzCopyUploadOnBlobAsync(string opFolder, string cmd, CancellationToken token)
-        {
-            var result = await cmd.Run(opFolder, token);
-
-            var infos = result.Output
-                .Split(Environment.NewLine)
-                .Select(i => JsonSerializer.Deserialize<AzCopyResponse>(i))
-                .FirstOrDefault(i => i.MessageType == "EndOfJob");
-
-            if (infos == null)
-            {
-                Console.WriteLine(result.Output);
-                return false;
-            }
-
-            var jobResult = JsonSerializer.Deserialize<AzCopyJobCompleted>(infos.MessageContent);
-
-            return jobResult.TransfersCompleted == "1";
-        }
-
 
 
         private async Task CleanupOldFiles(OperationCompressionBlock opb)
@@ -482,7 +453,6 @@ namespace TCC.Lib
 
     public enum UploadMode
     {
-        AzCopy,
         AzureSdk
     }
 }

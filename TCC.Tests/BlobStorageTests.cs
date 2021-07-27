@@ -24,40 +24,10 @@ namespace TCC.Tests
         {
             _envVarFixture = envVarFixture;
         }
-
-        [Fact(Skip = "desactivated accound")]
-        public async Task AzcopyUploadTest()
-        {
-            var dep = new ExternalDependencies(new NullLogger<ExternalDependencies>());
-            await dep.EnsureDependency(ExternalDependencies._azCopy);
-            dep.GetPath(ExternalDependencies._azCopy).EnsureFileExists();
-
-            var up = new UploadCommands(new ExternalDependencies(new NullLogger<ExternalDependencies>()));
-
-            string toCompressFolder = TestFileHelper.NewFolder();
-            var data = await TestData.CreateFiles(1, 1024, toCompressFolder);
-
-            var opt = new CompressOption()
-            {
-                AzBlobUrl = GetEnvVar("AZ_URL"),
-                AzBlobContainer = GetEnvVar("AZ_CONTAINER"),
-                AzSaS = GetEnvVar("AZ_SAS_TOKEN")
-            };
-
-            var cmd = up.UploadCommand(opt, data.Files.First(), new DirectoryInfo(toCompressFolder));
-
-            bool success = await TarCompressCrypt.AzCopyUploadOnBlobAsync(toCompressFolder, cmd, CancellationToken.None);
-
-            Assert.True(success);
-        }
-
+ 
         [Fact(Skip = "desactivated accound")]
         public async Task SdkUploadTest()
         {
-            var dep = new ExternalDependencies(new NullLogger<ExternalDependencies>());
-            await dep.EnsureDependency(ExternalDependencies._azCopy);
-            dep.GetPath(ExternalDependencies._azCopy).EnsureFileExists();
-             
             string toCompressFolder = TestFileHelper.NewFolder();
             var data = await TestData.CreateFiles(1, 1024, toCompressFolder);
 
