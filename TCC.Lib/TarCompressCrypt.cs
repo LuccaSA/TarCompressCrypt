@@ -17,9 +17,9 @@ using TCC.Lib.Command;
 using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
-using TCC.Lib.ObjectStorage;
 using TCC.Lib.Options;
 using TCC.Lib.PrepareBlocks;
+using TCC.Lib.Storage;
 
 namespace TCC.Lib
 {
@@ -60,7 +60,7 @@ namespace TCC.Lib
             _logger.LogInformation("Starting compression job");
             var po = ParallelizeOption(option);
 
-            IObjectStorageRemoteServer uploader = await option.CreateRemoteServerAsync(_cancellationTokenSource.Token);
+            IRemoteStorage uploader = await option.GetRemoteStorageAsync(_logger, _cancellationTokenSource.Token);
 
             var operationBlocks = await buffer
                 .AsAsyncStream(_cancellationTokenSource.Token)
@@ -93,12 +93,9 @@ namespace TCC.Lib
             return ops;
         }
 
-        private async Task<OperationCompressionBlock> UploadBlockInternal(IObjectStorageRemoteServer uploader, CompressOption option, OperationCompressionBlock block, CancellationToken token)
+        private async Task<OperationCompressionBlock> UploadBlockInternal(IRemoteStorage uploader, CompressOption option, OperationCompressionBlock block, CancellationToken token)
         {
-            if (string.IsNullOrEmpty(option.AzBlobUrl)
-                || string.IsNullOrEmpty(option.AzBlobContainer)
-                || string.IsNullOrEmpty(option.AzSaS)
-                || option.UploadMode == null)
+            if (uploader is NoneRemoteStorage)
             {
                 return block;
             }

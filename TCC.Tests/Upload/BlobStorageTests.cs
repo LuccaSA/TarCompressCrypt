@@ -2,20 +2,17 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
-using TCC.Lib.Dependencies;
-using TCC.Lib.ObjectStorage;
 using TCC.Lib.Options;
+using TCC.Lib.Storage;
 using Xunit;
 
-namespace TCC.Tests
+namespace TCC.Tests.Upload
 {
     public class UploadToStorageTests : IClassFixture<EnvVarFixture>
     {
@@ -39,7 +36,7 @@ namespace TCC.Tests
                 AzSaS = GetEnvVar("AZ_SAS_TOKEN")
             };
             opt.UploadMode = UploadMode.AzureSdk;
-            var uploader = await opt.CreateRemoteServerAsync(CancellationToken.None);
+            var uploader = await opt.GetRemoteStorageAsync(NullLogger.Instance, CancellationToken.None);
 
             var ok = await uploader.UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
 
@@ -59,13 +56,14 @@ namespace TCC.Tests
             };
 
             opt.UploadMode = UploadMode.GoogleCloudStorage;
-            var uploader = await opt.CreateRemoteServerAsync(CancellationToken.None);
+            var uploader = await opt.GetRemoteStorageAsync(NullLogger.Instance, CancellationToken.None);
 
             var ok = await uploader.UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
 
             Assert.True(ok.IsSuccess);
 
-            var gs = uploader as GoogleRemoteServer;
+            var gs = uploader as GoogleRemoteStorage;
+            
             await gs.Storage.DeleteObjectAsync(gs.BucketName, ok.RemoteFilePath);
         }
 
