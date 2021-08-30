@@ -56,17 +56,23 @@ namespace TCC.Lib.PrepareBlocks
 
                 DateTime recent = lastRestore.StartTime;
                 // if more recent full, we take it
-                if (decompBlock.BackupFull.BackupDate > recent)
+                if (decompBlock.BackupFull != null)
                 {
-                    recent = decompBlock.BackupFull.BackupDate.Value;
-                    // if no diff, check more recent full
-                    d.BackupFull = decompBlock.BackupFull;
+                    if (decompBlock.BackupFull.BackupDate > recent)
+                    {
+                        recent = decompBlock.BackupFull.BackupDate.Value;
+                        // if no diff, check more recent full
+                        d.BackupFull = decompBlock.BackupFull;
+                    }
                 }
 
                 // we yield all the DIFF archives more recent the the last restore or the last full
                 d.BackupsDiff = decompBlock.BackupsDiff?.Where(i => i.BackupDate > recent).ToArray();
 
-                yield return d;
+                if (d.BackupFull != null || d.BackupsDiff?.Length > 0)
+                {
+                    yield return d;
+                }
             }
 
             // TODO next

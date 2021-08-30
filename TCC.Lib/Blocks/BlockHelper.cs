@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TCC.Lib.Database;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
@@ -164,7 +163,26 @@ namespace TCC.Lib.Blocks
                             }
                             else
                             {
-                                throw new Exception("no full found for diff");
+                                if (decompressOption.IgnoreMissingFull)
+                                {
+                                    yielded = true;
+                                    var batch = new DecompressionBatch();
+
+                                    var diffs = new List<DecompressionBlock>();
+                                    foreach (var diffArchive in diff.EnumerateArchives()
+                                        .Where(i => i.ExtractBackupDateTime() >= datedBatch.fullDate)
+                                        .OrderBy(i => i.ExtractBackupDateTime()))
+                                    {
+                                        yielded = true;
+                                        diffs.Add(GenerateDecompressBlock(diffArchive, dstDir, AlgoFromExtension(diffArchive.Extension)));
+                                    }
+                                    batch.BackupsDiff = diffs.ToArray();
+                                    fullBackups.Add(dir.Name, (DateTime.MinValue, batch, 0));
+                                }
+                                else
+                                {
+                                    throw new Exception("Missing FULL backup, and DIFF found in directory " + dir.FullName);
+                                }
                             }
                         }
                     }

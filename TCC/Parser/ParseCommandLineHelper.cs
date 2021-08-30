@@ -65,6 +65,7 @@ namespace TCC.Parser
                         {
                             DestinationDir = opts.Output,
                             FailFast = opts.FailFast,
+                            IgnoreMissingFull = opts.IgnoreMissingFull,
                             Verbose = opts.Verbose,
                             LogPaths = opts.LogPaths,
                             SourceDirOrFile = opts.Source.FirstOrDefault(),

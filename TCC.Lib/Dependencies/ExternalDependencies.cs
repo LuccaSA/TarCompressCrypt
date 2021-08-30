@@ -138,10 +138,10 @@ namespace TCC.Lib.Dependencies
         internal static readonly Dependency _openSsl = new Dependency
         {
             Name = "OpenSSL",
-            Url = @"https://curl.se/windows/dl-7.75.0_4/openssl-1.1.1j_4-win64-mingw.zip",
-            ZipFilename = "openssl-1.1.1j_4-win64-mingw.zip",
-            ExtractFolder = "openssl_v111j",
-            ExeName = "openssl-1.1.1j-win64-mingw\\openssl.exe"
+            Url = @"https://curl.se/windows/dl-7.78.0_4/openssl-1.1.1l_4-win64-mingw.zip",
+            ZipFilename = "openssl-1.1.1l_4-win64-mingw.zip",
+            ExtractFolder = "openssl_v111l",
+            ExeName = "openssl-1.1.1l-win64-mingw\\openssl.exe"
         };
 
         internal static readonly Dependency _tar = new Dependency

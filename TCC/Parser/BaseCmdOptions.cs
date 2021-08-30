@@ -13,6 +13,9 @@ namespace TCC.Parser
         [Option('f', "failFast", HelpText = "Fail-fast mode")]
         public bool FailFast { get; set; }
 
+        [Option("ignore-missing-full", HelpText = "Still decompress DIFF when FULL is missing")]
+        public bool IgnoreMissingFull { get; set; }
+
         [Option('p', "password", HelpText = "encryption password")]
         public string Password { get; set; }
 

@@ -289,7 +289,7 @@ namespace TCC.Lib
             var po = ParallelizeOption(option);
             var job = await _databaseHelper.InitializeRestoreJobAsync();
 
-            IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks();
+            IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks().ToList();
             var prepare = new DatabasePreparedDecompressionBlocks(_serviceProvider.GetRequiredService<TccRestoreDbContext>(), _logger);
             IAsyncEnumerable<DecompressionBatch> ordered = prepare.PrepareDecompressionBlocksAsync(blocks);
 
