@@ -7,8 +7,8 @@ namespace TCC.Lib.Helpers
 {
     public static class Retry
     {
-        private static readonly int[] RetryDurations = new[] { 0, 1, 3, 14, 42 };
-        private static readonly int MaxRetries = 4;
+        private static readonly int[] RetryDurations = new[] { 0, 1, 3, 14, 42, 75, 250, 480, 670, 800 };
+        private static readonly int MaxRetries = 10;
         private static readonly Random RandomJitter = new Random();
 
         public static bool CanRetryIn(out TimeSpan nextRetry, ref int retries, int maxRetries)

@@ -13,11 +13,11 @@ namespace TCC.Tests.Helpers
         {
             int retry = 0;
 
-            var ok1 = Retry.CanRetryIn(out TimeSpan retry1, ref retry, 4);
-            var ok2 = Retry.CanRetryIn(out TimeSpan retry2, ref retry, 4);
-            var ok3 = Retry.CanRetryIn(out TimeSpan retry3, ref retry, 4);
-            var ok4 = Retry.CanRetryIn(out TimeSpan retry4, ref retry, 4);
-            var ok5 = Retry.CanRetryIn(out TimeSpan retry5, ref retry, 4);
+            var ok1 = Retry.CanRetryIn(out TimeSpan retry1, ref retry, 10);
+            var ok2 = Retry.CanRetryIn(out TimeSpan retry2, ref retry, 10);
+            var ok3 = Retry.CanRetryIn(out TimeSpan retry3, ref retry, 10);
+            var ok4 = Retry.CanRetryIn(out TimeSpan retry4, ref retry, 10);
+            var ok5 = Retry.CanRetryIn(out TimeSpan retry5, ref retry, 10);
 
             Assert.True(ok1);
             Assert.True(ok2);
