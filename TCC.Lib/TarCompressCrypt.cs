@@ -105,8 +105,7 @@ namespace TCC.Lib
 
             var file = block.CompressionBlock.DestinationArchiveFileInfo;
             var name = file.Name;
-            int retry = 0;
-
+            RetryContext ctx = null;
             while (true)
             {
                 bool hasError;
@@ -123,7 +122,7 @@ namespace TCC.Lib
                         Errors = result.IsSuccess ? null : result.ErrorMessage,
                         Infos = result.IsSuccess ? result.ErrorMessage : null
                     });
-                    
+
                     sw.Stop();
 
                     if (result.IsSuccess)
@@ -139,14 +138,23 @@ namespace TCC.Lib
                 catch (Exception e)
                 {
                     hasError = true;
+                    if (ctx == null && option.RetryPeriodInSeconds.HasValue)
+                    {
+                        ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
+                    }
                     _logger.LogCritical(e, $"{progress} Error uploading {name}");
                 }
 
-                if (option.Retry.HasValue && hasError &&
-                    Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
+                if (hasError)
                 {
-                    _logger.LogWarning($"{progress} Retrying uploading {name}, attempt #{retry}");
-                    await Task.Delay(nextRetry);
+                    if (ctx != null && await ctx.WaitForNextRetry())
+                    {
+                        _logger.LogWarning($"{progress} Retrying uploading {name}, attempt #{ctx.Retries}");
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
                 else
                 {
@@ -239,7 +247,7 @@ namespace TCC.Lib
 
             int count = Interlocked.Increment(ref _compressCounter);
             string progress = $"{count}/{_totalCounter}";
-            int retry = 0;
+            RetryContext ctx = null;
             CommandResult result = null;
             while (true)
             {
@@ -265,15 +273,25 @@ namespace TCC.Lib
                 catch (Exception e)
                 {
                     hasError = true;
+                    if (ctx == null && option.RetryPeriodInSeconds.HasValue)
+                    {
+                        ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
+                    }
                     _logger.LogCritical(e, $"{progress} Error compressing {block.Source}");
                 }
 
-                if (option.Retry.HasValue && hasError &&
-                    Retry.CanRetryIn(out TimeSpan nextRetry, ref retry, option.Retry.Value))
+                if (hasError)
                 {
-                    _logger.LogWarning($"{progress} Retrying compressing {block.Source}, attempt #{retry}");
-                    await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();
-                    await Task.Delay(nextRetry);
+                    if (ctx != null && await ctx.WaitForNextRetry())
+                    {
+                        _logger.LogWarning($"{progress} Retrying compressing {block.Source}, attempt #{ctx.Retries}");
+                        await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();
+                    }
+                    else
+                    {
+                        await block.DestinationArchiveFileInfo.TryDeleteFileWithRetryAsync();
+                        break;
+                    }
                 }
                 else
                 {

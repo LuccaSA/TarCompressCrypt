@@ -35,7 +35,7 @@ namespace TCC.Parser
                             BoostRatio = opts.BoostRatio,
                             CleanupTime = opts.CleanupTime,
                             BackupMode = opts.BackupMode,
-                            Retry = opts.Retry,
+                            RetryPeriodInSeconds = opts.RetryPeriodInSeconds,
                             Filter = opts.Filter,
                             Exclude = opts.Exclude,
                             SlackChannel = opts.SlackChannel,

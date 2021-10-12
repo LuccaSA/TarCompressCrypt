@@ -1,28 +1,77 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace TCC.Lib.Helpers
 {
     public static class Retry
     {
-        private static readonly int[] RetryDurations = new[] { 0, 1, 3, 14, 42, 75, 250, 480, 670, 800 };
-        private static readonly int MaxRetries = 10;
+        private const long TicksPerMillisecond = 10000;
+        private const long TicksPerSecond = TicksPerMillisecond * 1000;
+        internal static readonly double s_tickFrequency = (double)TicksPerSecond / Stopwatch.Frequency;
+
         private static readonly Random RandomJitter = new Random();
 
-        public static bool CanRetryIn(out TimeSpan nextRetry, ref int retries, int maxRetries)
+        public static async Task<bool> WaitForNextRetry(this RetryContext retryContext)
         {
-            int i = Interlocked.Increment(ref retries);
-            if (i > maxRetries || i > MaxRetries)
-            {
-                nextRetry = TimeSpan.Zero;
-                return false;
-            }
+            var result = await WaitForNextRetryWithDuration(retryContext);
+            return result.CanRetry;
+        }
 
-            double ms = RetryDurations[i] * 1000 + RandomJitter.Next(0, 1000);
-            nextRetry = TimeSpan.FromMilliseconds(ms);
-            return true;
+        internal static async Task<RetryResult> WaitForNextRetryWithDuration(RetryContext retryContext)
+        {
+            retryContext.Increment();
+            var elapsedSinceStart = (long)((Stopwatch.GetTimestamp() - retryContext.TimeStamp) * s_tickFrequency);
+            var remaining = retryContext.MaxDurationSecondsTicks - elapsedSinceStart;
+            if (remaining <= TimeSpan.TicksPerMillisecond) // Task.Delay() with a TimeSpan < 1ms returns a CompletedTask
+            {
+                return new RetryResult(false, TimeSpan.Zero);
+            }
+            if (elapsedSinceStart >= retryContext.MaxDurationSecondsTicks)
+            {
+                return new RetryResult(false, TimeSpan.Zero);
+            }
+            var candidate = retryContext.Retries * TimeSpan.TicksPerSecond + RandomJitter.Next(0, 1000000); // adds 0-100ms;
+            var min = Math.Min(remaining, candidate);
+            var nextRetry = new TimeSpan(min);
+            await Task.Delay(nextRetry);
+            return new RetryResult(min > 0, nextRetry);
+        }
+    }
+
+    public class RetryResult
+    {
+        public RetryResult(bool canRetry, TimeSpan waitDuration)
+        {
+            CanRetry = canRetry;
+            WaitDuration = waitDuration;
+        }
+
+        public bool CanRetry { get; set; }
+        public TimeSpan WaitDuration { get; set; }
+    }
+
+    public class RetryContext
+    {
+        private readonly long _timeStamp;
+        private int _retries = 0;
+
+        public long TimeStamp => _timeStamp;
+        public int Retries => _retries;
+        public long MaxDurationSecondsTicks { get; }
+
+        public RetryContext(int maxDurationSeconds)
+        {
+            if (maxDurationSeconds == 0)
+                throw new ArgumentException("Duration can't be 0", nameof(maxDurationSeconds));
+            MaxDurationSecondsTicks = maxDurationSeconds * TimeSpan.TicksPerSecond;
+            _timeStamp = Stopwatch.GetTimestamp();
+        }
+
+        internal void Increment()
+        {
+            Interlocked.Increment(ref _retries);
         }
     }
 }
