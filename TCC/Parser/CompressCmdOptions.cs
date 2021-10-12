@@ -26,8 +26,8 @@ namespace TCC.Parser
                                         "Diff : Archive delta since last full")]
         public BackupMode? BackupMode { get; set; }
 
-        [Option("retries", HelpText = "Number of exponential retry. Max=10")]
-        public int? Retry { get; set; }
+        [Option("retries", HelpText = "Number seconds retring a failed compression job")]
+        public int? RetryPeriodInSeconds { get; set; }
 
         [Option("filter", HelpText = "Optional filters")]
         public IEnumerable<string> Filter { get; set; }

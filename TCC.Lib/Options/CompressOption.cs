@@ -10,7 +10,7 @@ namespace TCC.Lib.Options
         public CompressionAlgo Algo { get; set; }
         public int CompressionRatio { get; set; }
         public BackupMode? BackupMode { get; set; }
-        public int? Retry { get; set; }
+        public int? RetryPeriodInSeconds { get; set; }
         public IEnumerable<string> Filter { get; set; }
         public IEnumerable<string> Exclude { get; set; }
         public bool FolderPerDay { get; set; }
