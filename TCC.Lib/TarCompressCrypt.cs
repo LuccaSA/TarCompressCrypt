@@ -125,13 +125,17 @@ namespace TCC.Lib
 
                     sw.Stop();
 
-                    if (result.IsSuccess)
+                    if (!hasError)
                     {
                         double speed = file.Length / sw.Elapsed.TotalSeconds;
                         _logger.LogInformation($"{progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                     }
                     else
                     {
+                        if (ctx == null && option.RetryPeriodInSeconds.HasValue)
+                        {
+                            ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
+                        }
                         _logger.LogError($"{progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
                     }
                 }
@@ -261,6 +265,10 @@ namespace TCC.Lib
                     if (result.HasError)
                     {
                         hasError = true;
+                        if (ctx == null && option.RetryPeriodInSeconds.HasValue)
+                        {
+                            ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
+                        }
                     }
                     var report = $"{progress} [{block.BackupMode}] : {block.BlockName}";
                     if (block.BackupMode == BackupMode.Diff)
