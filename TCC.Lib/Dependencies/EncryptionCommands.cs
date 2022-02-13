@@ -117,7 +117,7 @@ namespace TCC.Lib.Dependencies
             {
                 throw new CommandLineException("Asymmetric public key file missing");
             }
-            return $"{openSslPath} rsautl -encrypt -inkey {publicKey.Escape()} -pubin -in {keyPath.Escape()} -out {keyCryptedPath.Escape()}";
+            return $"{openSslPath} pkeyutl -encrypt -inkey {publicKey.Escape()} -pubin -in {keyPath.Escape()} -out {keyCryptedPath.Escape()}";
         }
 
         private static string DecryptRandomKey(string openSslPath, string keyPath, string keyCryptedPath, string privateKey)
@@ -126,7 +126,7 @@ namespace TCC.Lib.Dependencies
             {
                 throw new CommandLineException("Asymmetric private key file missing");
             }
-            return $"{openSslPath} rsautl -decrypt -inkey {privateKey.Escape()} -in {keyCryptedPath.Escape()} -out {keyPath.Escape()}";
+            return $"{openSslPath} pkeyutl -decrypt -inkey {privateKey.Escape()} -in {keyCryptedPath.Escape()} -out {keyPath.Escape()}";
         }
 
         private static string GenerateRandomKey(string openSslPath, string filename)
