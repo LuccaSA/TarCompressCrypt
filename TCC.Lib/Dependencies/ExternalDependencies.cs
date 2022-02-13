@@ -2,6 +2,7 @@
 using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using TCC.Lib.Helpers;
@@ -88,9 +89,10 @@ namespace TCC.Lib.Dependencies
 
             _logger.LogInformation($"Downloading {dependency.Name} from {dependency.Url} ");
 
-            using (var wc = new WebClient())
+            using (var _httpClient = new HttpClient())
             {
-                await wc.DownloadFileTaskAsync(dependency.Url, target);
+                byte[] fileBytes = await _httpClient.GetByteArrayAsync(dependency.Url);
+                File.WriteAllBytes(target, fileBytes);
             }
 
             _logger.LogInformation($"Download finished for {dependency.Name}");
@@ -138,10 +140,10 @@ namespace TCC.Lib.Dependencies
         internal static readonly Dependency _openSsl = new Dependency
         {
             Name = "OpenSSL",
-            Url = @"https://curl.se/windows/dl-7.78.0_4/openssl-1.1.1l_4-win64-mingw.zip",
-            ZipFilename = "openssl-1.1.1l_4-win64-mingw.zip",
-            ExtractFolder = "openssl_v111l",
-            ExeName = "openssl-1.1.1l-win64-mingw\\openssl.exe"
+            Url = @"https://curl.se/windows/dl-7.81.0/openssl-3.0.1-win64-mingw.zip",
+            ZipFilename = "openssl-3.0.1-win64-mingw.zip",
+            ExtractFolder = "openssl_v301",
+            ExeName = "openssl-3.0.1-win64-mingw\\bin\\openssl.exe"
         };
 
         internal static readonly Dependency _tar = new Dependency

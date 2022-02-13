@@ -74,7 +74,7 @@ namespace TCC.Lib.Benchmark
         }
 
         public string CreateKeyPairCommand(string openSslPath, string keyPairFile, KeySize keySize)
-            => $"{openSslPath} genpkey -algorithm RSA -out {keyPairFile} -pkeyopt rsa_keygen_bits:{(int)keySize}";
+            => $"{openSslPath} genpkey -quiet -algorithm RSA -out {keyPairFile} -pkeyopt rsa_keygen_bits:{(int)keySize}";
 
         public string CreatePublicKeyCommand(string openSslPath, string keyPairFile, string publicKeyFile)
             => $"{openSslPath} rsa -pubout -outform PEM -in {keyPairFile} -out {publicKeyFile}";

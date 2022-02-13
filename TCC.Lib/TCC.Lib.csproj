@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <LangVersion>Latest</LangVersion>
     <ProjectGuid>{0ECB049B-34A2-40EA-8011-6A1FB6767336}</ProjectGuid>
   </PropertyGroup>
