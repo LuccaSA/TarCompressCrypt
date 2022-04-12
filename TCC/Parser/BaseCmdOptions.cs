@@ -40,7 +40,9 @@ namespace TCC.Parser
         [Option('v', "verbose", HelpText = "Verbose output", Default = false)]
         public bool Verbose { get; set; }
 
-        [Option( "logPath", HelpText = "Log path")]
+        [Option("logPath", HelpText = "Log path")]
         public string LogPaths { get; set; }
+        [Option("auditFile", HelpText = "Path to the audit log file")]
+        public string AuditFilePath { get; set; }
     }
 }

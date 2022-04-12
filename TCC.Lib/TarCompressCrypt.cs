@@ -120,7 +120,8 @@ namespace TCC.Lib
                     {
                         Type = StepType.Upload,
                         Errors = result.IsSuccess ? null : result.ErrorMessage,
-                        Infos = result.IsSuccess ? result.ErrorMessage : null
+                        Infos = result.IsSuccess ? result.ErrorMessage : null,
+                        ArchiveFileSize = file.Length
                     });
 
                     sw.Stop();
@@ -260,6 +261,7 @@ namespace TCC.Lib
                 {
                     string cmd = _compressionCommands.CompressCommand(block, option);
                     result = await cmd.Run(block.OperationFolder, token);
+                    result.ArchiveFileSize = block.DestinationArchiveFileInfo.Length;
                     LogCompressionReport(block, result);
 
                     if (result.HasError)
@@ -394,6 +396,7 @@ namespace TCC.Lib
             {
                 string cmd = _compressionCommands.DecompressCommand(block, option);
                 result = await cmd.Run(block.OperationFolder, token);
+                result.ArchiveFileSize = block.SourceArchiveFileInfo.Length;
 
                 LogReport(block, result);
             }

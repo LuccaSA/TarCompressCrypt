@@ -17,5 +17,6 @@
 
         public bool Verbose { get; set; }
         public string LogPaths { get; set; }
+        public string AuditFilePath { get; set; }
     }
 }

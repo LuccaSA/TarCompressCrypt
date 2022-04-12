@@ -19,7 +19,7 @@ namespace TCC.Lib
         bool HasWarning { get; }
         bool HasError { get; }
 
-        IEnumerable<StepResult> StepResults { get; }
+        List<StepResult> StepResults { get; }
     }
 
     public class OperationCompressionBlock : IIterationResult
@@ -38,7 +38,7 @@ namespace TCC.Lib
         public bool IsSuccess => BlockResult.StepResults.All(s => s.IsSuccess);
         public bool HasWarning => BlockResult.StepResults.Any(i => i.HasWarning);
         public bool HasError => BlockResult.StepResults.Any(i => i.HasError);
-        public IEnumerable<StepResult> StepResults => BlockResult.StepResults;
+        public List<StepResult> StepResults => BlockResult.StepResults;
 
         public void ThrowOnError()
         {
@@ -106,7 +106,7 @@ namespace TCC.Lib
 
         public bool HasWarning => BlockResults.Any(b => b.StepResults.Any(s => s.HasWarning));
         public bool HasError => BlockResults.Any(b => b.StepResults.Any(s => s.HasError));
-        public IEnumerable<StepResult> StepResults => BlockResults.SelectMany(b => b.StepResults);
+        public List<StepResult> StepResults => BlockResults.SelectMany(b => b.StepResults).ToList();
 
         public void ThrowOnError()
         {
@@ -217,7 +217,8 @@ namespace TCC.Lib
                 Type = StepType.Compression,
                 Duration = commandResult.Elapsed,
                 Infos = string.Join(Environment.NewLine, commandResult.Infos),
-                Errors = commandResult.Errors
+                Errors = commandResult.Errors,
+                ArchiveFileSize = commandResult.ArchiveFileSize
             });
         }
 
@@ -238,6 +239,7 @@ namespace TCC.Lib
         public bool IsSuccess => !HasError && !HasWarning;
         public bool HasError => !string.IsNullOrWhiteSpace(Errors);
         public bool HasWarning => !string.IsNullOrWhiteSpace(Warning);
+        public long ArchiveFileSize { get; set; }
 
         public void ThrowOnError()
         {

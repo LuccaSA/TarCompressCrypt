@@ -48,7 +48,8 @@ namespace TCC.Parser
                             GoogleStorageBucketName = opts.GoogleStorageBucketName,
                             GoogleStorageCredentialFile = opts.GoogleStorageCredentialFile,
                             AzThread = opts.AzThread,
-                            UploadMode = opts.UploadMode
+                            UploadMode = opts.UploadMode,
+                            AuditFilePath = opts.AuditFilePath
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Compress);
@@ -73,7 +74,8 @@ namespace TCC.Parser
                             SlackChannel = opts.SlackChannel,
                             SlackSecret = opts.SlackSecret,
                             BucketName = opts.BucketName,
-                            SlackOnlyOnError = opts.SlackOnlyOnError
+                            SlackOnlyOnError = opts.SlackOnlyOnError,
+                            AuditFilePath = opts.AuditFilePath
                         };
 
                         ExtractPasswordInfo(opts, option, Mode.Decompress);
