@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Context;
 using Serilog.Core;
 using Serilog.Events;
+using Serilog.Formatting.Json;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
@@ -25,6 +27,7 @@ namespace TCC
     public static class Program
     {
         private const string _tccMutex = "Global\\FD70BFC5-79C8-44DF-9629-65512A1CD0FC";
+        private const string AuditScope = "audit";
 
         public static async Task<int> Main(string[] args)
         {
@@ -41,7 +44,7 @@ namespace TCC
             serviceCollection.AddTcc(workingPath);
             serviceCollection.AddLogging(lb =>
             {
-                var logger = CreateLogger(parsed.Mode, parsed.Option?.Verbose ?? false, parsed.Option?.LogPaths ?? workingPath);
+                var logger = CreateLogger(parsed.Mode, parsed.Option?.Verbose ?? false, parsed.Option?.LogPaths ?? workingPath, parsed.Option?.AuditFilePath);
                 lb.AddSerilog(logger, true);
             });
 
@@ -77,6 +80,8 @@ namespace TCC
 
                     var notifier = sp.GetRequiredService<SlackSender>();
                     await notifier.ReportAsync(op, parsed.Option, parsed.Mode);
+
+                    WriteAuditFile(parsed.Mode, op, logger);
                 }
             }
             catch (OperationCanceledException)
@@ -103,6 +108,18 @@ namespace TCC
                 return 1;
             }
             return 0;
+        }
+
+        private static void WriteAuditFile(Mode mode, OperationSummary op, ILogger<TarCompressCrypt> logger)
+        {
+            using (logger.BeginScope(AuditScope))
+            {
+                foreach (IEnumerable<StepResult> r in op.OperationBlocks.Select(o => o.StepResults).Where(result => result.Any()))
+                {
+                    var name = r.First().Name;
+                    logger.Log(LogLevel.Information, "{Mode} / {Name} / {@results}", mode, name, r);
+                }
+            }
         }
 
         private static IEnumerable<string> ReportOperationStats(OperationSummary op, Mode mode)
@@ -194,11 +211,11 @@ namespace TCC
                 case Mode.Decompress:
                     var db = provider.GetRequiredService<DatabaseSetup>();
                     await db.EnsureDatabaseExistsAsync(command.Mode);
-                    
+
                     op = await provider
                         .GetRequiredService<TarCompressCrypt>()
                         .Decompress(command.Option as DecompressOption);
-                    
+
                     await db.CleanupDatabaseAsync(command.Mode);
                     break;
                 case Mode.Benchmark:
@@ -212,7 +229,7 @@ namespace TCC
             return op;
         }
 
-        private static Logger CreateLogger(Mode mode, bool verbose, string logDirectoryPath)
+        private static Logger CreateLogger(Mode mode, bool verbose, string logDirectoryPath, string auditFile)
         {
             string logFileName = mode switch
             {
@@ -240,17 +257,54 @@ namespace TCC
 
             var level = verbose ? LogEventLevel.Debug : LogEventLevel.Information;
             var loggerConf = new LoggerConfiguration()
-                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
-                .WriteTo.Async(conf =>
-                {
-                    if (logFileName != null)
+                .WriteTo.Logger(logger => logger
+                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+                    .WriteTo.Async(conf =>
                     {
-                        conf.File(Path.Combine(path, logFileName), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
-                    }
-                    conf.Console();
-                }).MinimumLevel.Is(level);
+                        if (logFileName != null)
+                        {
+                            conf.File(Path.Combine(path, logFileName), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
+                        }
+                        conf.Console();
+                    })
+                   .Filter.ByExcluding(IsAuditLog)
+                   .MinimumLevel.Is(level)
+                );
+            if (!string.IsNullOrEmpty(auditFile))
+            {
+                if (!Path.IsPathRooted(auditFile))
+                {
+                    auditFile = Path.Combine(path, auditFile);
+                }
+                loggerConf
+                    .WriteTo.Logger(auditLogger =>
+                    {
+                        auditLogger
+                            .MinimumLevel.Information()
+                            .WriteTo.Async(conf =>
+                            {
+                                conf.File(new JsonFormatter(renderMessage: true), auditFile);
+                            })
+                            .Filter.ByIncludingOnly(IsAuditLog);
+                    });
+            }
 
             return loggerConf.CreateLogger();
+        }
+
+        private static bool IsAuditLog(LogEvent logEvent)
+        {
+            LogEventPropertyValue scope = logEvent.Properties.GetValueOrDefault("Scope");
+            if (scope is null)
+            {
+                return false;
+            }
+            return
+                scope is SequenceValue sequenceValue &&
+                sequenceValue
+                    .Elements
+                    .OfType<ScalarValue>()
+                    .Any(scalarValue => string.Equals(scalarValue.Value as string, AuditScope));
         }
     }
 }

@@ -17,6 +17,7 @@ namespace TCC.Lib.Command
         public List<string> Infos { get; set; }
         public long ElapsedMilliseconds => (long)Elapsed.TotalMilliseconds;
         public TimeSpan Elapsed { get; set; }
+        public long ArchiveFileSize { get; set; }
 
         public void ThrowOnError()
         {
