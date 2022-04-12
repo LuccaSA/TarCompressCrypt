@@ -114,10 +114,19 @@ namespace TCC
         {
             using (logger.BeginScope(AuditScope))
             {
-                foreach (IEnumerable<StepResult> r in op.OperationBlocks.Select(o => o.StepResults).Where(result => result.Any()))
+                foreach (IEnumerable<StepResult> stepResults in op.OperationBlocks.Select(o => o.StepResults).Where(result => result.Any()))
                 {
-                    var name = r.First().Name;
-                    logger.Log(LogLevel.Information, "{Mode} / {Name} / {@results}", mode, name, r);
+                    var name = stepResults.First().Name;
+                    var logLevel = LogLevel.Information;
+                    if (stepResults.Any(stepResult => stepResult.HasError))
+                    {
+                        logLevel = LogLevel.Error;
+                    }
+                    else if (stepResults.Any(stepResult => stepResult.HasWarning))
+                    {
+                        logLevel = LogLevel.Warning;
+                    }
+                    logger.Log(logLevel, "{Mode} / {Name} / {@results}", mode, name, stepResults);
                 }
             }
         }
