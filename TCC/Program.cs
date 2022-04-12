@@ -283,7 +283,7 @@ namespace TCC
                             .MinimumLevel.Information()
                             .WriteTo.Async(conf =>
                             {
-                                conf.File(new JsonFormatter(renderMessage: true), auditFile);
+                                conf.File(new JsonFormatter(renderMessage: true), auditFile, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
                             })
                             .Filter.ByIncludingOnly(IsAuditLog);
                     });
