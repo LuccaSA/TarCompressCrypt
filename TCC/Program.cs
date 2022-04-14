@@ -1,16 +1,15 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using Serilog.Formatting.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Serilog;
-using Serilog.Context;
-using Serilog.Core;
-using Serilog.Events;
-using Serilog.Formatting.Json;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Blocks;
@@ -116,7 +115,7 @@ namespace TCC
             {
                 foreach (IEnumerable<StepResult> stepResults in op.OperationBlocks.Select(o => o.StepResults).Where(result => result.Any()))
                 {
-                    var name = stepResults.First().Name;
+                    var name = stepResults.FirstOrDefault(sr => string.IsNullOrEmpty(sr.Name))?.Name;
                     var logLevel = LogLevel.Information;
                     if (stepResults.Any(stepResult => stepResult.HasError))
                     {
@@ -126,7 +125,16 @@ namespace TCC
                     {
                         logLevel = LogLevel.Warning;
                     }
-                    logger.Log(logLevel, "{Mode} / {Name} / {@results}", mode, name, stepResults);
+                    logger.Log(logLevel, "{Mode} / {Name} / {@results}", mode, name, stepResults.Select(sr => new
+                    {
+                        sr.ArchiveFileSize,
+                        sr.Type,
+                        sr.ElapsedMilliseconds,
+                        sr.HasError,
+                        sr.HasWarning,
+                        sr.Infos,
+                        sr.IsSuccess
+                    }));
                 }
             }
         }
@@ -292,7 +300,7 @@ namespace TCC
                             .MinimumLevel.Information()
                             .WriteTo.Async(conf =>
                             {
-                                conf.File(new JsonFormatter(renderMessage: true), auditFile, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
+                                conf.File(new JsonFormatter(), auditFile, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
                             })
                             .Filter.ByIncludingOnly(IsAuditLog);
                     });
