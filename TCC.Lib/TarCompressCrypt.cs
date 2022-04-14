@@ -1,16 +1,12 @@
-﻿using Azure.Storage.Blobs;
-using Google.Apis.Auth.OAuth2;
-using Google.Cloud.Storage.V1;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System.IO;
-using System.Text;
 using TCC.Lib.AsyncStreams;
 using TCC.Lib.Blocks;
 using TCC.Lib.Command;
@@ -116,19 +112,21 @@ namespace TCC.Lib
                     var result = await uploader.UploadAsync(file, block.CompressionBlock.FolderProvider.RootFolder, token);
                     hasError = !result.IsSuccess;
 
-                    block.BlockResult.StepResults.Add(new StepResult()
+                    sw.Stop();
+                    double speed = file.Length / sw.Elapsed.TotalSeconds;
+
+                    block.BlockResult.StepResults.Add(new StepResult
                     {
                         Type = StepType.Upload,
                         Errors = result.IsSuccess ? null : result.ErrorMessage,
                         Infos = result.IsSuccess ? result.ErrorMessage : null,
-                        ArchiveFileSize = file.Length
+                        Duration = sw.Elapsed,
+                        ArchiveFileSize = file.Length,
                     });
 
-                    sw.Stop();
 
                     if (!hasError)
                     {
-                        double speed = file.Length / sw.Elapsed.TotalSeconds;
                         _logger.LogInformation($"{progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                     }
                     else
