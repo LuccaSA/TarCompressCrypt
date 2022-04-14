@@ -405,11 +405,6 @@ namespace TCC.Lib
             return result;
         }
 
-        private TccRestoreDbContext RestoreDb()
-        {
-            return _serviceProvider.GetRequiredService<TccRestoreDbContext>();
-        }
-
         private static ParallelizeOption ParallelizeOption(TccOption option)
         {
             var po = new ParallelizeOption
