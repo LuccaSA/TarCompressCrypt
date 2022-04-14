@@ -30,7 +30,7 @@ namespace TCC.Lib
         public OperationCompressionBlock(CompressionBlock compressionBlock, CommandResult commandResult)
         {
             CompressionBlock = compressionBlock;
-            BlockResult = new BlockResult(compressionBlock, commandResult);
+            BlockResult = new BlockResult(compressionBlock, commandResult, StepType.Compression);
         }
 
         public double FileThroughputMbps() => BlockResult.Yield().BlockFileThroughputMbps();
@@ -207,14 +207,14 @@ namespace TCC.Lib
 
     public class BlockResult
     {
-        public BlockResult(Block block, CommandResult commandResult)
+        public BlockResult(Block block, CommandResult commandResult, StepType stepType)
         {
             Block = block;
             StepResults = new List<StepResult>();
             StepResults.Add(new StepResult()
             {
                 Name = block.BlockName,
-                Type = StepType.Compression,
+                Type = stepType,
                 Duration = commandResult.Elapsed,
                 Infos = string.Join(Environment.NewLine, commandResult.Infos),
                 Errors = commandResult.Errors,

@@ -341,7 +341,7 @@ namespace TCC.Lib
                     if (batch.BackupFull != null)
                     {
                         batch.BackupFullCommandResult = await DecompressBlock(option, batch.BackupFull, token);
-                        blockResults.Add(new BlockResult(batch.BackupFull, batch.BackupFullCommandResult));
+                        blockResults.Add(new BlockResult(batch.BackupFull, batch.BackupFullCommandResult, StepType.Decompression));
                     }
 
                     if (batch.BackupsDiff != null)
@@ -350,7 +350,7 @@ namespace TCC.Lib
                         for (int i = 0; i < batch.BackupsDiff.Length; i++)
                         {
                             batch.BackupDiffCommandResult[i] = await DecompressBlock(option, batch.BackupsDiff[i], token);
-                            blockResults.Add(new BlockResult(batch.BackupsDiff[i], batch.BackupDiffCommandResult[i]));
+                            blockResults.Add(new BlockResult(batch.BackupsDiff[i], batch.BackupDiffCommandResult[i], StepType.Decompression));
                         }
                     }
 
