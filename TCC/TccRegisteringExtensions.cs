@@ -1,24 +1,28 @@
-﻿using System;
-using System.ComponentModel;
-using System.IO;
-using System.Threading;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using System;
+using System.Collections.Generic;
+using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using TCC.Lib;
 using TCC.Lib.Benchmark;
-using TCC.Lib.Blocks;
 using TCC.Lib.Command;
 using TCC.Lib.Database;
 using TCC.Lib.Dependencies;
 using TCC.Lib.Notification;
 
-namespace TCC.Lib.Helpers
+namespace TCC
 {
     public static class TccRegisteringExtensions
     {
-        public static void AddTcc(this IServiceCollection services, string workingPath = null)
+        public static void AddTcc(this IServiceCollection services)
         {
             services.AddScoped<ExternalDependencies>();
             services.AddScoped<TarCompressCrypt>();
@@ -34,10 +38,10 @@ namespace TCC.Lib.Helpers
             services.AddScoped<SlackSender>();
             services.AddScoped<SlackClient>();
 
-            services.RegisterDbContext<TccRestoreDbContext>(workingPath);
+            services.RegisterDbContext<TccRestoreDbContext>();
         }
 
-        private static void RegisterDbContext<TDbContext>(this IServiceCollection services, string workingPath)
+        private static void RegisterDbContext<TDbContext>(this IServiceCollection services)
             where TDbContext : DbContext
         {
             services.AddDbContextPool<TDbContext>((s, options) =>
@@ -55,6 +59,24 @@ namespace TCC.Lib.Helpers
                         }
                         case Provider.SqLite:
                         {
+                            var context = s.GetService<InvocationContext>();
+                            string workingPath = null;
+                            if (context is not null)
+                            {
+                                workingPath = context
+                                    .ParseResult
+                                    .CommandResult
+                                    .Children
+                                    .OfType<ArgumentResult>()
+                                    .FirstOrDefault()
+                                    ?.Tokens
+                                    ?.FirstOrDefault()
+                                    .Value;
+                            }
+                            if (workingPath is not null && !Directory.Exists(workingPath))
+                            {
+                                workingPath = new FileInfo(workingPath).Directory?.FullName;
+                            }
                             string cs = GetSqLiteConnectionString(setting.RestoreConnectionString, workingPath);
                             var sqLite = new SqliteConnection(cs);
                             sqLite.Open();
@@ -89,7 +111,6 @@ namespace TCC.Lib.Helpers
             return string.IsNullOrWhiteSpace(settingConnectionString) ? "Data Source=tcc.db" : settingConnectionString;
         }
     }
-
     public class TccSettings
     {
         public string RestoreConnectionString { get; set; }
@@ -102,4 +123,5 @@ namespace TCC.Lib.Helpers
         SqLite,
         SqlServer
     }
+
 }

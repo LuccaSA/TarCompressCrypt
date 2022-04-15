@@ -41,7 +41,7 @@ namespace TCC.Lib
             _databaseHelper = databaseHelper;
         }
 
-        public async Task<OperationSummary> Compress(CompressOption option)
+        public async Task<OperationSummary> CompressAsync(CompressOption option)
         {
             var sw = Stopwatch.StartNew();
 
@@ -85,8 +85,7 @@ namespace TCC.Lib
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
-            var ops = new OperationSummary(operationBlocks, option.Threads, sw);
-            return ops;
+            return new OperationSummary(operationBlocks, option.Threads, sw, option.SourceDirOrFile);
         }
 
         private async Task<OperationCompressionBlock> UploadBlockInternal(IRemoteStorage uploader, CompressOption option, OperationCompressionBlock block, CancellationToken token)
@@ -309,7 +308,7 @@ namespace TCC.Lib
             return new OperationCompressionBlock(block, result);
         }
 
-        public async Task<OperationSummary> Decompress(DecompressOption option)
+        public async Task<OperationSummary> DecompressAsync(DecompressOption option)
         {
             var sw = Stopwatch.StartNew();
             var po = ParallelizeOption(option);
@@ -384,7 +383,7 @@ namespace TCC.Lib
             sw.Stop();
             await _databaseHelper.AddRestoreBlockJobAsync(job, operationBlocks);
             await _databaseHelper.UpdateRestoreJobStatsAsync(sw, job);
-            return new OperationSummary(operationBlocks, option.Threads, sw);
+            return new OperationSummary(operationBlocks, option.Threads, sw, option.SourceDirOrFile);
         }
 
         private async Task<CommandResult> DecompressBlock(DecompressOption option, DecompressionBlock block, CancellationToken token)

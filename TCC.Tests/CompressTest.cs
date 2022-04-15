@@ -106,7 +106,7 @@ namespace TCC.Tests
 
             decompOption.PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(passwordMode, keysFolder);
 
-            var resultDecompress = await _tarCompressCrypt.Decompress(decompOption);
+            var resultDecompress = await _tarCompressCrypt.DecompressAsync(decompOption);
             return resultDecompress;
         }
 
@@ -117,7 +117,7 @@ namespace TCC.Tests
 
             compressOption.PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(passwordMode, keysFolder);
 
-            var resultCompress = await _tarCompressCrypt.Compress(compressOption);
+            var resultCompress = await _tarCompressCrypt.CompressAsync(compressOption);
             return resultCompress;
         }
 

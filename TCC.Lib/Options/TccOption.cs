@@ -1,6 +1,6 @@
 ﻿namespace TCC.Lib.Options
 {
-    public class TccOption
+    public class TccOption : ISlackOption
     {
         public string SourceDirOrFile { get; set; }
         public string DestinationDir { get; set; }

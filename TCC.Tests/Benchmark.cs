@@ -34,7 +34,7 @@ namespace TCC.Tests
 
                 var op = await scope.ServiceProvider
                     .GetRequiredService<BenchmarkRunner>()
-                    .RunBenchmark(new BenchmarkOption
+                    .RunBenchmarkAsync(new BenchmarkOption
                     {
                         Content = BenchmarkContent.Both,
                         Algorithm = BenchmarkCompressionAlgo.All,

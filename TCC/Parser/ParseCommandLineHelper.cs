@@ -1,224 +1,77 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using CommandLine;
-using TCC.Lib;
-using TCC.Lib.Blocks;
+﻿using TCC.Lib;
+using System;
 using TCC.Lib.Options;
+using System.IO;
 
 namespace TCC.Parser
 {
     public static class ParseCommandLineHelper
     {
-        public static TccCommand ParseCommandLine(this string[] args)
+        public static int ThreadsParsing(string thread)
         {
-            TccCommand command;
-
-            var parsed = CommandLine.Parser.Default.ParseArguments<CompressCmdOptions, DecompressOptions, BenchmarkOptions>(args);
-            try
-            {
-                command = parsed.MapResult(
-                    (CompressCmdOptions opts) =>
-                    {
-                        var option = new CompressOption
-                        {
-                            Algo = opts.Algorithm,
-                            CompressionRatio = opts.Ratio,
-                            DestinationDir = opts.Output,
-                            FailFast = opts.FailFast,
-                            Verbose = opts.Verbose,
-                            LogPaths = opts.LogPaths,
-                            SourceDirOrFile = opts.Source.FirstOrDefault(),
-                            BlockMode = opts.Individual ? BlockMode.Individual : BlockMode.Explicit,
-                            Threads = ExtractThreads(opts),
-                            FolderPerDay = opts.FolderPerDay,
-                            BoostRatio = opts.BoostRatio,
-                            CleanupTime = opts.CleanupTime,
-                            BackupMode = opts.BackupMode,
-                            RetryPeriodInSeconds = opts.RetryPeriodInSeconds,
-                            Filter = opts.Filter,
-                            Exclude = opts.Exclude,
-                            SlackChannel = opts.SlackChannel,
-                            SlackSecret = opts.SlackSecret,
-                            BucketName = opts.BucketName,
-                            SlackOnlyOnError = opts.SlackOnlyOnError,
-                            AzBlobUrl = opts.AzBlobUrl,
-                            AzBlobContainer = opts.AzBlobContainer,
-                            AzSaS = opts.AzSaS,
-                            GoogleStorageBucketName = opts.GoogleStorageBucketName,
-                            GoogleStorageCredentialFile = opts.GoogleStorageCredentialFile,
-                            AzThread = opts.AzThread,
-                            UploadMode = opts.UploadMode,
-                            AuditFilePath = opts.AuditFilePath
-                        };
-
-                        ExtractPasswordInfo(opts, option, Mode.Compress);
-
-                        return new TccCommand
-                        {
-                            Mode = Mode.Compress,
-                            Option = option
-                        };
-                    },
-                    (DecompressOptions opts) =>
-                    {
-                        var option = new DecompressOption
-                        {
-                            DestinationDir = opts.Output,
-                            FailFast = opts.FailFast,
-                            IgnoreMissingFull = opts.IgnoreMissingFull,
-                            Verbose = opts.Verbose,
-                            LogPaths = opts.LogPaths,
-                            SourceDirOrFile = opts.Source.FirstOrDefault(),
-                            Threads = ExtractThreads(opts),
-                            SlackChannel = opts.SlackChannel,
-                            SlackSecret = opts.SlackSecret,
-                            BucketName = opts.BucketName,
-                            SlackOnlyOnError = opts.SlackOnlyOnError,
-                            AuditFilePath = opts.AuditFilePath
-                        };
-
-                        ExtractPasswordInfo(opts, option, Mode.Decompress);
-
-                        return new TccCommand
-                        {
-                            Mode = Mode.Decompress,
-                            Option = option
-                        };
-                    },
-                    (BenchmarkOptions opts) =>
-                    {
-                        bool IsExplicitMode()
-                        {
-                            return !args.Any(i => BenchmarkOptions.AutoTestDataOptions.Contains(i));
-                        }
-
-                        var option = new BenchmarkOption
-                        {
-                            Algorithm = opts.Algorithm,
-                            Ratios = opts.Ratios,
-                            Encrypt = opts.Encrypt,
-                            Source = IsExplicitMode() ? opts.Source : null,
-                            Content = opts.Content,
-                            NumberOfFiles = opts.NumberOfFiles,
-                            FileSize = opts.FileSize,
-                            Threads = opts.Threads,
-                            OutputCompressed = opts.OutputCompressed,
-                            OutputDecompressed = opts.OutputDecompressed,
-                            Cleanup = opts.Cleanup
-                        };
-                        return new TccCommand
-                        {
-                            Mode = Mode.Benchmark,
-                            BenchmarkOption = option
-                        };
-                    },
-                    errs => new TccCommand { ReturnCode = 1 });
-            }
-            catch (CommandLineException ae)
-            {
-                Console.Out.WriteLine(ae.Message);
-                return new TccCommand { ReturnCode = 1 };
-            }
-            catch (Exception e)
-            {
-                Console.Out.WriteLine(e.ToString());
-                return new TccCommand { ReturnCode = 1 };
-            }
-            return command;
-        }
-
-        private static int ExtractThreads(BaseCmdOptions opts)
-        {
-            if (string.IsNullOrEmpty(opts.Threads))
+            if (string.IsNullOrEmpty(thread))
             {
                 return 1;
             }
-            if (string.Equals(opts.Threads, "all", StringComparison.InvariantCultureIgnoreCase))
+            if (string.Equals(thread, "all", StringComparison.InvariantCultureIgnoreCase))
             {
                 return Environment.ProcessorCount;
             }
-            if (int.TryParse(opts.Threads, out var nbThread))
+            if (int.TryParse(thread, out int nbThread))
             {
                 return nbThread;
             }
             throw new CommandLineException("Maximum threads need to be either numeric, or \"all\" ");
         }
 
-        private static void ExtractPasswordInfo(BaseCmdOptions opts, TccOption option, Mode mode)
-        {
-            if (!String.IsNullOrEmpty(opts.Password))
-            {
-                ExtractInlinePassword(opts, option);
-            }
-            if (!String.IsNullOrEmpty(opts.PasswordFile))
-            {
-                ExtractPasswordFile(opts, option);
-            }
-            if (!String.IsNullOrEmpty(opts.PasswordKey))
-            {
-                ExtractAsymetricFile(opts, option, mode);
-            }
-        }
 
-        private static void ExtractAsymetricFile(BaseCmdOptions opts, TccOption option, Mode mode)
+        public static void ExtractAsymetricFile(TccOption option, Mode mode, string passwordKey)
         {
             if (option.PasswordOption != NoPasswordOption.Nop)
                 throw new CommandLineException("Only one password mode allowed");
 
-            if (string.IsNullOrEmpty(opts.PasswordKey))
+            if (string.IsNullOrEmpty(passwordKey))
                 throw new CommandLineException("Public or private key must be specified");
 
-            if (!File.Exists(opts.PasswordKey))
+            if (!File.Exists(passwordKey))
                 throw new CommandLineException("Public or private key file doesn't exists");
 
-            switch (mode)
+            option.PasswordOption = mode switch
             {
-                case Mode.Compress:
-                    option.PasswordOption = new PublicKeyPasswordOption
-                    {
-                        PublicKeyFile = opts.PasswordKey
-                    };
-                    break;
-                case Mode.Decompress:
-                    option.PasswordOption = new PrivateKeyPasswordOption
-                    {
-                        PrivateKeyFile = opts.PasswordKey
-                    };
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
-            }
+                Mode.Compress => new PublicKeyPasswordOption { PublicKeyFile = passwordKey },
+                Mode.Decompress => new PrivateKeyPasswordOption { PrivateKeyFile = passwordKey },
+                _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+            };
         }
 
-        private static void ExtractPasswordFile(BaseCmdOptions opts, TccOption option)
+        public static void ExtractPasswordFile(TccOption option, string passwordFile)
         {
             if (option.PasswordOption != NoPasswordOption.Nop)
                 throw new CommandLineException("Only one password mode allowed");
 
-            if (string.IsNullOrEmpty(opts.PasswordFile))
+            if (string.IsNullOrEmpty(passwordFile))
                 throw new CommandLineException("Password file must be specified");
 
-            if (!File.Exists(opts.PasswordFile))
+            if (!File.Exists(passwordFile))
                 throw new CommandLineException("Password file doesn't exists");
 
             option.PasswordOption = new PasswordFileOption
             {
-                PasswordFile = opts.PasswordFile
+                PasswordFile = passwordFile
             };
         }
 
-        private static void ExtractInlinePassword(BaseCmdOptions opts, TccOption option)
+        public static void ExtractInlinePassword(TccOption option, string password)
         {
             if (option.PasswordOption != NoPasswordOption.Nop)
                 throw new CommandLineException("Only one password mode allowed");
 
-            if (string.IsNullOrEmpty(opts.Password))
+            if (string.IsNullOrEmpty(password))
                 throw new CommandLineException("Password must be specified");
 
             option.PasswordOption = new InlinePasswordOption
             {
-                Password = opts.Password
+                Password = password
             };
         }
     }

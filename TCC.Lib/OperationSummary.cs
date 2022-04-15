@@ -11,16 +11,18 @@ namespace TCC.Lib
         private OperationStatistic _statistics;
         private double? _compressionRatio;
 
-        public OperationSummary(IEnumerable<IIterationResult> operationBlocks, int threads, Stopwatch stopwatch)
+        public OperationSummary(IEnumerable<IIterationResult> operationBlocks, int threads, Stopwatch stopwatch, string sourceDirOrFile)
         {
             _threads = threads;
             Stopwatch = stopwatch;
+            SourceDirOrFile = sourceDirOrFile;
             OperationBlocks = operationBlocks ?? throw new ArgumentNullException(nameof(operationBlocks));
         }
 
         public IEnumerable<IIterationResult> OperationBlocks { get; }
         public bool IsSuccess => OperationBlocks.All(c => c.IsSuccess);
         public Stopwatch Stopwatch { get; }
+        public string SourceDirOrFile { get; }
 
         public void ThrowOnError()
         {
