@@ -68,7 +68,7 @@ namespace TCC.Lib.Blocks
             }
         }
 
-        private static readonly string[] _extensions = { ".tarlz4aes", ".tarlz4", ".tarbraes", ".tarbr", ".tarzstdaes", ".tarzstd" };
+        private static readonly string[] _extensions = { "*.tarlz4aes", "*.tarlz4", "*.tarbraes", "*.tarbr", "*.tarzstdaes", "*.tarzstd" };
 
         public static IEnumerable<DecompressionBatch> GenerateDecompressBlocks(this DecompressOption decompressOption)
         {
