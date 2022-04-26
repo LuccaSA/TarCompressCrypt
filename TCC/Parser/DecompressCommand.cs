@@ -15,7 +15,7 @@ namespace TCC.Parser
         public new string Threads { set => base.Threads = ParseCommandLineHelper.ThreadsParsing(value); }
         public string Password { set => ParseCommandLineHelper.ExtractInlinePassword(this, value); }
         public string PassFile { set => ParseCommandLineHelper.ExtractPasswordFile(this, value); }
-        public string Key { set => ParseCommandLineHelper.ExtractAsymetricFile(this, Mode.Compress, value); }
+        public string Key { set => ParseCommandLineHelper.ExtractAsymetricFile(this, Mode.Decompress, value); }
     }
 
     public class DecompressCommand : TccCommand<DecompressOptionBinding>
