@@ -32,7 +32,7 @@ namespace TCC.Lib.Storage
                 }
                 case UploadMode.GoogleCloudStorage:
                 {
-                    if (string.IsNullOrEmpty(option.GoogleStorageCredentialFile)
+                    if (string.IsNullOrEmpty(option.GoogleStorageCredential)
                         || string.IsNullOrEmpty(option.GoogleStorageBucketName))
                     {
                         logger.LogCritical("Configuration error for google storage upload");
@@ -52,13 +52,13 @@ namespace TCC.Lib.Storage
         private static async Task<StorageClient> GetGoogleStorageClient(CompressOption option, CancellationToken token)
         {
             GoogleCredential credential;
-            if (File.Exists(option.GoogleStorageCredentialFile))
+            if (File.Exists(option.GoogleStorageCredential))
             {
-                credential = await GoogleCredential.FromFileAsync(option.GoogleStorageCredentialFile, token);
+                credential = await GoogleCredential.FromFileAsync(option.GoogleStorageCredential, token);
             }
             else
             {
-                var decodedJson = Encoding.UTF8.GetString(Convert.FromBase64String(option.GoogleStorageCredentialFile));
+                var decodedJson = Encoding.UTF8.GetString(Convert.FromBase64String(option.GoogleStorageCredential));
                 credential = GoogleCredential.FromJson(decodedJson);
             }
             return await StorageClient.CreateAsync(credential);
