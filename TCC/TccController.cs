@@ -1,7 +1,14 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Google.Apis.Auth.OAuth2;
+using Google.Cloud.PubSub.V1;
+using Google.Cloud.Storage.V1;
+using Grpc.Auth;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
@@ -9,6 +16,7 @@ using TCC.Lib.Database;
 using TCC.Lib.Helpers;
 using TCC.Lib.Notification;
 using TCC.Lib.Options;
+using TCC.Parser;
 
 namespace TCC;
 
@@ -17,6 +25,7 @@ public interface ITccController
     Task CompressAsync(CompressOption option);
     Task DecompressAsync(DecompressOption option);
     Task BenchmarkAsync(BenchmarkOption option);
+    Task AutoDecompressAsync(AutoDecompressOptionBinding option);
 }
 
 public class TccController : ITccController
@@ -61,6 +70,71 @@ public class TccController : ITccController
         await LogResultAsync(operationResult, Mode.Benchmark, null);
     }
 
+    public async Task AutoDecompressAsync(AutoDecompressOptionBinding option)
+    {
+        var gcpCredential = await GoogleAuthHelper.GetGoogleClientAsync(option.GoogleStorageCredential, new CancellationToken());
+        var subscriber = await GetGoogleClientAsync(gcpCredential, option);
+        var storage = await StorageClient.CreateAsync(gcpCredential);
+
+        // Connect et on appelle DecompressAsync
+        await _databaseSetup.EnsureDatabaseExistsAsync(Mode.Decompress);
+
+        // Use the client as you'd normally do, to listen for messages in this example.
+        await subscriber.StartAsync(async (msg, cancellationToken) =>
+        {
+            if (!msg.Attributes.Any(kvp => kvp.Key == "eventType" && kvp.Value == "OBJECT_FINALIZE"))
+            {
+                _logger.LogDebug("EventType not found : {attributes}", msg.Attributes);
+                return SubscriberClient.Reply.Ack;
+            }
+            var msgData = JsonSerializer.Deserialize<ObjectStorageEvent>(msg.Data.ToStringUtf8(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (string.IsNullOrEmpty(msgData.Name))
+            {
+                _logger.LogDebug("Object name not found");
+                return SubscriberClient.Reply.Ack;
+            }
+            if (string.IsNullOrEmpty(msgData.Bucket))
+            {
+                _logger.LogDebug("Bucket name not found");
+                return SubscriberClient.Reply.Ack;
+            }
+
+            var fileName = Path.GetFileName(msgData.Name);
+            string tempPath;
+            if (string.IsNullOrEmpty(option.TemporaryDirectory))
+            {
+                tempPath = Path.Join(option.TemporaryDirectory, fileName);
+            }
+            else
+            {
+                tempPath = Path.GetRandomFileName();
+            }
+            using (var outputFile = File.OpenWrite(tempPath))
+            {
+                await storage.DownloadObjectAsync(msgData.Bucket, msgData.Name, outputFile);
+            }
+            _logger.LogDebug("{fileName} downloaded in {path}", fileName, tempPath);
+
+            option.SourceDirOrFile = tempPath;
+            var operationResult = await _tarCompressCrypt.DecompressAsync(option);
+            await _databaseSetup.CleanupDatabaseAsync(Mode.Decompress);
+            await LogResultAsync(operationResult, Mode.Decompress, option);
+            File.Delete(tempPath);
+
+            return SubscriberClient.Reply.Ack;
+        });
+    }
+    private record ObjectStorageEvent(string Bucket, string Name);
+    private static async Task<SubscriberClient> GetGoogleClientAsync(GoogleCredential credential, AutoDecompressOptionBinding option)
+    {
+        var subscriptionName = new SubscriptionName(option.GoogleProjectId, option.GoogleSubscriptionId);
+        // Create a google cloud pub/sub client that reads messages one by one
+        return await SubscriberClient.CreateAsync(
+            subscriptionName,
+            new SubscriberClient.ClientCreationSettings(clientCount: 1, credentials: credential.ToChannelCredentials()),
+            new SubscriberClient.Settings { FlowControlSettings = new Google.Api.Gax.FlowControlSettings(1, null) }
+        );
+    }
 
     private async Task LogResultAsync(OperationSummary operationResult, Mode mode, ISlackOption slackOption)
     {
@@ -142,5 +216,4 @@ public class TccController : ITccController
             }
         }
     }
-
 }
