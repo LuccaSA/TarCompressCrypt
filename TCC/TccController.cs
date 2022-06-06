@@ -76,7 +76,6 @@ public class TccController : ITccController
         var subscriber = await GetGoogleClientAsync(gcpCredential, option);
         var storage = await StorageClient.CreateAsync(gcpCredential);
 
-        // Connect et on appelle DecompressAsync
         await _databaseSetup.EnsureDatabaseExistsAsync(Mode.Decompress);
 
         // Use the client as you'd normally do, to listen for messages in this example.
