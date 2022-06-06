@@ -1,48 +1,37 @@
-﻿using CommandLine;
+﻿using System.Collections.Generic;
+using System.CommandLine;
 
 namespace TCC.Parser
 {
-    public class BaseCmdOptions
+    public static class BaseCmdOptions
     {
-        [Option('o', "output", Required = true, HelpText = "Output directory path")]
-        public string Output { get; set; }
-
-        [Option('t', "threads", HelpText = "Number of threads [1,2...N] / all")]
-        public string Threads { get; set; }
-
-        [Option('f', "failFast", HelpText = "Fail-fast mode")]
-        public bool FailFast { get; set; }
-
-        [Option("ignore-missing-full", HelpText = "Still decompress DIFF when FULL is missing")]
-        public bool IgnoreMissingFull { get; set; }
-
-        [Option('p', "password", HelpText = "encryption password")]
-        public string Password { get; set; }
-
-        [Option('e', "passFile", HelpText = "file with password on one line")]
-        public string PasswordFile { get; set; }
-
-        [Option('k', "key", HelpText = "Public key for compression, private key for decompression")]
-        public string PasswordKey { get; set; }
-
-        [Option('s', "slackSecret", HelpText = "Slack xoxp Secret")]
-        public string SlackSecret { get; set; }
-
-        [Option('c', "slackChannel", HelpText = "Slack #channel name")]
-        public string SlackChannel { get; set; }
-
-        [Option('b', "bucketName", HelpText = "Slack notification bucket name")]
-        public string BucketName { get; set; }
-
-        [Option("slackOnlyOnError", HelpText = "Send slack message only on warning or error")]
-        public bool SlackOnlyOnError { get; set; }
-
-        [Option('v', "verbose", HelpText = "Verbose output", Default = false)]
-        public bool Verbose { get; set; }
-
-        [Option("logPath", HelpText = "Log path")]
-        public string LogPaths { get; set; }
-        [Option("auditFile", HelpText = "Path to the audit log file")]
-        public string AuditFilePath { get; set; }
+        public static IEnumerable<Option> CreateBaseOptions()
+        {
+            yield return new Option<string>(new[] { "-o", "--output", "--destination-dir" }, description: "Output directory path") { IsRequired = true };
+            var threadOption = new Option<string>(new[] { "-t", "--threads" }, "Number of threads [1,2...N] / all");
+            threadOption
+                .AddValidator(result =>
+                {
+                    string threads = result.GetValueForOption(threadOption);
+                    if (!(
+                        string.IsNullOrEmpty(threads) ||
+                        string.Equals(threads, "all", System.StringComparison.InvariantCultureIgnoreCase) ||
+                        int.TryParse(threads, out _)
+                        ))
+                    {
+                        result.ErrorMessage = "Maximum threads need to be either numeric, or \"all\"";
+                    }
+                });
+            yield return threadOption;
+            yield return new Option<bool>(new[] { "-f", "--failFast" }, "Fail-fast mode");
+            yield return new Option<bool>(new[] { "--ignore-missing-full" }, "Still decompress DIFF when FULL is missing");
+            yield return new Option<string>(new[] { "-p", "--password" }, "encryption password");
+            yield return new Option<string>(new[] { "-e", "--passFile" }, "file with password on one line");
+            yield return new Option<string>(new[] { "-k", "--key" }, "Public key for compression, private key for decompression");
+            yield return new Option<string>(new[] { "-s", "--slackSecret" }, "Slack xoxp Secret");
+            yield return new Option<string>(new[] { "-c", "--slackChannel" }, "Slack #channel name");
+            yield return new Option<string>(new[] { "-b", "--bucketName" }, "Slack notification bucket name");
+            yield return new Option<bool>(new[] { "--slackOnlyOnError" }, "Send slack message only on warning or error");
+        }
     }
 }

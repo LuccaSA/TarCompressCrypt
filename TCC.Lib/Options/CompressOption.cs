@@ -21,7 +21,7 @@ namespace TCC.Lib.Options
         public string AzSaS { get; set; }
         public int? AzThread { get; set; }
         public string GoogleStorageBucketName { get; set; }
-        public string GoogleStorageCredentialFile { get; set; }
+        public string GoogleStorageCredential { get; set; }
         public UploadMode? UploadMode { get; set; }
     }
 }

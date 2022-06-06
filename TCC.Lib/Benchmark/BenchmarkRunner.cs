@@ -28,7 +28,7 @@ namespace TCC.Lib.Benchmark
             _iterationGenerator = iterationGenerator;
         }
 
-        public async Task<OperationSummary> RunBenchmark(BenchmarkOption benchmarkOption)
+        public async Task<OperationSummary> RunBenchmarkAsync(BenchmarkOption benchmarkOption)
         {
             var operationSummaries = new List<OperationSummary>();
             var keysFolder = TestFileHelper.NewFolder();
@@ -52,7 +52,7 @@ namespace TCC.Lib.Benchmark
                     PasswordOption = await _benchmarkOptionHelper.GenerateCompressPasswordOption(pm, keysFolder),
                     BackupMode = BackupMode.Full
                 };
-                OperationSummary resultCompress = await _tarCompressCrypt.Compress(compressOption);
+                OperationSummary resultCompress = await _tarCompressCrypt.CompressAsync(compressOption);
 
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
@@ -73,7 +73,7 @@ namespace TCC.Lib.Benchmark
                     Threads = threads,
                     PasswordOption = _benchmarkOptionHelper.GenerateDecompressPasswordOption(pm, keysFolder)
                 };
-                OperationSummary resultDecompress = await _tarCompressCrypt.Decompress(decompressOption);
+                OperationSummary resultDecompress = await _tarCompressCrypt.DecompressAsync(decompressOption);
                 if (_cancellationTokenSource.IsCancellationRequested)
                 {
                     await Cleanup();
@@ -96,7 +96,7 @@ namespace TCC.Lib.Benchmark
                 }
                 await Cleanup();
             }
-            return new OperationSummary(operationSummaries.SelectMany(i => i.OperationBlocks), 0, default);
+            return new OperationSummary(operationSummaries.SelectMany(i => i.OperationBlocks), 0, default, benchmarkOption.Source);
         }
 
         private static StringBuilder FormatResultSummary(BenchmarkIteration iteration, OperationSummary resultCompress, OperationSummary resultDecompress)

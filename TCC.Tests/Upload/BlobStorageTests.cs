@@ -52,7 +52,7 @@ namespace TCC.Tests.Upload
             var opt = new CompressOption()
             {
                 GoogleStorageBucketName = GetEnvVar("GoogleBucket"),
-                GoogleStorageCredentialFile = GetEnvVar("GoogleCredential")
+                GoogleStorageCredential = GetEnvVar("GoogleCredential")
             };
 
             opt.UploadMode = UploadMode.GoogleCloudStorage;

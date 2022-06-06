@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using TCC.Lib.Database;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
@@ -17,15 +16,15 @@ namespace TCC.Lib.Notification
             _slackClient = slackClient;
         }
 
-        public async Task ReportAsync(OperationSummary op, TccOption parsedOption, Mode mode)
+        public async Task ReportAsync(OperationSummary op, ISlackOption slackOption, Mode mode)
         {
-            if (string.IsNullOrWhiteSpace(parsedOption?.SlackSecret) ||
-                string.IsNullOrWhiteSpace(parsedOption.SlackChannel))
+            if (string.IsNullOrWhiteSpace(slackOption?.SlackSecret) ||
+                string.IsNullOrWhiteSpace(slackOption.SlackChannel))
             {
                 return;
             }
 
-            if (parsedOption.SlackOnlyOnError && !op.OperationBlocks
+            if (slackOption.SlackOnlyOnError && !op.OperationBlocks
                 .Any(i => i.HasWarning || i.HasError))
             {
                 return;
@@ -33,25 +32,25 @@ namespace TCC.Lib.Notification
 
             string shell = SlackShell(op);
             string blocksStats = BlocksStats(op, mode);
-            string bucket = parsedOption.BucketName ?? Environment.MachineName;
+            string bucket = slackOption.BucketName ?? Environment.MachineName;
 
             var msgRoot = new SlackMessage
             {
-                Channel = parsedOption.SlackChannel,
+                Channel = slackOption.SlackChannel,
                 Text = $"{shell} *{bucket}* : {mode} {blocksStats} in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}",
             };
-            var response = await _slackClient.SendSlackMessageAsync(msgRoot, parsedOption.SlackSecret);
+            var response = await _slackClient.SendSlackMessageAsync(msgRoot, slackOption.SlackSecret);
 
             var msgDetail = new SlackMessage
             {
-                Channel = parsedOption.SlackChannel,
+                Channel = slackOption.SlackChannel,
                 Text = $"*{mode}* Details on {bucket}",
                 ThreadTs = response.Ts,
                 Attachments = new List<Attachment>()
             };
 
-            SlackReportDetail(op, parsedOption, msgDetail);
-            await _slackClient.SendSlackMessageAsync(msgDetail, parsedOption.SlackSecret);
+            SlackReportDetail(op, msgDetail);
+            await _slackClient.SendSlackMessageAsync(msgDetail, slackOption.SlackSecret);
         }
 
         private static string BlocksStats(OperationSummary op, Mode mode)
@@ -101,7 +100,7 @@ namespace TCC.Lib.Notification
             return shell;
         }
 
-        private static void SlackReportDetail(OperationSummary op, TccOption parsedOption, SlackMessage msg)
+        private static void SlackReportDetail(OperationSummary op, SlackMessage msg)
         {
             var reports = new List<SlackReport>();
             foreach (var o in op.OperationBlocks)
@@ -146,7 +145,7 @@ namespace TCC.Lib.Notification
                         },
                         new Field
                         {
-                            Value = parsedOption.SourceDirOrFile, Short = true
+                            Value = op.SourceDirOrFile, Short = true
                         },
 
                         new Field
