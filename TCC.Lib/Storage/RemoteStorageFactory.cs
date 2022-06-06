@@ -7,6 +7,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Lib.Storage
@@ -38,7 +39,7 @@ namespace TCC.Lib.Storage
                         logger.LogCritical("Configuration error for google storage upload");
                         return new NoneRemoteStorage();
                     }
-                    StorageClient storage = await GetGoogleStorageClient(option, token);
+                    StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
                     return new GoogleRemoteStorage(storage, option.GoogleStorageBucketName);
                 }
                 case UploadMode.None:
@@ -47,21 +48,6 @@ namespace TCC.Lib.Storage
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-        }
-
-        private static async Task<StorageClient> GetGoogleStorageClient(CompressOption option, CancellationToken token)
-        {
-            GoogleCredential credential;
-            if (File.Exists(option.GoogleStorageCredential))
-            {
-                credential = await GoogleCredential.FromFileAsync(option.GoogleStorageCredential, token);
-            }
-            else
-            {
-                var decodedJson = Encoding.UTF8.GetString(Convert.FromBase64String(option.GoogleStorageCredential));
-                credential = GoogleCredential.FromJson(decodedJson);
-            }
-            return await StorageClient.CreateAsync(credential);
         }
     }
 }
