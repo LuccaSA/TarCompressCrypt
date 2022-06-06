@@ -48,6 +48,7 @@ namespace TCC
         public static CommandLineBuilder BuildCommandLine()
             => new CommandLineBuilder(new RootCommand
                 {
+                    new AutoDecompressCommand(),
                     new CompressCommand(),
                     new DecompressCommand(),
                     new BenchmarkCommand()
