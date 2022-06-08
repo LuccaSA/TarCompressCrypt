@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using TCC.Lib;
 using TCC.Lib.Benchmark;
 using TCC.Lib.Database;
+using TCC.Lib.Dependencies;
 using TCC.Lib.Helpers;
 using TCC.Lib.Notification;
 using TCC.Lib.Options;
@@ -35,29 +36,35 @@ public class TccController : ITccController
     private readonly DatabaseSetup _databaseSetup;
     private readonly BenchmarkRunner _benchmarkRunner;
     private readonly SlackSender _slackSender;
+    private readonly ExternalDependencies _externalDependencies;
+    private readonly CancellationTokenSource _cancellationTokenSource;
 
     public TccController(
         ILogger<TccController> loger, TarCompressCrypt tarCompressCrypt,
         DatabaseSetup databaseSetup, BenchmarkRunner benchmarkRunner,
-        SlackSender slackSender)
+        SlackSender slackSender, ExternalDependencies externalDependencies,
+        CancellationTokenSource cancellationTokenSource)
     {
         _logger = loger;
         _tarCompressCrypt = tarCompressCrypt;
         _databaseSetup = databaseSetup;
         _benchmarkRunner = benchmarkRunner;
         _slackSender = slackSender;
-
+        _externalDependencies = externalDependencies;
+        _cancellationTokenSource = cancellationTokenSource;
         _logger.LogInformation($"Starting ------------------------------------------------- {DateTime.UtcNow}");
     }
 
     public async Task CompressAsync(CompressOption option)
     {
+        await InitTccAsync();
         var operationResult = await _tarCompressCrypt.CompressAsync(option);
         await LogResultAsync(operationResult, Mode.Compress, option);
     }
 
     public async Task DecompressAsync(DecompressOption option)
     {
+        await InitTccAsync();
         await _databaseSetup.EnsureDatabaseExistsAsync(Mode.Decompress);
         var operationResult = await _tarCompressCrypt.DecompressAsync(option);
         await _databaseSetup.CleanupDatabaseAsync(Mode.Decompress);
@@ -66,12 +73,14 @@ public class TccController : ITccController
 
     public async Task BenchmarkAsync(BenchmarkOption option)
     {
+        await InitTccAsync();
         var operationResult = await _benchmarkRunner.RunBenchmarkAsync(option);
         await LogResultAsync(operationResult, Mode.Benchmark, null);
     }
 
     public async Task AutoDecompressAsync(AutoDecompressOptionBinding option)
     {
+        await InitTccAsync();
         var gcpCredential = await GoogleAuthHelper.GetGoogleClientAsync(option.GoogleStorageCredential, new CancellationToken());
         var subscriber = await GetGoogleClientAsync(gcpCredential, option);
         var storage = await StorageClient.CreateAsync(gcpCredential);
@@ -214,5 +223,11 @@ public class TccController : ITccController
                 }));
             }
         }
+    }
+
+    private Task InitTccAsync()
+    {
+        _cancellationTokenSource.HookTermination();
+        return _externalDependencies.EnsureAllDependenciesPresent();
     }
 }
