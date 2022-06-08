@@ -18,7 +18,7 @@ namespace TCC.Lib.Options
         public int? CleanupTime { get; set; }
         public string AzBlobUrl { get; set; }
         public string AzBlobContainer { get; set; }
-        public string AzSaS { get; set; }
+        public string AzBlobSaS { get; set; }
         public int? AzThread { get; set; }
         public string GoogleStorageBucketName { get; set; }
         public string GoogleStorageCredential { get; set; }
