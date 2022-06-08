@@ -1,18 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Hosting;
 using System.CommandLine.Parsing;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using TCC.Lib;
-using TCC.Lib.Helpers;
-using TCC.Lib.Options;
 using TCC.Parser;
 
 namespace TCC
