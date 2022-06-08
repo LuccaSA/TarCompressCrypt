@@ -22,12 +22,12 @@ namespace TCC.Lib.Storage
                 {
                     if (string.IsNullOrEmpty(option.AzBlobUrl)
                         || string.IsNullOrEmpty(option.AzBlobContainer)
-                        || string.IsNullOrEmpty(option.AzSaS))
+                        || string.IsNullOrEmpty(option.AzBlobSaS))
                     {
                         logger.LogCritical("Configuration error for azure blob upload");
                         return new NoneRemoteStorage();
                     }
-                    var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzSaS));
+                    var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzBlobSaS));
                     BlobContainerClient container = client.GetBlobContainerClient(option.AzBlobContainer);
                     return new AzureRemoteStorage(container);
                 }

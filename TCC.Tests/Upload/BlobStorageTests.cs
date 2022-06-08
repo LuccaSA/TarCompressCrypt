@@ -33,7 +33,7 @@ namespace TCC.Tests.Upload
             {
                 AzBlobUrl = GetEnvVar("AZ_URL"),
                 AzBlobContainer = GetEnvVar("AZ_CONTAINER"),
-                AzSaS = GetEnvVar("AZ_SAS_TOKEN")
+                AzBlobSaS = GetEnvVar("AZ_SAS_TOKEN")
             };
             opt.UploadMode = UploadMode.AzureSdk;
             var uploader = await opt.GetRemoteStorageAsync(NullLogger.Instance, CancellationToken.None);
