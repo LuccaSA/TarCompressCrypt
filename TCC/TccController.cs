@@ -201,7 +201,7 @@ public class TccController : ITccController
         {
             foreach (IEnumerable<StepResult> stepResults in op.OperationBlocks.Select(o => o.StepResults).Where(result => result.Any()))
             {
-                var name = stepResults.FirstOrDefault(sr => string.IsNullOrEmpty(sr.Name))?.Name;
+                var name = stepResults.FirstOrDefault(sr => !string.IsNullOrEmpty(sr.Name))?.Name;
                 var logLevel = LogLevel.Information;
                 if (stepResults.Any(stepResult => stepResult.HasError))
                 {
