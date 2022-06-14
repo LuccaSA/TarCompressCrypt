@@ -211,16 +211,23 @@ public class TccController : ITccController
                 {
                     logLevel = LogLevel.Warning;
                 }
-                _logger.Log(logLevel, "{Mode} / {Name} / {@results}", mode, name, stepResults.Select(sr => new
-                {
-                    sr.ArchiveFileSize,
-                    sr.Type,
-                    sr.ElapsedMilliseconds,
-                    sr.HasError,
-                    sr.HasWarning,
-                    sr.Infos,
-                    sr.IsSuccess
-                }));
+                _logger.Log(
+                    logLevel,
+                    "{Mode} / {Name} / {duration} / {@results}",
+                    mode,
+                    name,
+                    stepResults.Select(s => s.ElapsedMilliseconds).Sum() * 1000000,
+                    stepResults.Select(sr => new
+                    {
+                        sr.ArchiveFileSize,
+                        sr.Type,
+                        sr.ElapsedMilliseconds,
+                        sr.HasError,
+                        sr.HasWarning,
+                        sr.Infos,
+                        sr.IsSuccess
+                    })
+                );
             }
         }
     }
