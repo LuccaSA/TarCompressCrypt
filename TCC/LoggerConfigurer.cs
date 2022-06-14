@@ -4,6 +4,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
+using Serilog.Formatting.Compact;
 using Serilog.Formatting.Json;
 using System;
 using System.Collections.Generic;
@@ -96,7 +97,7 @@ namespace TCC
                             .MinimumLevel.Information()
                             .WriteTo.Async(conf =>
                             {
-                                conf.File(new JsonFormatter(), auditFile, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
+                                conf.File(new AuditLogJsonFormatter(), auditFile, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 31);
                             })
                             .Filter.ByIncludingOnly(IsAuditLog);
                     });
