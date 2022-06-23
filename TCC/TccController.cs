@@ -109,13 +109,13 @@ public class TccController : ITccController
 
             var fileName = Path.GetFileName(msgData.Name);
             string tempPath;
-            if (string.IsNullOrEmpty(option.TemporaryDirectory))
+            if (!string.IsNullOrEmpty(option.TemporaryDirectory))
             {
                 tempPath = Path.Join(option.TemporaryDirectory, fileName);
             }
             else
             {
-                tempPath = Path.GetRandomFileName();
+                tempPath = Path.Join(Path.GetTempPath(), Path.GetRandomFileName() + fileName);
             }
             using (var outputFile = File.OpenWrite(tempPath))
             {
