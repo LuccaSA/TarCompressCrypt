@@ -41,7 +41,7 @@ namespace TCC.Lib.Dependencies
                 {
                     throw new Exception("todo ex msg");
                 }
-                cmd.Append($" -N \"{block.DiffDate.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}\"");
+                cmd.Append($" --newer-mtime \"{block.DiffDate.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}\"");
             }
 
             switch (option.PasswordOption.PasswordMode)
