@@ -1,4 +1,6 @@
-﻿using Azure.Storage.Blobs;
+using Amazon.Runtime;
+using Amazon.S3;
+using Azure.Storage.Blobs;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Logging;
@@ -42,6 +44,25 @@ namespace TCC.Lib.Storage
                     StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
                     return new GoogleRemoteStorage(storage, option.GoogleStorageBucketName);
                 }
+                case UploadMode.S3:
+                    if (string.IsNullOrEmpty(option.S3AccessKeyId)
+                        || string.IsNullOrEmpty(option.S3Host)
+                        || string.IsNullOrEmpty(option.S3Region)
+                        || string.IsNullOrEmpty(option.S3BucketName)
+                        || string.IsNullOrEmpty(option.S3SecretAcessKey))
+                    {
+                        logger.LogCritical("Configuration error for S3 upload");
+                        return new NoneRemoteStorage();
+                    }
+
+                    var credentials = new BasicAWSCredentials(option.S3AccessKeyId, option.S3SecretAcessKey);
+                    var s3Config = new AmazonS3Config()
+                    {
+                        AuthenticationRegion = option.S3Region,
+                        ServiceURL = option.S3Host,
+                    };
+
+                    return new S3RemoteStorage(new AmazonS3Client(credentials, s3Config), option.S3BucketName);
                 case UploadMode.None:
                 case null:
                     return new NoneRemoteStorage();
