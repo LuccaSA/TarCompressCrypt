@@ -39,5 +39,7 @@ namespace TCC.Lib.Storage
                 RemoteFilePath = targetPath
             };
         }
+
+        public UploadMode GetMode() => UploadMode.GoogleCloudStorage;
     }
 }

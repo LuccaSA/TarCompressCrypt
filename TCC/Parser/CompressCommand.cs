@@ -58,7 +58,8 @@ namespace TCC.Parser
             yield return new Option<int?>(new[] { "--cleanupTime" }, "Specify the time, in hours, after which the backup files are deleted. If no time is specified, then no backup files are deleted.");
 
             // Remote storage options
-            yield return new Option<UploadMode?>(new[] { "--uploadMode" }, "Upload mode");
+            yield return new Option<UploadMode?>(new[] { "--uploadMode" }, "Upload mode (retro compat with single upload options)");
+            yield return new Option<IEnumerable<UploadMode>>(new[] { "--uploadModes" }, "Upload modes");
             yield return new Option<string>(new[] { "--azBlobUrl" }, "Azure blob storage URL");
             yield return new Option<string>(new[] { "--azBlobContainer" }, "Azure blob storage container id");
             yield return new Option<string>(new[] { "--azBlobSaS" }, "Azure blob storage SaS token");

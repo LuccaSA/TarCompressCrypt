@@ -5,7 +5,11 @@ using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,59 +20,69 @@ namespace TCC.Lib.Storage
 {
     public static class RemoteStorageFactory
     {
-        public static async Task<IRemoteStorage> GetRemoteStorageAsync(this CompressOption option, ILogger logger, CancellationToken token)
+        public static async Task<IEnumerable<IRemoteStorage>> GetRemoteStoragesAsync(this CompressOption option, ILogger logger, CancellationToken token)
         {
-            switch (option.UploadMode)
+            var remoteStorages = new List<IRemoteStorage>();
+
+            option.UploadModes = option.UploadModes.Append(option.UploadMode ?? UploadMode.None).Distinct();
+
+            foreach(var mode in option.UploadModes)
             {
-                case UploadMode.AzureSdk:
+                switch (mode)
                 {
-                    if (string.IsNullOrEmpty(option.AzBlobUrl)
-                        || string.IsNullOrEmpty(option.AzBlobContainer)
-                        || string.IsNullOrEmpty(option.AzBlobSaS))
-                    {
-                        logger.LogCritical("Configuration error for azure blob upload");
-                        return new NoneRemoteStorage();
-                    }
-                    var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzBlobSaS));
-                    BlobContainerClient container = client.GetBlobContainerClient(option.AzBlobContainer);
-                    return new AzureRemoteStorage(container);
-                }
-                case UploadMode.GoogleCloudStorage:
-                {
-                    if (string.IsNullOrEmpty(option.GoogleStorageCredential)
-                        || string.IsNullOrEmpty(option.GoogleStorageBucketName))
-                    {
-                        logger.LogCritical("Configuration error for google storage upload");
-                        return new NoneRemoteStorage();
-                    }
-                    StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
-                    return new GoogleRemoteStorage(storage, option.GoogleStorageBucketName);
-                }
-                case UploadMode.S3:
-                    if (string.IsNullOrEmpty(option.S3AccessKeyId)
-                        || string.IsNullOrEmpty(option.S3Host)
-                        || string.IsNullOrEmpty(option.S3Region)
-                        || string.IsNullOrEmpty(option.S3BucketName)
-                        || string.IsNullOrEmpty(option.S3SecretAcessKey))
-                    {
-                        logger.LogCritical("Configuration error for S3 upload");
-                        return new NoneRemoteStorage();
-                    }
+                    case UploadMode.AzureSdk:
+                        {
+                            if (string.IsNullOrEmpty(option.AzBlobUrl)
+                                || string.IsNullOrEmpty(option.AzBlobContainer)
+                                || string.IsNullOrEmpty(option.AzBlobSaS))
+                            {
+                                logger.LogCritical("Configuration error for azure blob upload");
+                                continue;
+                            }
+                            var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzBlobSaS));
+                            BlobContainerClient container = client.GetBlobContainerClient(option.AzBlobContainer);
+                            remoteStorages.Add(new AzureRemoteStorage(container));
+                            break;
+                        }
+                    case UploadMode.GoogleCloudStorage:
+                        {
+                            if (string.IsNullOrEmpty(option.GoogleStorageCredential)
+                                || string.IsNullOrEmpty(option.GoogleStorageBucketName))
+                            {
+                                logger.LogCritical("Configuration error for google storage upload");
+                                continue;
+                            }
+                            StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
+                            remoteStorages.Add(new GoogleRemoteStorage(storage, option.GoogleStorageBucketName));
+                            break;
+                        }
+                    case UploadMode.S3:
+                        if (string.IsNullOrEmpty(option.S3AccessKeyId)
+                            || string.IsNullOrEmpty(option.S3Host)
+                            || string.IsNullOrEmpty(option.S3Region)
+                            || string.IsNullOrEmpty(option.S3BucketName)
+                            || string.IsNullOrEmpty(option.S3SecretAcessKey))
+                        {
+                            logger.LogCritical("Configuration error for S3 upload");
 
-                    var credentials = new BasicAWSCredentials(option.S3AccessKeyId, option.S3SecretAcessKey);
-                    var s3Config = new AmazonS3Config()
-                    {
-                        AuthenticationRegion = option.S3Region,
-                        ServiceURL = option.S3Host,
-                    };
+                        }
 
-                    return new S3RemoteStorage(new AmazonS3Client(credentials, s3Config), option.S3BucketName);
-                case UploadMode.None:
-                case null:
-                    return new NoneRemoteStorage();
-                default:
-                    throw new ArgumentOutOfRangeException();
+                        var credentials = new BasicAWSCredentials(option.S3AccessKeyId, option.S3SecretAcessKey);
+                        var s3Config = new AmazonS3Config()
+                        {
+                            AuthenticationRegion = option.S3Region,
+                            ServiceURL = option.S3Host,
+                        };
+
+                        remoteStorages.Add(new S3RemoteStorage(new AmazonS3Client(credentials, s3Config), option.S3BucketName));
+                        break;
+                    case UploadMode.None:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
+            return remoteStorages;
         }
     }
 }

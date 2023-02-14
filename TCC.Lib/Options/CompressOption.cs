@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using TCC.Lib.Blocks;
 using TCC.Lib.Database;
 
@@ -27,6 +28,7 @@ namespace TCC.Lib.Options
         public string S3Host { get; set; }
         public string S3BucketName { get; set; }
         public string S3Region { get; set; }
+        public IEnumerable<UploadMode> UploadModes { get; set; } = Enumerable.Empty<UploadMode>();
         public UploadMode? UploadMode { get; set; }
     }
 }
