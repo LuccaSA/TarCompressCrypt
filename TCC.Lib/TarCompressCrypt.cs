@@ -90,15 +90,15 @@ namespace TCC.Lib
 
         private async Task<OperationCompressionBlock> UploadBlockInternal(IEnumerable<IRemoteStorage> uploaders, CompressOption option, OperationCompressionBlock block, CancellationToken token)
         {
-            foreach(var uploader in uploaders)
+            int count = Interlocked.Increment(ref _uploadCounter);
+            string progress = $"{count}/{_totalCounter}";
+
+            foreach (var uploader in uploaders)
             {
                 if (uploader is NoneRemoteStorage)
                 {
                     continue;
                 }
-
-                int count = Interlocked.Increment(ref _uploadCounter);
-                string progress = $"{count}/{_totalCounter}";
 
                 var file = block.CompressionBlock.DestinationArchiveFileInfo;
                 var name = file.Name;
@@ -129,7 +129,7 @@ namespace TCC.Lib
 
                         if (!hasError)
                         {
-                            _logger.LogInformation($"{progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
+                            _logger.LogInformation($"[{uploader.GetMode()}] {progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                         }
                         else
                         {
@@ -137,7 +137,7 @@ namespace TCC.Lib
                             {
                                 ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                             }
-                            _logger.LogError($"{progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
+                            _logger.LogError($"[{uploader.GetMode()}] {progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
                         }
                     }
                     catch (Exception e)
@@ -147,14 +147,14 @@ namespace TCC.Lib
                         {
                             ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                         }
-                        _logger.LogCritical(e, $"{progress} Error uploading {name}");
+                        _logger.LogCritical(e, $"[{uploader.GetMode()}] {progress} Error uploading {name}");
                     }
 
                     if (hasError)
                     {
                         if (ctx != null && await ctx.WaitForNextRetry())
                         {
-                            _logger.LogWarning($"{progress} Retrying uploading {name}, attempt #{ctx.Retries}");
+                            _logger.LogWarning($"[{uploader.GetMode()}] {progress} Retrying uploading {name}, attempt #{ctx.Retries}");
                         }
                         else
                         {

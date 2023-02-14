@@ -63,7 +63,7 @@ namespace TCC.Tests.Upload
 
             Assert.True(ok.IsSuccess);
 
-            var gs = uploader as GoogleRemoteStorage;
+            var gs = uploader.First() as GoogleRemoteStorage;
             
             await gs.Storage.DeleteObjectAsync(gs.BucketName, ok.RemoteFilePath);
         }
