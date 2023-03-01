@@ -39,7 +39,7 @@ namespace TCC.Lib.Notification
                 Channel = slackOption.SlackChannel,
                 Text = bucket == Environment.MachineName ? 
                 $"{shell} *{bucket}* : {mode} {blocksStats} in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}" :
-                $"{shell} *{bucket}* ({Environment.MachineName.ToLower()}) : {mode} {blocksStats} in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}",
+                $"{shell} *{bucket}* ({Environment.MachineName.ToLowerInvariant()}) : {mode} {blocksStats} in {op.Stopwatch.Elapsed.HumanizedTimeSpan()}",
             };
             var response = await _slackClient.SendSlackMessageAsync(msgRoot, slackOption.SlackSecret);
 
