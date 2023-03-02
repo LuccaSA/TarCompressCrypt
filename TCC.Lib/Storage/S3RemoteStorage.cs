@@ -30,7 +30,7 @@ namespace TCC.Lib.Storage
             {
                 if (_multipartTreshold != 0  && data.Length > _multipartTreshold)
                 {
-                    await UploadStreamToMultiparts(targetPath, data, token);
+                    await UploadStreamToMultipartsAsync(targetPath, data, token);
                 } else
                 {
                     await _s3Client.PutObjectAsync(new ()
@@ -57,7 +57,7 @@ namespace TCC.Lib.Storage
             };
         }
 
-        private async Task UploadStreamToMultiparts(string targetPath, Stream data, CancellationToken token)
+        private async Task UploadStreamToMultipartsAsync(string targetPath, Stream data, CancellationToken token)
         {
             
             var multipartUpload = await _s3Client.InitiateMultipartUploadAsync(new ()
@@ -86,7 +86,7 @@ namespace TCC.Lib.Storage
                     PartNumber = partUpload.PartNumber,
                 });
             }
-            var response = await _s3Client.CompleteMultipartUploadAsync(new()
+            await _s3Client.CompleteMultipartUploadAsync(new()
             {
                 BucketName = BucketName,
                 Key = targetPath,
@@ -101,7 +101,7 @@ namespace TCC.Lib.Storage
 
             do
             {
-                readBytes = await data.ReadAsync(buffer, 0, _partSize, token);
+                readBytes = await data.ReadAsync(buffer.AsMemory(0, _partSize), token);
 
                 var notTheSame = new MemoryStream(readBytes);
                 notTheSame.Write(buffer, 0, readBytes);
@@ -110,6 +110,6 @@ namespace TCC.Lib.Storage
             } while (readBytes >= _partSize);
         }
 
-        public UploadMode GetMode() => UploadMode.S3;
+        public UploadMode Mode => UploadMode.S3;
     }
 }

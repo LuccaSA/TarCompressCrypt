@@ -16,6 +16,6 @@ namespace TCC.Lib.Storage
             return await UploadAsync(targetPath, uploadFileStream, token);
         }
 
-        public UploadMode GetMode();
+        public UploadMode Mode { get; }
     }
 }

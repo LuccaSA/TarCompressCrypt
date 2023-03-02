@@ -26,7 +26,7 @@ namespace TCC.Lib.Storage
             };
         }
 
-        public UploadMode GetMode() => UploadMode.AzureSdk;
+        public UploadMode Mode => UploadMode.AzureSdk;
 
     }
 }

@@ -119,7 +119,7 @@ namespace TCC.Lib
                         block.BlockResult.StepResults.Add(new StepResult
                         {
                             Type = StepType.Upload,
-                            UploadMode = uploader.GetMode(),
+                            UploadMode = uploader.Mode,
                             Errors = result.IsSuccess ? null : result.ErrorMessage,
                             Infos = result.IsSuccess ? result.ErrorMessage : null,
                             Duration = sw.Elapsed,
@@ -129,7 +129,7 @@ namespace TCC.Lib
 
                         if (!hasError)
                         {
-                            _logger.LogInformation($"[{uploader.GetMode()}] {progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
+                            _logger.LogInformation($"[{uploader.Mode}] {progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
                         }
                         else
                         {
@@ -137,7 +137,7 @@ namespace TCC.Lib
                             {
                                 ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                             }
-                            _logger.LogError($"[{uploader.GetMode()}] {progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
+                            _logger.LogError($"[{uploader.Mode}] {progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
                         }
                     }
                     catch (Exception e)
@@ -147,14 +147,14 @@ namespace TCC.Lib
                         {
                             ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                         }
-                        _logger.LogCritical(e, $"[{uploader.GetMode()}] {progress} Error uploading {name}");
+                        _logger.LogCritical(e, $"[{uploader.Mode}] {progress} Error uploading {name}");
                     }
 
                     if (hasError)
                     {
                         if (ctx != null && await ctx.WaitForNextRetry())
                         {
-                            _logger.LogWarning($"[{uploader.GetMode()}] {progress} Retrying uploading {name}, attempt #{ctx.Retries}");
+                            _logger.LogWarning($"[{uploader.Mode}] {progress} Retrying uploading {name}, attempt #{ctx.Retries}");
                         }
                         else
                         {

@@ -11,6 +11,6 @@ namespace TCC.Lib.Storage
             return Task.FromResult(new UploadResponse { IsSuccess = true, RemoteFilePath = targetPath });
         }
 
-        public UploadMode GetMode() => UploadMode.None;
+        public UploadMode Mode => UploadMode.None;
     }
 }

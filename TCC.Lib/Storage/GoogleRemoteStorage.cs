@@ -40,6 +40,6 @@ namespace TCC.Lib.Storage
             };
         }
 
-        public UploadMode GetMode() => UploadMode.GoogleCloudStorage;
+        public UploadMode Mode => UploadMode.GoogleCloudStorage;
     }
 }
