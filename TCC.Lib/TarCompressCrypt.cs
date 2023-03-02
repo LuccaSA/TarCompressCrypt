@@ -99,75 +99,79 @@ namespace TCC.Lib
                 {
                     continue;
                 }
+                await UploadBlockToSingleRemoteStorageAsync(option, block, progress, uploader, token);
+            }
+            return block;
+        }
 
-                var file = block.CompressionBlock.DestinationArchiveFileInfo;
-                var name = file.Name;
-                RetryContext ctx = null;
-                while (true)
+        private async Task UploadBlockToSingleRemoteStorageAsync(CompressOption option, OperationCompressionBlock block, string progress, IRemoteStorage uploader, CancellationToken token)
+        {
+            var file = block.CompressionBlock.DestinationArchiveFileInfo;
+            var name = file.Name;
+            RetryContext ctx = null;
+            while (true)
+            {
+                bool hasError;
+                try
                 {
-                    bool hasError;
-                    try
+                    var sw = Stopwatch.StartNew();
+
+                    var result = await uploader.UploadAsync(file, block.CompressionBlock.FolderProvider.RootFolder, token);
+                    hasError = !result.IsSuccess;
+
+                    sw.Stop();
+                    double speed = file.Length / sw.Elapsed.TotalSeconds;
+
+                    block.BlockResult.StepResults.Add(new StepResult
                     {
-                        var sw = Stopwatch.StartNew();
-
-                        var result = await uploader.UploadAsync(file, block.CompressionBlock.FolderProvider.RootFolder, token);
-                        hasError = !result.IsSuccess;
-
-                        sw.Stop();
-                        double speed = file.Length / sw.Elapsed.TotalSeconds;
-
-                        block.BlockResult.StepResults.Add(new StepResult
-                        {
-                            Type = StepType.Upload,
-                            UploadMode = uploader.Mode,
-                            Errors = result.IsSuccess ? null : result.ErrorMessage,
-                            Infos = result.IsSuccess ? result.ErrorMessage : null,
-                            Duration = sw.Elapsed,
-                            ArchiveFileSize = file.Length,
-                        });
+                        Type = StepType.Upload,
+                        UploadMode = uploader.Mode,
+                        Errors = result.IsSuccess ? null : result.ErrorMessage,
+                        Infos = result.IsSuccess ? result.ErrorMessage : null,
+                        Duration = sw.Elapsed,
+                        ArchiveFileSize = file.Length,
+                    });
 
 
-                        if (!hasError)
-                        {
-                            _logger.LogInformation("[{mode}] {progress} Uploaded \"{filename}\" in {duration} at {speed} ", uploader.Mode, progress, file.Name, sw.Elapsed.HumanizedTimeSpan(), speed.HumanizedBandwidth());
-                        }
-                        else
-                        {
-                            if (ctx == null && option.RetryPeriodInSeconds.HasValue)
-                            {
-                                ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
-                            }
-                            _logger.LogError("[{mode}] {progress} Uploaded {filename} with errors. {errorMessage}", uploader.Mode, progress, file.Name, result.ErrorMessage);
-                        }
+                    if (!hasError)
+                    {
+                        _logger.LogInformation("[{mode}] {progress} Uploaded \"{filename}\" in {duration} at {speed} ", uploader.Mode, progress, file.Name, sw.Elapsed.HumanizedTimeSpan(), speed.HumanizedBandwidth());
                     }
-                    catch (Exception e)
+                    else
                     {
-                        hasError = true;
                         if (ctx == null && option.RetryPeriodInSeconds.HasValue)
                         {
                             ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                         }
-                        _logger.LogCritical(e, "[{mode}] {progress} Error uploading {name}", uploader.Mode, progress, name);
+                        _logger.LogError("[{mode}] {progress} Uploaded {filename} with errors. {errorMessage}", uploader.Mode, progress, file.Name, result.ErrorMessage);
                     }
-
-                    if (hasError)
+                }
+                catch (Exception e)
+                {
+                    hasError = true;
+                    if (ctx == null && option.RetryPeriodInSeconds.HasValue)
                     {
-                        if (ctx != null && await ctx.WaitForNextRetry())
-                        {
-                            _logger.LogWarning("[{mode}] {progress} Retrying uploading {name}, attempt #{attempt}", uploader.Mode, progress, name, ctx.Retries);
-                        }
-                        else
-                        {
-                            break;
-                        }
+                        ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
+                    }
+                    _logger.LogCritical(e, "[{mode}] {progress} Error uploading {name}", uploader.Mode, progress, name);
+                }
+
+                if (hasError)
+                {
+                    if (ctx != null && await ctx.WaitForNextRetry())
+                    {
+                        _logger.LogWarning("[{mode}] {progress} Retrying uploading {name}, attempt #{attempt}", uploader.Mode, progress, name, ctx.Retries);
                     }
                     else
                     {
                         break;
                     }
                 }
+                else
+                {
+                    break;
+                }
             }
-            return block;
         }
 
         private async Task CleanupOldFiles(OperationCompressionBlock opb)
