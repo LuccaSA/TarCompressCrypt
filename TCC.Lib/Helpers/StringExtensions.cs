@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace TCC.Lib.Helpers
 {
@@ -33,6 +34,21 @@ namespace TCC.Lib.Helpers
             int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
             double num = Math.Round(bytes / Math.Pow(1024, place), 1);
             return (Math.Sign(size) * num).ToString(CultureInfo.InvariantCulture) + " " + suf[place];
+        }
+
+        public static long ParseSize(this string humanizedSize)
+        {
+            string[] suf = { "b", "ko", "mo", "go", "to", "po", "eo" };
+            var size = humanizedSize.Trim().ToLower();
+            var number = string.Join("", size.Where(char.IsDigit));
+            var unit = size.Substring(size.Length - 2);
+            var pow = Array.IndexOf(suf, unit);
+
+            return pow switch
+            {
+                -1 => long.Parse(number),
+                _ => long.Parse(number) * (long)Math.Pow(1024L, pow)
+            };
         }
 
         public static string HumanizedTimeSpan(this TimeSpan t, int parts = 2)

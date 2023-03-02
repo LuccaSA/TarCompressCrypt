@@ -71,6 +71,8 @@ namespace TCC.Parser
             yield return new Option<string>(new[] { "--s3SecretAcessKey" }, "S3 Access Key Secret");
             yield return new Option<string>(new[] { "--s3Host" }, "S3 Host");
             yield return new Option<string>(new[] { "--s3BucketName" }, "S3 destination bucket");
+            yield return new Option<string>(new[] { "--s3MultipartThreshold" }, "Threshold from which sending a file is done with multiparts");
+            yield return new Option<string>(new[] { "--s3MultipartSize" }, "If sending a file in multipart, the multipart size");
         }
         protected override Task RunAsync(ITccController controller, CompressOptionBinding option) => controller.CompressAsync(option);
     }
