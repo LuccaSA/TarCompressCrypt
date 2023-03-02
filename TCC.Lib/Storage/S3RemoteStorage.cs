@@ -1,6 +1,4 @@
-﻿using Amazon;
-using Amazon.Runtime;
-using Amazon.S3;
+﻿using Amazon.S3;
 using Amazon.S3.Model;
 using System;
 using System.Collections.Generic;
@@ -8,9 +6,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using TCC.Lib.AsyncStreams;
-using TCC.Lib.Benchmark;
-using TCC.Lib.Helpers;
 
 namespace TCC.Lib.Storage
 {
@@ -72,8 +67,6 @@ namespace TCC.Lib.Storage
             }, token);
             var partsETags = new List<PartETag>();
             var partNumber = 1;
-
-            Console.WriteLine(data.Length.HumanizeSize());
 
             await foreach (var chunk in ChunkStreamAsync(data, token))
             {

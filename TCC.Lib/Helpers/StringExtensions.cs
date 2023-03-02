@@ -39,15 +39,15 @@ namespace TCC.Lib.Helpers
         public static long ParseSize(this string humanizedSize)
         {
             string[] suf = { "b", "ko", "mo", "go", "to", "po", "eo" };
-            var size = humanizedSize.Trim().ToLower();
+            var size = humanizedSize.Trim().ToLower(CultureInfo.InvariantCulture);
             var number = string.Join("", size.Where(char.IsDigit));
             var unit = size.Substring(size.Length - 2);
             var pow = Array.IndexOf(suf, unit);
 
             return pow switch
             {
-                -1 => long.Parse(number),
-                _ => long.Parse(number) * (long)Math.Pow(1024L, pow)
+                -1 => long.Parse(number, CultureInfo.InvariantCulture),
+                _ => long.Parse(number, CultureInfo.InvariantCulture) * (long)Math.Pow(1024L, pow)
             };
         }
 
