@@ -129,7 +129,7 @@ namespace TCC.Lib
 
                         if (!hasError)
                         {
-                            _logger.LogInformation($"[{uploader.Mode}] {progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
+                            _logger.LogInformation("[{mode}] {progress} Uploaded \"{filename}\" in {duration} at {speed} ", uploader.Mode, progress, file.Name, sw.Elapsed.HumanizedTimeSpan(), speed.HumanizedBandwidth());
                         }
                         else
                         {
@@ -137,7 +137,7 @@ namespace TCC.Lib
                             {
                                 ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                             }
-                            _logger.LogError($"[{uploader.Mode}] {progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
+                            _logger.LogError("[{mode}] {progress} Uploaded {filename} with errors. {errorMessage}", uploader.Mode, progress, file.Name, result.ErrorMessage);
                         }
                     }
                     catch (Exception e)
@@ -147,14 +147,14 @@ namespace TCC.Lib
                         {
                             ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                         }
-                        _logger.LogCritical(e, $"[{uploader.Mode}] {progress} Error uploading {name}");
+                        _logger.LogCritical(e, "[{mode}] {progress} Error uploading {name}", uploader.Mode, progress, name);
                     }
 
                     if (hasError)
                     {
                         if (ctx != null && await ctx.WaitForNextRetry())
                         {
-                            _logger.LogWarning($"[{uploader.Mode}] {progress} Retrying uploading {name}, attempt #{ctx.Retries}");
+                            _logger.LogWarning("[{mode}] {progress} Retrying uploading {name}, attempt #{attempt}", uploader.Mode, progress, name, ctx.Retries);
                         }
                         else
                         {

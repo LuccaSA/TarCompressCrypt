@@ -64,7 +64,7 @@ namespace TCC.Lib.Storage
                         }
 
                         var credentials = new BasicAWSCredentials(option.S3AccessKeyId, option.S3SecretAcessKey);
-                        var s3Config = new AmazonS3Config()
+                        var s3Config = new AmazonS3Config
                         {
                             AuthenticationRegion = option.S3Region,
                             ServiceURL = option.S3Host,
