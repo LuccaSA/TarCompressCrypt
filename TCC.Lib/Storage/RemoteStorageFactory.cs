@@ -17,7 +17,11 @@ namespace TCC.Lib.Storage
     {
         public static async IAsyncEnumerable<IRemoteStorage> GetRemoteStoragesAsync(this CompressOption option, ILogger logger, [EnumeratorCancellation] CancellationToken token)
         {
-            option.UploadModes = option.UploadModes.Append(option.UploadMode ?? UploadMode.None).Distinct();
+            if (option.UploadMode.HasValue)
+            {
+                option.UploadModes.Add(option.UploadMode.Value);
+            }
+            option.UploadModes = option.UploadModes.Distinct().ToList();
 
             foreach(var mode in option.UploadModes)
             {
