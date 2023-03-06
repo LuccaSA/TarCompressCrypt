@@ -27,11 +27,19 @@ namespace TCC.Lib.Storage
                 {
                     case UploadMode.AzureSdk:
                         {
-                            if (string.IsNullOrEmpty(option.AzBlobUrl)
-                                || string.IsNullOrEmpty(option.AzBlobContainer)
-                                || string.IsNullOrEmpty(option.AzBlobSaS))
+                            if (string.IsNullOrEmpty(option.AzBlobUrl))
                             {
-                                logger.LogCritical("Configuration error for azure blob upload");
+                                logger.LogCritical("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobUrl");
+                                continue;
+                            }
+                            if (string.IsNullOrEmpty(option.AzBlobContainer))
+                            {
+                                logger.LogCritical("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobContainer");
+                                continue;
+                            }
+                            if (string.IsNullOrEmpty(option.AzBlobSaS))
+                            {
+                                logger.LogCritical("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobSaS");
                                 continue;
                             }
                             var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzBlobSaS));
@@ -41,10 +49,14 @@ namespace TCC.Lib.Storage
                         }
                     case UploadMode.GoogleCloudStorage:
                         {
-                            if (string.IsNullOrEmpty(option.GoogleStorageCredential)
-                                || string.IsNullOrEmpty(option.GoogleStorageBucketName))
+                            if (string.IsNullOrEmpty(option.GoogleStorageCredential))
                             {
-                                logger.LogCritical("Configuration error for google storage upload");
+                                logger.LogCritical("[GoogleStorage] Configuration error: missing/invalid --GoogleStorageCredential");
+                                continue;
+                            }
+                            if (string.IsNullOrEmpty(option.GoogleStorageBucketName))
+                            {
+                                logger.LogCritical("[GoogleStorage] Configuration error: missing/invalid --GoogleStorageBucketName");
                                 continue;
                             }
                             StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
@@ -52,14 +64,30 @@ namespace TCC.Lib.Storage
                             break;
                         }
                     case UploadMode.S3:
-                        if (string.IsNullOrEmpty(option.S3AccessKeyId)
-                            || string.IsNullOrEmpty(option.S3Host)
-                            || string.IsNullOrEmpty(option.S3Region)
-                            || string.IsNullOrEmpty(option.S3BucketName)
-                            || string.IsNullOrEmpty(option.S3SecretAcessKey))
+                        if (string.IsNullOrEmpty(option.S3AccessKeyId))
                         {
-                            logger.LogCritical("Configuration error for S3 upload");
-
+                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3AccessKeyId");
+                            continue;
+                        }
+                        if (string.IsNullOrEmpty(option.S3Host))
+                        {
+                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3Host");
+                            continue;
+                        }
+                        if (string.IsNullOrEmpty(option.S3Region))
+                        {
+                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3Region");
+                            continue;
+                        }
+                        if (string.IsNullOrEmpty(option.S3BucketName))
+                        {
+                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3BucketName");
+                            continue;
+                        }
+                        if (string.IsNullOrEmpty(option.S3SecretAcessKey))
+                        {
+                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3SecretAcessKey");
+                            continue;
                         }
 
                         var credentials = new BasicAWSCredentials(option.S3AccessKeyId, option.S3SecretAcessKey);
