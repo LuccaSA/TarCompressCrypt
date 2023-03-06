@@ -37,7 +37,7 @@ namespace TCC.Tests.Upload
                 AzBlobSaS = GetEnvVar("AZ_SAS_TOKEN")
             };
             opt.UploadModes = new List<UploadMode>() { UploadMode.AzureSdk };
-            var uploader = await opt.GetRemoteStoragesAsync(NullLogger.Instance, CancellationToken.None);
+            var uploader = await opt.GetRemoteStoragesAsync(NullLogger.Instance, CancellationToken.None).ToListAsync();
 
             var ok = await uploader.First().UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
 
@@ -57,7 +57,7 @@ namespace TCC.Tests.Upload
             };
 
             opt.UploadModes = new List<UploadMode>() { UploadMode.GoogleCloudStorage };
-            var uploader = await opt.GetRemoteStoragesAsync(NullLogger.Instance, CancellationToken.None);
+            var uploader = await opt.GetRemoteStoragesAsync(NullLogger.Instance, CancellationToken.None).ToListAsync();
 
             var ok = await uploader.First().UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
 

@@ -6,8 +6,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
@@ -15,10 +15,8 @@ namespace TCC.Lib.Storage
 {
     public static class RemoteStorageFactory
     {
-        public static async Task<IEnumerable<IRemoteStorage>> GetRemoteStoragesAsync(this CompressOption option, ILogger logger, CancellationToken token)
+        public static async IAsyncEnumerable<IRemoteStorage> GetRemoteStoragesAsync(this CompressOption option, ILogger logger, [EnumeratorCancellation] CancellationToken token)
         {
-            var remoteStorages = new List<IRemoteStorage>();
-
             option.UploadModes = option.UploadModes.Append(option.UploadMode ?? UploadMode.None).Distinct();
 
             foreach(var mode in option.UploadModes)
@@ -44,7 +42,7 @@ namespace TCC.Lib.Storage
                             }
                             var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzBlobSaS));
                             BlobContainerClient container = client.GetBlobContainerClient(option.AzBlobContainer);
-                            remoteStorages.Add(new AzureRemoteStorage(container));
+                            yield return new AzureRemoteStorage(container);
                             break;
                         }
                     case UploadMode.GoogleCloudStorage:
@@ -60,7 +58,7 @@ namespace TCC.Lib.Storage
                                 continue;
                             }
                             StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
-                            remoteStorages.Add(new GoogleRemoteStorage(storage, option.GoogleStorageBucketName));
+                            yield return new GoogleRemoteStorage(storage, option.GoogleStorageBucketName);
                             break;
                         }
                     case UploadMode.S3:
@@ -97,11 +95,11 @@ namespace TCC.Lib.Storage
                             ServiceURL = option.S3Host,
                         };
 
-                        remoteStorages.Add(new S3RemoteStorage(
+                        yield return new S3RemoteStorage(
                             new AmazonS3Client(credentials, s3Config),
                             option.S3BucketName,
                             option.S3MultipartThreshold.ParseSize(),
-                            (int) option.S3MultipartSize.ParseSize()));
+                            (int)option.S3MultipartSize.ParseSize());
                         break;
                     case UploadMode.None:
                         break;
@@ -109,7 +107,6 @@ namespace TCC.Lib.Storage
                         throw new ArgumentOutOfRangeException();
                 }
             }
-            return remoteStorages;
         }
     }
 }

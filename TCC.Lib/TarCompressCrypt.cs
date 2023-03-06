@@ -56,7 +56,7 @@ namespace TCC.Lib
             _logger.LogInformation("Starting compression job");
             var po = ParallelizeOption(option);
 
-            IEnumerable<IRemoteStorage> uploaders = await option.GetRemoteStoragesAsync(_logger, _cancellationTokenSource.Token);
+            List<IRemoteStorage> uploaders = await option.GetRemoteStoragesAsync(_logger, _cancellationTokenSource.Token).ToListAsync();
 
             var operationBlocks = await buffer
                 .AsAsyncStream(_cancellationTokenSource.Token)
