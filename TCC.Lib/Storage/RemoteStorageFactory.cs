@@ -15,7 +15,6 @@ namespace TCC.Lib.Storage
 {
     public static class RemoteStorageFactory
     {
-        private static long ParseSizeInternal(string size) => string.IsNullOrWhiteSpace(size) ? 0 : size.ParseSize();
         public static async Task<IEnumerable<IRemoteStorage>> GetRemoteStoragesAsync(this CompressOption option, ILogger logger, CancellationToken token)
         {
             var remoteStorages = new List<IRemoteStorage>();
@@ -73,8 +72,8 @@ namespace TCC.Lib.Storage
                         remoteStorages.Add(new S3RemoteStorage(
                             new AmazonS3Client(credentials, s3Config),
                             option.S3BucketName,
-                            ParseSizeInternal(option.S3MultipartThreshold),
-                            (int) ParseSizeInternal(option.S3MultipartSize)));
+                            option.S3MultipartThreshold.ParseSize(),
+                            (int) option.S3MultipartSize.ParseSize()));
                         break;
                     case UploadMode.None:
                         break;
