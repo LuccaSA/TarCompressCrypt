@@ -96,22 +96,6 @@ namespace TCC.Lib.Storage
                 PartETags = partsETags
             }, token);
         }
-        private async IAsyncEnumerable<Stream> ChunkStreamAsync(Stream data, [EnumeratorCancellation] CancellationToken token)
-        {
-            var buffer = new byte[_partSize];
-            int readBytes;
-
-            do
-            {
-                readBytes = await data.ReadAsync(buffer.AsMemory(0, _partSize), token);
-
-                var notTheSame = new MemoryStream(readBytes);
-                notTheSame.Write(buffer, 0, readBytes);
-                
-                yield return notTheSame;
-            } while (readBytes >= _partSize);
-        }
-
         public UploadMode Mode => UploadMode.S3;
     }
 }

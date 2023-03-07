@@ -38,7 +38,8 @@ namespace TCC.Lib.Helpers
 
         public static long ParseSize(this string humanizedSize)
         {
-            if (string.IsNullOrWhiteSpace(humanizedSize)) return -1;
+            if (string.IsNullOrWhiteSpace(humanizedSize))
+                return -1;
             string[] suf = { "b", "ko", "mo", "go", "to", "po", "eo" };
             var size = humanizedSize.Trim().ToLower(CultureInfo.InvariantCulture);
             var number = string.Join("", size.Where(char.IsDigit));
