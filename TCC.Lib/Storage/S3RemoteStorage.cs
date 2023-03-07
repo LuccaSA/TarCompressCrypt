@@ -28,7 +28,7 @@ namespace TCC.Lib.Storage
         {
             try
             {
-                if (_multipartTreshold != 0  && data.Length > _multipartTreshold)
+                if (_multipartTreshold > 0 && data.Length > _multipartTreshold)
                 {
                     await UploadStreamToMultipartsAsync(targetPath, data, token);
                 } else
@@ -59,7 +59,6 @@ namespace TCC.Lib.Storage
 
         private async Task UploadStreamToMultipartsAsync(string targetPath, Stream data, CancellationToken token)
         {
-            
             var multipartUpload = await _s3Client.InitiateMultipartUploadAsync(new ()
             {
                 BucketName = BucketName,
@@ -68,9 +67,16 @@ namespace TCC.Lib.Storage
             var partsETags = new List<PartETag>();
             var partNumber = 1;
 
-            await foreach (var chunk in ChunkStreamAsync(data, token))
+            
+            while (true)
             {
-                chunk.Position = 0;
+                await using var chunk = new ReadOnlyChunkedStream(data, _partSize);
+                
+                if (!chunk.CanRead || chunk.Length == 0)
+                {
+                    break;
+                }
+
                 var partUpload = await _s3Client.UploadPartAsync(new()
                 {
                     BucketName = BucketName,
@@ -80,11 +86,7 @@ namespace TCC.Lib.Storage
                     InputStream = chunk,
                 }, token);
 
-                partsETags.Add(new()
-                {
-                    ETag = partUpload.ETag,
-                    PartNumber = partUpload.PartNumber,
-                });
+                partsETags.Add(new() {ETag = partUpload.ETag, PartNumber = partUpload.PartNumber,});
             }
             await _s3Client.CompleteMultipartUploadAsync(new()
             {

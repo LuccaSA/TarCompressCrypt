@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using TCC.Lib.Blocks;
 using TCC.Lib.Database;
 
@@ -29,7 +31,7 @@ namespace TCC.Lib.Options
         public string S3Region { get; set; }
         public string S3MultipartThreshold { get; set; }
         public string S3MultipartSize { get; set; }
-        public List<UploadMode> UploadModes { get; set; } = new ();
-        public UploadMode? UploadMode { get; }
+        public IEnumerable<UploadMode> UploadModes { get; set; } = Enumerable.Empty<UploadMode>();
+        public UploadMode? UploadMode { get; set; }
     }
 }

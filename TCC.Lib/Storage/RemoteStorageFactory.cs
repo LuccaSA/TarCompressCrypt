@@ -19,9 +19,9 @@ namespace TCC.Lib.Storage
         {
             if (option.UploadMode.HasValue)
             {
-                option.UploadModes.Add(option.UploadMode.Value);
+                option.UploadModes = option.UploadModes.Append(option.UploadMode.Value);
             }
-            option.UploadModes = option.UploadModes.Distinct().ToList();
+            option.UploadModes = option.UploadModes.Distinct();
 
             foreach(var mode in option.UploadModes)
             {
