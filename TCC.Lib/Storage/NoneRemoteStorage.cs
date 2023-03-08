@@ -11,6 +11,11 @@ namespace TCC.Lib.Storage
             return Task.FromResult(new UploadResponse { IsSuccess = true, RemoteFilePath = targetPath });
         }
 
+        public Task<UploadResponse> DownloadAsync()
+        {
+            throw new System.NotImplementedException();
+        }
+
         public UploadMode Mode => UploadMode.None;
     }
 }

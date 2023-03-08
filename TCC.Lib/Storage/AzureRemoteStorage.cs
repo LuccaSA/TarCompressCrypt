@@ -26,6 +26,11 @@ namespace TCC.Lib.Storage
             };
         }
 
+        public Task<UploadResponse> DownloadAsync()
+        {
+            throw new System.NotImplementedException();
+        }
+
         public UploadMode Mode => UploadMode.AzureSdk;
 
     }

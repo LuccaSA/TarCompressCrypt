@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
@@ -25,92 +26,117 @@ namespace TCC.Lib.Storage
 
             foreach(var mode in option.UploadModes)
             {
+                yield return await mode.BuildSingleRemoteStorageAsync(option, logger, token);
+            }
+        }
+        
+        public static async Task<IRemoteStorage> GetRemoteStorageAsync(this RetrieveOptions option, ILogger logger, CancellationToken token)
+        {
+            if (option.DownloadMode.HasValue)
+            {
+                return await option.DownloadMode.Value.BuildSingleRemoteStorageAsync(option, logger, token);
+            }
+            return new NoneRemoteStorage();
+        }
+
+        private static async Task<IRemoteStorage> BuildSingleRemoteStorageAsync(this UploadMode mode, NetworkStorageOptions option, ILogger logger, CancellationToken token)
+        {
+            try
+            {
                 switch (mode)
                 {
                     case UploadMode.AzureSdk:
-                        {
-                            if (string.IsNullOrEmpty(option.AzBlobUrl))
-                            {
-                                logger.LogCritical("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobUrl");
-                                continue;
-                            }
-                            if (string.IsNullOrEmpty(option.AzBlobContainer))
-                            {
-                                logger.LogCritical("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobContainer");
-                                continue;
-                            }
-                            if (string.IsNullOrEmpty(option.AzBlobSaS))
-                            {
-                                logger.LogCritical("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobSaS");
-                                continue;
-                            }
-                            var client = new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzBlobSaS));
-                            BlobContainerClient container = client.GetBlobContainerClient(option.AzBlobContainer);
-                            yield return new AzureRemoteStorage(container);
-                            break;
-                        }
+                        return option.BuildAzureStorage();
                     case UploadMode.GoogleCloudStorage:
-                        {
-                            if (string.IsNullOrEmpty(option.GoogleStorageCredential))
-                            {
-                                logger.LogCritical("[GoogleStorage] Configuration error: missing/invalid --GoogleStorageCredential");
-                                continue;
-                            }
-                            if (string.IsNullOrEmpty(option.GoogleStorageBucketName))
-                            {
-                                logger.LogCritical("[GoogleStorage] Configuration error: missing/invalid --GoogleStorageBucketName");
-                                continue;
-                            }
-                            StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
-                            yield return new GoogleRemoteStorage(storage, option.GoogleStorageBucketName);
-                            break;
-                        }
+                        return await option.BuildGoogleStorageAsync(token);
                     case UploadMode.S3:
-                        if (string.IsNullOrEmpty(option.S3AccessKeyId))
-                        {
-                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3AccessKeyId");
-                            continue;
-                        }
-                        if (string.IsNullOrEmpty(option.S3Host))
-                        {
-                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3Host");
-                            continue;
-                        }
-                        if (string.IsNullOrEmpty(option.S3Region))
-                        {
-                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3Region");
-                            continue;
-                        }
-                        if (string.IsNullOrEmpty(option.S3BucketName))
-                        {
-                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3BucketName");
-                            continue;
-                        }
-                        if (string.IsNullOrEmpty(option.S3SecretAcessKey))
-                        {
-                            logger.LogCritical("[S3Storage] Configuration error: missing/invalid --S3SecretAcessKey");
-                            continue;
-                        }
-
-                        var credentials = new BasicAWSCredentials(option.S3AccessKeyId, option.S3SecretAcessKey);
-                        var s3Config = new AmazonS3Config
-                        {
-                            AuthenticationRegion = option.S3Region,
-                            ServiceURL = option.S3Host,
-                        };
-
-                        yield return new S3RemoteStorage(
-                            new AmazonS3Client(credentials, s3Config),
-                            option.S3BucketName,
-                            option.S3MultipartThreshold.ParseSize(),
-                            (int)option.S3MultipartSize.ParseSize());
-                        break;
+                        return option.BuildS3Storage();
                     case UploadMode.None:
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
+            catch (ApplicationException ex)
+            {
+                logger.LogCritical(ex.Message);
+            }
+            return new NoneRemoteStorage();
+        }
+
+        private static async Task<GoogleRemoteStorage> BuildGoogleStorageAsync(this NetworkStorageOptions option, CancellationToken token)
+        {
+            if (string.IsNullOrEmpty(option.GoogleStorageCredential))
+            {
+                throw new ApplicationException("[GoogleStorage] Configuration error: missing/invalid --GoogleStorageCredential");
+            }
+            if (string.IsNullOrEmpty(option.GoogleStorageBucketName))
+            {
+                throw new ApplicationException(
+                    "[GoogleStorage] Configuration error: missing/invalid --GoogleStorageBucketName");
+            }
+            StorageClient storage = await GoogleAuthHelper.GetGoogleStorageClientAsync(option.GoogleStorageCredential, token);
+            return new GoogleRemoteStorage(storage, option.GoogleStorageBucketName);
+        }
+
+        private static S3RemoteStorage BuildS3Storage(this NetworkStorageOptions option)
+        {
+            if (string.IsNullOrEmpty(option.S3AccessKeyId))
+            {
+                throw new ApplicationException("[S3Storage] Configuration error: missing/invalid --S3AccessKeyId");
+            }
+            if (string.IsNullOrEmpty(option.S3Host))
+            {
+                throw new ApplicationException("[S3Storage] Configuration error: missing/invalid --S3Host");
+            }
+            if (string.IsNullOrEmpty(option.S3Region))
+            {
+                throw new ApplicationException("[S3Storage] Configuration error: missing/invalid --S3Region");
+            }
+            if (string.IsNullOrEmpty(option.S3BucketName))
+            {
+                throw new ApplicationException("[S3Storage] Configuration error: missing/invalid --S3BucketName");
+            }
+            if (string.IsNullOrEmpty(option.S3SecretAcessKey))
+            {
+                throw new ApplicationException("[S3Storage] Configuration error: missing/invalid --S3SecretAcessKey");
+            }
+
+            var credentials = new BasicAWSCredentials(option.S3AccessKeyId, option.S3SecretAcessKey);
+            var s3Config = new AmazonS3Config
+            {
+                AuthenticationRegion = option.S3Region,
+                ServiceURL = option.S3Host,
+            };
+
+            if (option is CompressOption compressOption)
+            {
+                return new S3RemoteStorage(new AmazonS3Client(credentials, s3Config), option.S3BucketName, compressOption.S3MultipartThreshold.ParseSize(), compressOption.S3MultipartSize.ParseSize());
+            }
+            return new S3RemoteStorage(new AmazonS3Client(credentials, s3Config), option.S3BucketName);
+        }
+
+        private static AzureRemoteStorage BuildAzureStorage(this NetworkStorageOptions option)
+        {
+            if (string.IsNullOrEmpty(option.AzBlobUrl))
+            {
+                throw new ApplicationException("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobUrl");
+            }
+
+            if (string.IsNullOrEmpty(option.AzBlobContainer))
+            {
+                throw new ApplicationException("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobContainer");
+            }
+
+            if (string.IsNullOrEmpty(option.AzBlobSaS))
+            {
+                throw new ApplicationException("[AzureBlobStorage] Configuration error: missing/invalid --AzBlobSaS");
+            }
+
+            var client =
+                new BlobServiceClient(new Uri(option.AzBlobUrl + "/" + option.AzBlobContainer + "?" + option.AzBlobSaS));
+            BlobContainerClient container = client.GetBlobContainerClient(option.AzBlobContainer);
+            return new AzureRemoteStorage(container);
         }
     }
 }

@@ -45,7 +45,8 @@ namespace TCC
                     new AutoDecompressCommand(),
                     new CompressCommand(),
                     new DecompressCommand(),
-                    new BenchmarkCommand()
+                    new BenchmarkCommand(),
+                    new RetrieveCommand()
                 })
                 .AddTccLoggerOptions()
                 .UseDefaults();

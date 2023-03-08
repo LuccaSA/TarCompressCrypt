@@ -451,5 +451,13 @@ namespace TCC.Lib
                 _logger.LogError($"Decompressed {block.Source} with errors : {result.Errors}");
             }
         }
+
+        public async Task<OperationSummary> RetrieveAsync(RetrieveOptions option)
+        {
+            var uploaders = await option.GetRemoteStorageAsync(_logger, _cancellationTokenSource.Token);
+
+            var res = await uploaders.DownloadAsync();
+            throw new NotImplementedException();
+        }
     }
 }

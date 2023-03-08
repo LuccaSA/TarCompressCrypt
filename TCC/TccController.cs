@@ -27,6 +27,7 @@ public interface ITccController
     Task DecompressAsync(DecompressOption option);
     Task BenchmarkAsync(BenchmarkOption option);
     Task AutoDecompressAsync(AutoDecompressOptionBinding option);
+    Task RetrieveAsync(RetrieveOptions option);
 }
 
 public class TccController : ITccController
@@ -132,6 +133,13 @@ public class TccController : ITccController
             return SubscriberClient.Reply.Ack;
         });
     }
+
+    public async Task RetrieveAsync(RetrieveOptions option)
+    {
+        await InitTccAsync();
+        await LogResultAsync(await _tarCompressCrypt.RetrieveAsync(option), Mode.Compress, option);
+    }
+
     private record ObjectStorageEvent(string Bucket, string Name);
     private static async Task<SubscriberClient> GetGoogleClientAsync(GoogleCredential credential, AutoDecompressOptionBinding option)
     {

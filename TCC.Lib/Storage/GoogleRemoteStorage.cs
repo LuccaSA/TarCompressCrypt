@@ -40,6 +40,11 @@ namespace TCC.Lib.Storage
             };
         }
 
+        public Task<UploadResponse> DownloadAsync()
+        {
+            throw new NotImplementedException();
+        }
+
         public UploadMode Mode => UploadMode.GoogleCloudStorage;
     }
 }

@@ -58,20 +58,13 @@ namespace TCC.Parser
             yield return new Option<int?>(new[] { "--cleanupTime" }, "Specify the time, in hours, after which the backup files are deleted. If no time is specified, then no backup files are deleted.");
 
             // Remote storage options
+            foreach (var option in RemoteStorageOptions.GetCommonOptions())
+            {
+                yield return option;
+            }
             yield return new Option<UploadMode?>(new[] { "--uploadMode" }, "Upload mode (retro compat with single upload options)");
             yield return new Option<IEnumerable<UploadMode>>(new[] { "--uploadModes" }, "Upload modes");
-            yield return new Option<string>(new[] { "--azBlobUrl" }, "Azure blob storage URL");
-            yield return new Option<string>(new[] { "--azBlobContainer" }, "Azure blob storage container id");
-            yield return new Option<string>(new[] { "--azBlobSaS" }, "Azure blob storage SaS token");
-            yield return new Option<int?>(new[] { "--azThread" }, "Azure blob maximum parallel threads");
-            yield return new Option<string>(new[] { "--googleStorageBucketName" }, "Google Cloud Storage destination bucket");
-            yield return new Option<string>(new[] { "--googleStorageCredential" }, "Google Cloud Storage credential json, either full path or base64");
-            yield return new Option<string>(new[] { "--s3AccessKeyId" }, "S3 Access Key ID");
-            yield return new Option<string>(new[] { "--s3Region" }, "S3 Region");
-            yield return new Option<string>(new[] { "--s3SecretAcessKey" }, "S3 Access Key Secret");
-            yield return new Option<string>(new[] { "--s3Host" }, "S3 Host");
-            yield return new Option<string>(new[] { "--s3BucketName" }, "S3 destination bucket");
-            yield return new Option<string>(new[] { "--s3MultipartThreshold" }, "Threshold from which sending a file is done with multiparts");
+            yield return new Option<string>(new[] { "--s3MultipartThreshold" }, "Threshold from which sending a file is done with multi parts");
             yield return new Option<string>(new[] { "--s3MultipartSize" }, "If sending a file in multipart, the multipart size");
         }
         protected override Task RunAsync(ITccController controller, CompressOptionBinding option) => controller.CompressAsync(option);

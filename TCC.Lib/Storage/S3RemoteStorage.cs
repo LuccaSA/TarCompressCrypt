@@ -3,7 +3,6 @@ using Amazon.S3.Model;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,9 +13,9 @@ namespace TCC.Lib.Storage
         internal string BucketName { get; }
         private readonly AmazonS3Client _s3Client;
         private readonly long _multipartTreshold;
-        private readonly int _partSize;
+        private readonly long _partSize;
 
-        public S3RemoteStorage(AmazonS3Client s3Client, string bucketName, long multipartThreshold = 0, int partSize = 0)
+        public S3RemoteStorage(AmazonS3Client s3Client, string bucketName, long multipartThreshold = 0, long partSize = 0)
         {
             BucketName = bucketName;
             _s3Client = s3Client;
@@ -96,6 +95,12 @@ namespace TCC.Lib.Storage
                 PartETags = partsETags
             }, token);
         }
+
+        public Task<UploadResponse> DownloadAsync()
+        {
+            throw new NotImplementedException();
+        }
+
         public UploadMode Mode => UploadMode.S3;
     }
 }

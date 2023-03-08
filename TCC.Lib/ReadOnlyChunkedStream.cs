@@ -6,9 +6,9 @@ namespace TCC.Lib
     public class ReadOnlyChunkedStream : Stream
     {
         private readonly Stream _inputStream;
-        private readonly int _chunkSize;
+        private readonly long _chunkSize;
 
-        public ReadOnlyChunkedStream(Stream inputStream, int chunkSize)
+        public ReadOnlyChunkedStream(Stream inputStream, long chunkSize)
         {
             _inputStream = inputStream;
             _chunkSize = chunkSize;

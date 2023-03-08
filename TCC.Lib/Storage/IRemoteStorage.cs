@@ -15,7 +15,7 @@ namespace TCC.Lib.Storage
             await using FileStream uploadFileStream = File.OpenRead(file.FullName);
             return await UploadAsync(targetPath, uploadFileStream, token);
         }
-
+        Task<UploadResponse> DownloadAsync();
         UploadMode Mode { get; }
     }
 }

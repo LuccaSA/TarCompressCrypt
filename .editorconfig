@@ -1,12 +1,15 @@
+root = true
 # EditorConfig is awesome:http://EditorConfig.org
 
 # top-most EditorConfig file
-root = true
 
 # Use tabs for indentation. (because)
 [*]
 indent_style = tab
 end_of_line = crlf
+
+# Microsoft .NET properties
+csharp_style_namespace_declarations = block_scoped:suggestion
 # (Please don't specify an indent_size here; that has too many unintended consequences.)
 
 # Code files
