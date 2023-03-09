@@ -143,8 +143,7 @@ namespace TCC.Lib.Dependencies
 
         private static string PasswordCommand(TccOption option)
         {
-            if (option.PasswordOption.PasswordMode == PasswordMode.InlinePassword
-                && option.PasswordOption is InlinePasswordOption inlinePassword)
+            if (option.PasswordOption.PasswordMode == PasswordMode.InlinePassword && option.PasswordOption is InlinePasswordOption inlinePassword)
             {
                 if (string.IsNullOrWhiteSpace(inlinePassword.Password))
                 {
@@ -152,8 +151,8 @@ namespace TCC.Lib.Dependencies
                 }
                 return "-k " + inlinePassword.Password;
             }
-            else if (option.PasswordOption.PasswordMode == PasswordMode.PasswordFile
-                && option.PasswordOption is PasswordFileOption passwordFile)
+
+            if (option.PasswordOption.PasswordMode == PasswordMode.PasswordFile && option.PasswordOption is PasswordFileOption passwordFile)
             {
                 if (string.IsNullOrWhiteSpace(passwordFile.PasswordFile))
                 {
@@ -161,10 +160,9 @@ namespace TCC.Lib.Dependencies
                 }
                 return "-kfile " + passwordFile.PasswordFile.Escape();
             }
-            else
-            {
-                throw new NotSupportedException($"PasswordMode: {option.PasswordOption.PasswordMode} not supproted");
-            }
+
+            throw new NotSupportedException($"PasswordMode: {option.PasswordOption.PasswordMode} is not supported");
+
         }
     }
 }
