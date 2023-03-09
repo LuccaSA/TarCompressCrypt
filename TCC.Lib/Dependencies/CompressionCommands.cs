@@ -66,7 +66,7 @@ namespace TCC.Lib.Dependencies
                 case PasswordMode.InlinePassword:
                 case PasswordMode.PasswordFile:
                 case PasswordMode.PublicKey:
-                    string passwdCommand = PasswordCommand(option);
+                    string passwdCommand = PasswordCommand(option, block);
                     // tar -c C:\SourceFolder | lz4.exe -1 - | openssl aes-256-cbc -k "password" -out crypted.tar.lz4.aes
                     switch (option.Algo)
                     {
@@ -116,7 +116,7 @@ namespace TCC.Lib.Dependencies
                 case PasswordMode.InlinePassword:
                 case PasswordMode.PasswordFile:
                 case PasswordMode.PublicKey:
-                    string passwdCommand = PasswordCommand(option);
+                    string passwdCommand = PasswordCommand(option, block);
                     //openssl aes-256-cbc -d -k "test" -in crypted.tar.lz4.aes | lz4 -dc --no-sparse - | tar xf -
                     cmd.Append($"{_ext.OpenSsl()} aes-256-cbc -d {passwdCommand} -in {block.Source}");
                     switch (block.Algo)
@@ -141,28 +141,34 @@ namespace TCC.Lib.Dependencies
             return cmd.ToString();
         }
 
-        private static string PasswordCommand(TccOption option)
+        private static string PasswordCommand(TccOption option, Block block)
         {
-            if (option.PasswordOption.PasswordMode == PasswordMode.InlinePassword && option.PasswordOption is InlinePasswordOption inlinePassword)
+
+            switch (option.PasswordOption.PasswordMode)
             {
-                if (string.IsNullOrWhiteSpace(inlinePassword.Password))
-                {
-                    throw new CommandLineException("Password missing");
-                }
-                return "-k " + inlinePassword.Password;
+                case PasswordMode.None:
+                    return string.Empty;
+                case PasswordMode.InlinePassword when option.PasswordOption is InlinePasswordOption inlinePassword:
+                    if (string.IsNullOrWhiteSpace(inlinePassword.Password))
+                    {
+                        throw new CommandLineException("Password missing");
+                    }
+                    return "-k " + inlinePassword.Password;
+                case PasswordMode.PasswordFile when option.PasswordOption is PasswordFileOption passwordFile:
+                    if (string.IsNullOrWhiteSpace(passwordFile.PasswordFile))
+                    {
+                        throw new CommandLineException("Password file missing");
+                    }
+                    return "-kfile " + passwordFile.PasswordFile.Escape();
+                case PasswordMode.PublicKey:
+                    if (string.IsNullOrWhiteSpace(block.BlockPasswordFile))
+                    {
+                        throw new CommandLineException("Password file missing");
+                    }
+                    return "-kfile " + block.BlockPasswordFile.Escape();
+                default:
+                    throw new NotSupportedException($"PasswordMode: {option.PasswordOption.PasswordMode} is not supported");
             }
-
-            if (option.PasswordOption.PasswordMode == PasswordMode.PasswordFile && option.PasswordOption is PasswordFileOption passwordFile)
-            {
-                if (string.IsNullOrWhiteSpace(passwordFile.PasswordFile))
-                {
-                    throw new CommandLineException("Password file missing");
-                }
-                return "-kfile " + passwordFile.PasswordFile.Escape();
-            }
-
-            throw new NotSupportedException($"PasswordMode: {option.PasswordOption.PasswordMode} is not supported");
-
         }
     }
 }
