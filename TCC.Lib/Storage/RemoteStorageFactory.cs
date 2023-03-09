@@ -39,7 +39,7 @@ namespace TCC.Lib.Storage
             return new NoneRemoteStorage();
         }
 
-        private static async Task<IRemoteStorage> BuildSingleRemoteStorageAsync(this UploadMode mode, NetworkStorageOptions option, ILogger logger, CancellationToken token)
+        private static async Task<IRemoteStorage> BuildSingleRemoteStorageAsync(this UploadMode mode, INetworkStorageOptions option, ILogger logger, CancellationToken token)
         {
             try
             {
@@ -64,7 +64,7 @@ namespace TCC.Lib.Storage
             return new NoneRemoteStorage();
         }
 
-        private static async Task<GoogleRemoteStorage> BuildGoogleStorageAsync(this NetworkStorageOptions option, CancellationToken token)
+        private static async Task<GoogleRemoteStorage> BuildGoogleStorageAsync(this INetworkStorageOptions option, CancellationToken token)
         {
             if (string.IsNullOrEmpty(option.GoogleStorageCredential))
             {
@@ -79,7 +79,7 @@ namespace TCC.Lib.Storage
             return new GoogleRemoteStorage(storage, option.GoogleStorageBucketName);
         }
 
-        private static S3RemoteStorage BuildS3Storage(this NetworkStorageOptions option)
+        private static S3RemoteStorage BuildS3Storage(this INetworkStorageOptions option)
         {
             if (string.IsNullOrEmpty(option.S3AccessKeyId))
             {
@@ -116,7 +116,7 @@ namespace TCC.Lib.Storage
             return new S3RemoteStorage(new AmazonS3Client(credentials, s3Config), option.S3BucketName);
         }
 
-        private static AzureRemoteStorage BuildAzureStorage(this NetworkStorageOptions option)
+        private static AzureRemoteStorage BuildAzureStorage(this INetworkStorageOptions option)
         {
             if (string.IsNullOrEmpty(option.AzBlobUrl))
             {

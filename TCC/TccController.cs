@@ -27,7 +27,7 @@ public interface ITccController
     Task DecompressAsync(DecompressOption option);
     Task BenchmarkAsync(BenchmarkOption option);
     Task AutoDecompressAsync(AutoDecompressOptionBinding option);
-    Task RetrieveAsync(RetrieveOptions option);
+    Task RetrieveAsync(RetrieveOptionBinding option);
 }
 
 public class TccController : ITccController
@@ -134,10 +134,13 @@ public class TccController : ITccController
         });
     }
 
-    public async Task RetrieveAsync(RetrieveOptions option)
+    public async Task RetrieveAsync(RetrieveOptionBinding option)
     {
         await InitTccAsync();
-        await LogResultAsync(await _tarCompressCrypt.RetrieveAsync(option), Mode.Compress, option);
+        await _databaseSetup.EnsureDatabaseExistsAsync(Mode.Decompress);
+        var operationResult = await _tarCompressCrypt.RetrieveAsync(option);
+        await _databaseSetup.CleanupDatabaseAsync(Mode.Decompress);
+        await LogResultAsync(operationResult, Mode.Decompress, option);
     }
 
     private record ObjectStorageEvent(string Bucket, string Name);

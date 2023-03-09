@@ -1,9 +1,14 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using TCC.Lib.Database;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
+using TCC.Lib.Storage;
 
 namespace TCC.Lib.Blocks
 {
@@ -70,10 +75,23 @@ namespace TCC.Lib.Blocks
 
         private static readonly string[] _extensions = { "*.tarlz4aes", "*.tarlz4", "*.tarbraes", "*.tarbr", "*.tarzstdaes", "*.tarzstd" };
 
-        public static IEnumerable<DecompressionBatch> GenerateDecompressBlocks(this DecompressOption decompressOption)
+        public static async IAsyncEnumerable<DecompressionBatch> GenerateDecompressBlocksAsync(
+            this DecompressOption decompressOption, ILogger logger, [EnumeratorCancellation] CancellationToken token)
         {
             bool yielded = false;
             var dstDir = new DirectoryInfo(decompressOption.DestinationDir);
+
+            if (decompressOption is RetrieveOptions retrieveOptions)
+            {
+                await foreach(var batch in retrieveOptions.GenerateDecompressBatchesAsync(logger, token))
+                {
+                    yielded = true;
+                    yield return batch;
+                }
+                if (yielded && !dstDir.Exists)
+                    dstDir.Create();
+                yield break;
+            }
 
             // If file -> direct decompress
 
@@ -196,6 +214,62 @@ namespace TCC.Lib.Blocks
 
             if (yielded && !dstDir.Exists)
                 dstDir.Create();
+        }
+        public static string GetRemoteStorageKey(this DecompressionBlock block,
+            DirectoryInfo retrieveOptionsDownloadDestinationDir)
+        {
+            return block.SourceArchiveFileInfo.FullName.Substring(retrieveOptionsDownloadDestinationDir.FullName.Length + 1);
+        }
+
+        private static async IAsyncEnumerable<DecompressionBatch> GenerateDecompressBatchesAsync(this RetrieveOptions options, ILogger logger, [EnumeratorCancellation] CancellationToken token)
+        {
+            var downloader = await options.GetRemoteStorageAsync(logger, token);
+
+            Console.WriteLine(options.SourceMachine);
+            Console.WriteLine(string.IsNullOrWhiteSpace(options.SourceArchive) ? "No source specified: Retrieve all available backups for given machine" : options.SourceArchive);
+            Console.WriteLine(options.BeforeDateTime);
+            Console.WriteLine(options.FolderPerDay);
+            Console.WriteLine(options.All ? "Retrieve all backups" : "Retrieve last backup");
+
+            var archiveList = downloader.ListArchivesMatchingWithSizeAsync(options, token)
+                .GroupBy(key =>
+                {
+                    var fileInfos = new FileInfo(key.Key);
+                    //TODO Qqchose quand on a le folderPerDate à true à va fouttre la merde
+
+                    return fileInfos.Name.Split("_").First();
+                });
+
+            await foreach(var grouping in archiveList)
+            {
+                var batch =  new DownloadBatch()
+                {
+                    BackupFull = new DecompressionBlock(), BackupsDiff = new DecompressionBlock[] { }, CompressedSize = 0
+                };
+                await foreach (var archive in grouping)
+                {
+                    var pathToUse = archive.Key.Replace('/', Path.DirectorySeparatorChar);
+                    var downloadFileInfos = new FileInfo(Path.Combine(options.DownloadDestinationDir.FullName, pathToUse));
+
+                    var block = new DecompressionBlock()
+                    {
+                        SourceArchiveFileInfo = downloadFileInfos,
+                        OperationFolder = options.DecryptionDestinationDir.FullName,
+                        Algo = AlgoFromExtension(downloadFileInfos.Extension)
+                    };
+                    
+                    if (downloadFileInfos.Name.Split(".")[^2] == TccConst.Full.ToLowerInvariant())
+                    {
+                        batch.BackupFull = block;
+                    }
+                    else
+                    {
+                        batch.BackupsDiff = batch.BackupsDiff.Append(block).ToArray();
+                    }
+                    batch.CompressedSize += archive.Size;
+                }
+                yield return batch;
+            }
         }
 
 

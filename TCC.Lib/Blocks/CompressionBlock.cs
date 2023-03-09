@@ -28,9 +28,9 @@ namespace TCC.Lib.Blocks
                 switch (BackupMode)
                 {
                     case Database.BackupMode.Diff:
-                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.diff";
+                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.{TccConst.Diff.ToLowerInvariant()}";
                     case Database.BackupMode.Full:
-                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.full";
+                        return $"{SourceFileOrDirectory.Name}_{StartTime:yyyyMMddHHmmss}.{TccConst.Full.ToLowerInvariant()}";
                    default:
                         throw new ArgumentOutOfRangeException();
                 }

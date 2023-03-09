@@ -321,23 +321,38 @@ namespace TCC.Lib
             var po = ParallelizeOption(option);
             var job = await _databaseHelper.InitializeRestoreJobAsync();
 
-            IEnumerable<DecompressionBatch> blocks = option.GenerateDecompressBlocks().ToList();
+            IEnumerable<DecompressionBatch> blocks = await option.GenerateDecompressBlocksAsync(_logger, _cancellationTokenSource.Token).ToListAsync();
             var prepare = new DatabasePreparedDecompressionBlocks(_serviceProvider.GetRequiredService<TccRestoreDbContext>(), _logger);
             IAsyncEnumerable<DecompressionBatch> ordered = prepare.PrepareDecompressionBlocksAsync(blocks);
 
-            IReadOnlyCollection<OperationDecompressionsBlock> operationBlocks =
-                await ordered
+            var decrpytionReadyAsyncStream = ordered
                 .AsAsyncStream(_cancellationTokenSource.Token)
                 .CountAsync(out var counter)
                 // Prepare decryption
                 .ParallelizeStreamAsync(async (b, token) =>
                 {
                     b.StartTime = DateTime.UtcNow;
-                    await _encryptionCommands.PrepareDecryptionKey(b.BackupFull ?? b.BackupsDiff.FirstOrDefault(), option, token);
+                    await _encryptionCommands.PrepareDecryptionKey(b.BackupFull ?? b.BackupsDiff.FirstOrDefault(),
+                        option, token);
                     return b;
-                }, po)
+                }, po);
+
+            if (option is RetrieveOptions retrieveOptions)
+            {
+                var downloader = await retrieveOptions.GetRemoteStorageAsync(_logger, _cancellationTokenSource.Token);
+                decrpytionReadyAsyncStream = decrpytionReadyAsyncStream
+                    // Download
+                    .ParallelizeStreamAsync(async (b, token) =>
+                    {
+                        await Task.Delay(1, token);
+                        await downloader.DownloadAsync(b.BackupFull.GetRemoteStorageKey(retrieveOptions.DownloadDestinationDir), retrieveOptions.DownloadDestinationDir, token);
+                        return b;
+                    }, po);
+            }
+            
+            IReadOnlyCollection<OperationDecompressionsBlock> operationBlocks = 
                 // Core loop 
-                .ParallelizeStreamAsync(async (batch, token) =>
+                await decrpytionReadyAsyncStream.ParallelizeStreamAsync(async (batch, token) =>
                 {
                     int count = Interlocked.Increment(ref _compressCounter);
                     string progress = $"{count}/{_totalCounter}";
@@ -386,7 +401,6 @@ namespace TCC.Lib
                     return odb;
                 }, po)
                 .AsReadOnlyCollectionAsync();
-
             sw.Stop();
             await _databaseHelper.AddRestoreBlockJobAsync(job, operationBlocks);
             await _databaseHelper.UpdateRestoreJobStatsAsync(sw, job);
@@ -454,10 +468,7 @@ namespace TCC.Lib
 
         public async Task<OperationSummary> RetrieveAsync(RetrieveOptions option)
         {
-            var uploaders = await option.GetRemoteStorageAsync(_logger, _cancellationTokenSource.Token);
-
-            var res = await uploaders.DownloadAsync();
-            throw new NotImplementedException();
+            return await DecompressAsync(option);
         }
     }
 }

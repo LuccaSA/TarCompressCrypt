@@ -5,7 +5,7 @@ using TCC.Lib.Database;
 
 namespace TCC.Lib.Options
 {
-    public class CompressOption : NetworkStorageOptions
+    public class CompressOption : TccOption, INetworkStorageOptions
     {
         public BlockMode BlockMode { get; set; }
         public CompressionAlgo Algo { get; set; }
@@ -21,5 +21,16 @@ namespace TCC.Lib.Options
         public string S3MultipartSize { get; set; }
         public IEnumerable<UploadMode> UploadModes { get; set; } = Enumerable.Empty<UploadMode>();
         public UploadMode? UploadMode { get; set; }
+        public string AzBlobUrl { get; set; }
+        public string AzBlobContainer { get; set; }
+        public string AzBlobSaS { get; set; }
+        public int? AzThread { get; set; }
+        public string GoogleStorageBucketName { get; set; }
+        public string GoogleStorageCredential { get; set; }
+        public string S3AccessKeyId { get; set; }
+        public string S3SecretAcessKey { get; set; }
+        public string S3Host { get; set; }
+        public string S3BucketName { get; set; }
+        public string S3Region { get; set; }
     }
 }

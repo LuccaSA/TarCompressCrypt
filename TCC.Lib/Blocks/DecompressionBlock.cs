@@ -32,7 +32,7 @@ namespace TCC.Lib.Blocks
         public CommandResult BackupFullCommandResult { get; set; }
         public CommandResult[] BackupDiffCommandResult { get; set; }
 
-        public long CompressedSize
+        public virtual long CompressedSize
         {
             get
             {
@@ -47,6 +47,7 @@ namespace TCC.Lib.Blocks
                 }
                 return sum;
             }
+            set { throw new NotSupportedException(); }
         }
 
         public DateTime StartTime { get; set; }

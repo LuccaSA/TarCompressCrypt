@@ -1,8 +1,10 @@
 ﻿using Google.Cloud.Storage.V1;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib.Options;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace TCC.Lib.Storage
@@ -40,11 +42,18 @@ namespace TCC.Lib.Storage
             };
         }
 
-        public Task<UploadResponse> DownloadAsync()
+        public IAsyncEnumerable<(string Key, long Size)> ListArchivesMatchingWithSizeAsync(RetrieveOptions options,
+            CancellationToken token)
         {
             throw new NotImplementedException();
         }
-
+        
         public UploadMode Mode => UploadMode.GoogleCloudStorage;
+
+        public Task DownloadAsync(string getRemoteStorageKey, DirectoryInfo retrieveOptionsDownloadDestinationDir,
+            CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

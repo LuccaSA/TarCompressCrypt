@@ -1,6 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib.Options;
 
 namespace TCC.Lib.Storage
 {
@@ -11,11 +14,18 @@ namespace TCC.Lib.Storage
             return Task.FromResult(new UploadResponse { IsSuccess = true, RemoteFilePath = targetPath });
         }
 
-        public Task<UploadResponse> DownloadAsync()
+        public IAsyncEnumerable<(string Key, long Size)> ListArchivesMatchingWithSizeAsync(RetrieveOptions options,
+            CancellationToken token)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public UploadMode Mode => UploadMode.None;
+
+        public Task DownloadAsync(string getRemoteStorageKey, DirectoryInfo retrieveOptionsDownloadDestinationDir,
+            CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
