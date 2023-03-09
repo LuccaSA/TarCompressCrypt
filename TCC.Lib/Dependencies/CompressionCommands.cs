@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using TCC.Lib.Blocks;
+using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 
 namespace TCC.Lib.Dependencies
@@ -158,7 +159,7 @@ namespace TCC.Lib.Dependencies
                 {
                     throw new CommandLineException("Password file missing");
                 }
-                return "-kfile " + passwordFile.PasswordFile;
+                return "-kfile " + passwordFile.PasswordFile.Escape();
             }
             else
             {
