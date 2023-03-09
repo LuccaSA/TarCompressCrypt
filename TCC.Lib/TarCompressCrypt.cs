@@ -344,8 +344,12 @@ namespace TCC.Lib
                     // Download
                     .ParallelizeStreamAsync(async (b, token) =>
                     {
-                        await Task.Delay(1, token);
                         await downloader.DownloadAsync(b.BackupFull.GetRemoteStorageKey(retrieveOptions.DownloadDestinationDir), retrieveOptions.DownloadDestinationDir, token);
+
+                        foreach (var diffBlock in b.BackupsDiff)
+                        {
+                            await downloader.DownloadAsync(diffBlock.GetRemoteStorageKey(retrieveOptions.DownloadDestinationDir), retrieveOptions.DownloadDestinationDir, token);
+                        }
                         return b;
                     }, po);
             }
@@ -468,6 +472,10 @@ namespace TCC.Lib
 
         public async Task<OperationSummary> RetrieveAsync(RetrieveOptions option)
         {
+            if (!option.DecryptionDestinationDir.Exists)
+            {
+                option.DecryptionDestinationDir.Create();
+            }
             return await DecompressAsync(option);
         }
     }
