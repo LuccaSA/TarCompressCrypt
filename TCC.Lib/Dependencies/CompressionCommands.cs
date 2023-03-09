@@ -136,33 +136,39 @@ namespace TCC.Lib.Dependencies
                     cmd.Append($" | {_ext.Tar()} xf - ");
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(option));
+                    throw new ArgumentOutOfRangeException(nameof(option), "Unknown PasswordMode");
             }
             return cmd.ToString();
         }
 
         private static string PasswordCommand(TccOption option, Block block)
         {
-            string passwdCommand;
-            if (option.PasswordOption.PasswordMode == PasswordMode.InlinePassword
-                && option.PasswordOption is InlinePasswordOption inlinePassword)
-            {
-                if (String.IsNullOrWhiteSpace(inlinePassword.Password))
-                {
-                    throw new CommandLineException("Password missing");
-                }
-                passwdCommand = "-k " + inlinePassword.Password;
-            }
-            else
-            {
-                if (String.IsNullOrWhiteSpace(block.BlockPasswordFile))
-                {
-                    throw new CommandLineException("Password file missing");
-                }
-                passwdCommand = "-kfile " + block.BlockPasswordFile.Escape();
-            }
 
-            return passwdCommand;
+            switch (option.PasswordOption.PasswordMode)
+            {
+                case PasswordMode.None:
+                    return string.Empty;
+                case PasswordMode.InlinePassword when option.PasswordOption is InlinePasswordOption inlinePassword:
+                    if (string.IsNullOrWhiteSpace(inlinePassword.Password))
+                    {
+                        throw new CommandLineException("Password missing");
+                    }
+                    return "-k " + inlinePassword.Password;
+                case PasswordMode.PasswordFile when option.PasswordOption is PasswordFileOption passwordFile:
+                    if (string.IsNullOrWhiteSpace(passwordFile.PasswordFile))
+                    {
+                        throw new CommandLineException("Password file missing");
+                    }
+                    return "-kfile " + passwordFile.PasswordFile.Escape();
+                case PasswordMode.PublicKey:
+                    if (string.IsNullOrWhiteSpace(block.BlockPasswordFile))
+                    {
+                        throw new CommandLineException("Password file missing");
+                    }
+                    return "-kfile " + block.BlockPasswordFile.Escape();
+                default:
+                    throw new NotSupportedException($"PasswordMode: {option.PasswordOption.PasswordMode} is not supported");
+            }
         }
     }
 }
