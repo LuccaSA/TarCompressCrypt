@@ -1,9 +1,10 @@
-﻿namespace TCC.Lib
+namespace TCC.Lib
 {
     public enum UploadMode
     {
         None,
         AzureSdk,
-        GoogleCloudStorage
+        GoogleCloudStorage,
+        S3
     }
 }

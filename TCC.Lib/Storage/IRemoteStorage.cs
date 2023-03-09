@@ -9,11 +9,13 @@ namespace TCC.Lib.Storage
     {
         Task<UploadResponse> UploadAsync(string targetPath, Stream data, CancellationToken token);
 
-        public async Task<UploadResponse> UploadAsync(FileInfo file, DirectoryInfo rootFolder, CancellationToken token)
+        async Task<UploadResponse> UploadAsync(FileInfo file, DirectoryInfo rootFolder, CancellationToken token)
         {
             string targetPath = file.GetRelativeTargetPathTo(rootFolder);
             await using FileStream uploadFileStream = File.OpenRead(file.FullName);
             return await UploadAsync(targetPath, uploadFileStream, token);
         }
+
+        UploadMode Mode { get; }
     }
 }

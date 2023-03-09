@@ -56,7 +56,7 @@ namespace TCC.Lib
             _logger.LogInformation("Starting compression job");
             var po = ParallelizeOption(option);
 
-            IRemoteStorage uploader = await option.GetRemoteStorageAsync(_logger, _cancellationTokenSource.Token);
+            List<IRemoteStorage> uploaders = await option.GetRemoteStoragesAsync(_logger, _cancellationTokenSource.Token).ToListAsync();
 
             var operationBlocks = await buffer
                 .AsAsyncStream(_cancellationTokenSource.Token)
@@ -81,23 +81,31 @@ namespace TCC.Lib
                     return opb;
                 }, po)
                 // Upload loop
-                .ParallelizeStreamAsync((block, token) => UploadBlockInternal(uploader, option, block, token), new ParallelizeOption { FailMode = Fail.Smart, MaxDegreeOfParallelism = option.AzThread ?? 1 })
+                .ParallelizeStreamAsync((block, token) => UploadBlockInternal(uploaders, option, block, token), new ParallelizeOption { FailMode = Fail.Smart, MaxDegreeOfParallelism = option.AzThread ?? 1 })
                 .AsReadOnlyCollectionAsync();
 
             sw.Stop();
             return new OperationSummary(operationBlocks, option.Threads, sw, option.SourceDirOrFile);
         }
 
-        private async Task<OperationCompressionBlock> UploadBlockInternal(IRemoteStorage uploader, CompressOption option, OperationCompressionBlock block, CancellationToken token)
+        private async Task<OperationCompressionBlock> UploadBlockInternal(IEnumerable<IRemoteStorage> uploaders, CompressOption option, OperationCompressionBlock block, CancellationToken token)
         {
-            if (uploader is NoneRemoteStorage)
-            {
-                return block;
-            }
-
             int count = Interlocked.Increment(ref _uploadCounter);
             string progress = $"{count}/{_totalCounter}";
 
+            foreach (var uploader in uploaders)
+            {
+                if (uploader is NoneRemoteStorage)
+                {
+                    continue;
+                }
+                await UploadBlockToSingleRemoteStorageAsync(option, block, progress, uploader, token);
+            }
+            return block;
+        }
+
+        private async Task UploadBlockToSingleRemoteStorageAsync(CompressOption option, OperationCompressionBlock block, string progress, IRemoteStorage uploader, CancellationToken token)
+        {
             var file = block.CompressionBlock.DestinationArchiveFileInfo;
             var name = file.Name;
             RetryContext ctx = null;
@@ -117,6 +125,7 @@ namespace TCC.Lib
                     block.BlockResult.StepResults.Add(new StepResult
                     {
                         Type = StepType.Upload,
+                        UploadMode = uploader.Mode,
                         Errors = result.IsSuccess ? null : result.ErrorMessage,
                         Infos = result.IsSuccess ? result.ErrorMessage : null,
                         Duration = sw.Elapsed,
@@ -126,7 +135,7 @@ namespace TCC.Lib
 
                     if (!hasError)
                     {
-                        _logger.LogInformation($"{progress} Uploaded \"{file.Name}\" in {sw.Elapsed.HumanizedTimeSpan()} at {speed.HumanizedBandwidth()} ");
+                        _logger.LogInformation("[{mode}] {progress} Uploaded \"{filename}\" in {duration} at {speed} ", uploader.Mode, progress, file.Name, sw.Elapsed.HumanizedTimeSpan(), speed.HumanizedBandwidth());
                     }
                     else
                     {
@@ -134,7 +143,7 @@ namespace TCC.Lib
                         {
                             ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                         }
-                        _logger.LogError($"{progress} Uploaded {file.Name} with errors. {result.ErrorMessage}");
+                        _logger.LogError("[{mode}] {progress} Uploaded {filename} with errors. {errorMessage}", uploader.Mode, progress, file.Name, result.ErrorMessage);
                     }
                 }
                 catch (Exception e)
@@ -144,14 +153,14 @@ namespace TCC.Lib
                     {
                         ctx = new RetryContext(option.RetryPeriodInSeconds.Value);
                     }
-                    _logger.LogCritical(e, $"{progress} Error uploading {name}");
+                    _logger.LogCritical(e, "[{mode}] {progress} Error uploading {name}", uploader.Mode, progress, name);
                 }
 
                 if (hasError)
                 {
                     if (ctx != null && await ctx.WaitForNextRetry())
                     {
-                        _logger.LogWarning($"{progress} Retrying uploading {name}, attempt #{ctx.Retries}");
+                        _logger.LogWarning("[{mode}] {progress} Retrying uploading {name}, attempt #{attempt}", uploader.Mode, progress, name, ctx.Retries);
                     }
                     else
                     {
@@ -163,8 +172,6 @@ namespace TCC.Lib
                     break;
                 }
             }
-
-            return block;
         }
 
         private async Task CleanupOldFiles(OperationCompressionBlock opb)

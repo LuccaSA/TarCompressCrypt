@@ -236,6 +236,7 @@ namespace TCC.Lib
         public string Errors { get; set; }
         public string Warning { get; set; }
         public string Infos { get; set; }
+        public UploadMode? UploadMode { get; set; }
         public bool IsSuccess => !HasError && !HasWarning;
         public bool HasError => !string.IsNullOrWhiteSpace(Errors);
         public bool HasWarning => !string.IsNullOrWhiteSpace(Warning);

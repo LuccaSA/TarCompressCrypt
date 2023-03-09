@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -35,10 +36,10 @@ namespace TCC.Tests.Upload
                 AzBlobContainer = GetEnvVar("AZ_CONTAINER"),
                 AzBlobSaS = GetEnvVar("AZ_SAS_TOKEN")
             };
-            opt.UploadMode = UploadMode.AzureSdk;
-            var uploader = await opt.GetRemoteStorageAsync(NullLogger.Instance, CancellationToken.None);
+            opt.UploadModes = new List<UploadMode>() { UploadMode.AzureSdk };
+            var uploader = await opt.GetRemoteStoragesAsync(NullLogger.Instance, CancellationToken.None).ToListAsync();
 
-            var ok = await uploader.UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
+            var ok = await uploader.First().UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
 
             Assert.True(ok.IsSuccess);
         }
@@ -55,14 +56,14 @@ namespace TCC.Tests.Upload
                 GoogleStorageCredential = GetEnvVar("GoogleCredential")
             };
 
-            opt.UploadMode = UploadMode.GoogleCloudStorage;
-            var uploader = await opt.GetRemoteStorageAsync(NullLogger.Instance, CancellationToken.None);
+            opt.UploadModes = new List<UploadMode>() { UploadMode.GoogleCloudStorage };
+            var uploader = await opt.GetRemoteStoragesAsync(NullLogger.Instance, CancellationToken.None).ToListAsync();
 
-            var ok = await uploader.UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
+            var ok = await uploader.First().UploadAsync(data.Files.First(), new DirectoryInfo(toCompressFolder), CancellationToken.None);
 
             Assert.True(ok.IsSuccess);
 
-            var gs = uploader as GoogleRemoteStorage;
+            var gs = uploader.First() as GoogleRemoteStorage;
             
             await gs.Storage.DeleteObjectAsync(gs.BucketName, ok.RemoteFilePath);
         }
