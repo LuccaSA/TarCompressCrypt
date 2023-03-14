@@ -130,7 +130,6 @@ namespace TCC.Lib.Storage
                     {
                         fullFound = true;
                     }
-                    Console.WriteLine($"Found {obj.Key}");
                     yield return (new FileInfo(obj.Key), obj.Key, obj.Size);
                 }
                 dateCursor = dateCursor.AddDays(-1);
