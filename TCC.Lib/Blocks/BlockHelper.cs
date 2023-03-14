@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using TCC.Lib.Database;
+using System.Threading.Tasks;
 using TCC.Lib.Helpers;
 using TCC.Lib.Options;
 using TCC.Lib.Storage;
@@ -224,49 +224,46 @@ namespace TCC.Lib.Blocks
         private static async IAsyncEnumerable<DecompressionBatch> GenerateDecompressBatchesAsync(this RetrieveOptions options, ILogger logger, [EnumeratorCancellation] CancellationToken token)
         {
             var downloader = await options.GetRemoteStorageAsync(logger, token);
-
-            Console.WriteLine(options.SourceMachine);
-            Console.WriteLine(string.IsNullOrWhiteSpace(options.SourceArchive) ? "No source specified: Retrieve all available backups for given machine" : options.SourceArchive);
-            Console.WriteLine(options.BeforeDateTime);
-            Console.WriteLine(options.FolderPerDay);
-            Console.WriteLine(options.All ? "Retrieve all backups" : "Retrieve last backup");
-
-            var archiveList = downloader.ListArchivesMatchingWithSizeAsync(options, token)
-                .GroupBy(key =>
+            var archiveList = downloader.ListArchivesMatchingAsync(options, token)
+                .GroupBy(remoteStorageInfos => remoteStorageInfos.fileInfos.Name.Split("_").First())
+                .Select(group =>
                 {
-                    var fileInfos = new FileInfo(key.Key);
-                    //TODO Qqchose quand on a le folderPerDate à true à va fouttre la merde
-
-                    return fileInfos.Name.Split("_").First();
+                    return new
+                    {
+                        group.Key,
+                        Backups = group.OrderByDescending(remoteStorageInfos => remoteStorageInfos.fileInfos.ExtractBackupDateTime())
+                    };
                 });
 
-            await foreach(var grouping in archiveList)
+            await foreach(var grouping in archiveList.WithCancellation(token))
             {
-                var batch =  new DownloadBatch()
+                var batch =  new DecompressionBatch()
                 {
-                    BackupFull = new DecompressionBlock(), BackupsDiff = new DecompressionBlock[] { }, CompressedSize = 0
+                    BackupFull = new DownloadBlock(), BackupsDiff = Array.Empty<DecompressionBlock>()
                 };
-                await foreach (var archive in grouping)
+                await foreach (var archive in grouping.Backups)
                 {
                     var pathToUse = archive.Key.Replace('/', Path.DirectorySeparatorChar);
                     var downloadFileInfos = new FileInfo(Path.Combine(options.DownloadDestinationDir.FullName, pathToUse));
 
-                    var block = new DecompressionBlock()
+                    var block = new DownloadBlock()
                     {
                         SourceArchiveFileInfo = downloadFileInfos,
                         OperationFolder = options.DecryptionDestinationDir.FullName,
-                        Algo = AlgoFromExtension(downloadFileInfos.Extension)
+                        Algo = AlgoFromExtension(downloadFileInfos.Extension),
+                        RemoteStorageSize = archive.Size
                     };
                     
-                    if (downloadFileInfos.Name.Split(".")[^2] == TccConst.Full.ToLowerInvariant())
+                    if (downloadFileInfos.Name.Split(".")[^2] == TccConst.Full.ToLowerInvariant()
+                        && string.IsNullOrWhiteSpace(batch.BackupFull.OperationFolder))
                     {
                         batch.BackupFull = block;
+                        break;
                     }
                     else
                     {
                         batch.BackupsDiff = batch.BackupsDiff.Append(block).ToArray();
                     }
-                    batch.CompressedSize += archive.Size;
                 }
                 yield return batch;
             }

@@ -31,19 +31,18 @@ namespace TCC.Lib.Blocks
 
         public CommandResult BackupFullCommandResult { get; set; }
         public CommandResult[] BackupDiffCommandResult { get; set; }
-
-        public virtual long CompressedSize
+        public long CompressedSize
         {
             get
             {
                 long sum = 0;
                 if (BackupFull != null)
                 {
-                    sum = BackupFull.Archive.Length;
+                    sum = BackupFull.CompressedSize;
                 }
                 if (BackupsDiff != null)
                 {
-                    sum += BackupsDiff.Sum(b => b.Archive.Length);
+                    sum += BackupsDiff.Sum(b => b.CompressedSize);
                 }
                 return sum;
             }

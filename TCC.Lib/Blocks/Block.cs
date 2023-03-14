@@ -11,7 +11,7 @@ namespace TCC.Lib.Blocks
         public abstract FileInfo Archive { get; }
 
         private long _compressedSize;
-        public long CompressedSize
+        public virtual long CompressedSize
         {
             get
             {

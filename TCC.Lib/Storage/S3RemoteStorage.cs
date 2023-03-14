@@ -1,6 +1,5 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -101,7 +100,7 @@ namespace TCC.Lib.Storage
             }, token);
         }
 
-        public async IAsyncEnumerable<(string Key, long Size)> ListArchivesMatchingWithSizeAsync(
+        public async IAsyncEnumerable<(FileInfo fileInfos, string Key, long Size)> ListArchivesMatchingAsync(
             RetrieveOptions options,
             [EnumeratorCancellation] CancellationToken token)
         {
@@ -124,11 +123,9 @@ namespace TCC.Lib.Storage
                 return true;
             });
             
-            //TODO If all is false, we should return the latest one (with it's diff if needed)
-
             await foreach (var obj in keyList.WithCancellation(token))
             {
-                yield return (obj.Key, obj.Size);
+                yield return (new FileInfo(obj.Key), obj.Key, obj.Size);
             }
         }
 
@@ -149,21 +146,20 @@ namespace TCC.Lib.Storage
 
         public UploadMode Mode => UploadMode.S3;
 
-        public async Task DownloadAsync(string remoteStorageKey, DirectoryInfo destinationDir,
+        public async Task DownloadAsync(string remoteStorageKey, string destinationPath,
             CancellationToken token)
         {
             try
             {
                 var request = new GetObjectRequest() {BucketName = BucketName, Key = remoteStorageKey.Replace(Path.DirectorySeparatorChar, '/'),};
-                var dstPath = Path.Combine(destinationDir.FullName, remoteStorageKey);
-                var parentFolder = Path.GetDirectoryName(dstPath);
+                var parentFolder = Path.GetDirectoryName(destinationPath);
                 if (!Directory.Exists(parentFolder) && parentFolder is not null)
                 {
                     Directory.CreateDirectory(parentFolder);
                 }
                 using (var objectResponse = await _s3Client.GetObjectAsync(request, token))
                 using (var responseStream = objectResponse.ResponseStream)
-                using (var file = File.Create(dstPath))
+                using (var file = File.Create(destinationPath))
                 {
                     await responseStream.CopyToAsync(file, token);
                 }

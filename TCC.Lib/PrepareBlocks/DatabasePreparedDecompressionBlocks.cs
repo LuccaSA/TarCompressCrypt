@@ -22,7 +22,6 @@ namespace TCC.Lib.PrepareBlocks
 
         public async IAsyncEnumerable<DecompressionBatch> PrepareDecompressionBlocksAsync(IEnumerable<DecompressionBatch> blocks)
         {
-
             foreach (DecompressionBatch decompBlock in blocks.OrderByDescending(i => i.CompressedSize))
             {
                 var opFolder = decompBlock.DestinationFolder;

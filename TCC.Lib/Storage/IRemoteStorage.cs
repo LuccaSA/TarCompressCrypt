@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,9 +17,11 @@ namespace TCC.Lib.Storage
             await using FileStream uploadFileStream = File.OpenRead(file.FullName);
             return await UploadAsync(targetPath, uploadFileStream, token);
         }
-        IAsyncEnumerable<(string Key, long Size)> ListArchivesMatchingWithSizeAsync(RetrieveOptions options,
+        IAsyncEnumerable<(FileInfo fileInfos, string Key, long Size)> ListArchivesMatchingAsync(
+            RetrieveOptions options,
             CancellationToken token);
         UploadMode Mode { get; }
-        Task DownloadAsync(string getRemoteStorageKey, DirectoryInfo retrieveOptionsDownloadDestinationDir, CancellationToken token);
+        Task DownloadAsync(string getRemoteStorageKey, string destinationPath,
+            CancellationToken token);
     }
 }

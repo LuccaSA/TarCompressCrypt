@@ -344,11 +344,18 @@ namespace TCC.Lib
                     // Download
                     .ParallelizeStreamAsync(async (b, token) =>
                     {
-                        await downloader.DownloadAsync(b.BackupFull.GetRemoteStorageKey(retrieveOptions.DownloadDestinationDir), retrieveOptions.DownloadDestinationDir, token);
-
+                        if (b.BackupFull is DownloadBlock fullDownloadBlock)
+                        {
+                            await fullDownloadBlock.DownloadAsync(retrieveOptions.DownloadDestinationDir, downloader, token);
+                        }
+                        
                         foreach (var diffBlock in b.BackupsDiff)
                         {
-                            await downloader.DownloadAsync(diffBlock.GetRemoteStorageKey(retrieveOptions.DownloadDestinationDir), retrieveOptions.DownloadDestinationDir, token);
+                            if (diffBlock is DownloadBlock diffDownloadBlock)
+                            {
+                                await diffDownloadBlock.DownloadAsync(retrieveOptions.DownloadDestinationDir, downloader, token);
+                                
+                            }
                         }
                         return b;
                     }, po);

@@ -42,7 +42,8 @@ namespace TCC.Lib.Storage
             };
         }
 
-        public IAsyncEnumerable<(string Key, long Size)> ListArchivesMatchingWithSizeAsync(RetrieveOptions options,
+        public IAsyncEnumerable<(FileInfo fileInfos, string Key, long Size)> ListArchivesMatchingAsync(
+            RetrieveOptions options,
             CancellationToken token)
         {
             throw new NotImplementedException();
@@ -50,7 +51,7 @@ namespace TCC.Lib.Storage
         
         public UploadMode Mode => UploadMode.GoogleCloudStorage;
 
-        public Task DownloadAsync(string getRemoteStorageKey, DirectoryInfo retrieveOptionsDownloadDestinationDir,
+        public Task DownloadAsync(string getRemoteStorageKey, string destinationPath,
             CancellationToken token)
         {
             throw new NotImplementedException();

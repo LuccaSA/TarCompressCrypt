@@ -14,7 +14,8 @@ namespace TCC.Lib.Storage
             return Task.FromResult(new UploadResponse { IsSuccess = true, RemoteFilePath = targetPath });
         }
 
-        public IAsyncEnumerable<(string Key, long Size)> ListArchivesMatchingWithSizeAsync(RetrieveOptions options,
+        public IAsyncEnumerable<(FileInfo fileInfos, string Key, long Size)> ListArchivesMatchingAsync(
+            RetrieveOptions options,
             CancellationToken token)
         {
             throw new NotImplementedException();
@@ -22,7 +23,7 @@ namespace TCC.Lib.Storage
 
         public UploadMode Mode => UploadMode.None;
 
-        public Task DownloadAsync(string getRemoteStorageKey, DirectoryInfo retrieveOptionsDownloadDestinationDir,
+        public Task DownloadAsync(string getRemoteStorageKey, string destinationPath,
             CancellationToken token)
         {
             throw new NotImplementedException();
