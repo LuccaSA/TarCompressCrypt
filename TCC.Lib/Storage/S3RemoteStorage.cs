@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using TCC.Lib.Blocks;
 using TCC.Lib.Database;
 using TCC.Lib.Options;
 
@@ -100,39 +101,65 @@ namespace TCC.Lib.Storage
             }, token);
         }
 
-        public async IAsyncEnumerable<(FileInfo fileInfos, string Key, long Size)> ListArchivesMatchingAsync(
+        public IAsyncEnumerable<(FileInfo fileInfos, string Key, long Size)> ListArchivesMatchingAsync(
             RetrieveOptions options,
-            [EnumeratorCancellation] CancellationToken token)
+            CancellationToken token)
         {
-            var keyList = ListAllAsync(token).Where(obj =>
+            if (options.FolderPerDay)
             {
-                if (!string.IsNullOrWhiteSpace(options.SourceArchive) && !obj.Key.Contains(options.SourceArchive))
-                {
-                    return false;
-                }
-
-                if (options.Mode == BackupMode.Full && !obj.Key.Contains("FULL"))
-                {
-                    return false;
-                }
-                
-                if (obj.LastModified > options.BeforeDateTime)
-                {
-                    return false;
-                }
-                return true;
-            });
-            
-            await foreach (var obj in keyList.WithCancellation(token))
-            {
-                yield return (new FileInfo(obj.Key), obj.Key, obj.Size);
+                return SearchWithDatePrefixAsync(options, token);
             }
+            return ListAllAsync(token)
+                .Where(obj => FilterWithOptions(obj, options))
+                .Select(obj => (new FileInfo(obj.Key), obj.Key, obj.Size));
+
+        }
+        private async IAsyncEnumerable<(FileInfo fileInfos, string Key, long Size)> SearchWithDatePrefixAsync(RetrieveOptions options, [EnumeratorCancellation] CancellationToken token)
+        {
+            var fullFound = false;
+            var dateCursor = DateTime.Now;
+            
+            do
+            {
+                var prefix = $"{dateCursor.Year:D4}-{dateCursor.Month:D2}-{dateCursor.Day:D2}";
+                var keyList = ListAllAsync(prefix, token).Where(obj => FilterWithOptions(obj, options));
+                
+                await foreach (var obj in keyList.WithCancellation(token))
+                {
+                    if (obj.Key.Split(".")[^2] == TccConst.Full.ToLowerInvariant())
+                    {
+                        fullFound = true;
+                    }
+                    Console.WriteLine($"Found {obj.Key}");
+                    yield return (new FileInfo(obj.Key), obj.Key, obj.Size);
+                }
+                dateCursor = dateCursor.AddDays(-1);
+            } while (!fullFound);
+        }
+        private bool FilterWithOptions(S3Object obj, RetrieveOptions options)
+        {
+            if (!string.IsNullOrWhiteSpace(options.SourceArchive) && !obj.Key.Contains(options.SourceArchive))
+            {
+                return false;
+            }
+
+            if (options.Mode == BackupMode.Full && !obj.Key.Contains("FULL"))
+            {
+                return false;
+            }
+
+            if (obj.LastModified > options.BeforeDateTime)
+            {
+                return false;
+            }
+            return true;
         }
 
-        private async IAsyncEnumerable<S3Object> ListAllAsync([EnumeratorCancellation] CancellationToken token)
+        private IAsyncEnumerable<S3Object> ListAllAsync(CancellationToken token) => ListAllAsync(string.Empty, token);
+        private async IAsyncEnumerable<S3Object> ListAllAsync(string prefix, [EnumeratorCancellation] CancellationToken token)
         {
             ListObjectsV2Response s3Response;
-            ListObjectsV2Request s3Request = new() {BucketName = BucketName};
+            ListObjectsV2Request s3Request = new() {BucketName = BucketName, Prefix = prefix};
             do
             {
                 s3Response = await _s3Client.ListObjectsV2Async(s3Request, token);
