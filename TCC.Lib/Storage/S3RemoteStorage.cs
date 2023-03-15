@@ -109,7 +109,7 @@ namespace TCC.Lib.Storage
             {
                 return SearchWithDatePrefixAsync(options, token);
             }
-            return ListAllAsync(token)
+            return ListAllAsync(options.SearchPrefix, token)
                 .Where(obj => FilterWithOptions(obj, options))
                 .Select(obj => (new FileInfo(obj.Key), obj.Key, obj.Size));
 
@@ -121,7 +121,7 @@ namespace TCC.Lib.Storage
             
             do
             {
-                var prefix = $"{dateCursor.Year:D4}-{dateCursor.Month:D2}-{dateCursor.Day:D2}";
+                var prefix = $"{dateCursor.Year:D4}-{dateCursor.Month:D2}-{dateCursor.Day:D2}/{options.SearchPrefix}";
                 var keyList = ListAllAsync(prefix, token).Where(obj => FilterWithOptions(obj, options));
                 
                 await foreach (var obj in keyList.WithCancellation(token))
@@ -161,6 +161,7 @@ namespace TCC.Lib.Storage
             ListObjectsV2Request s3Request = new() {BucketName = BucketName, Prefix = prefix};
             do
             {
+                Console.WriteLine(prefix);
                 s3Response = await _s3Client.ListObjectsV2Async(s3Request, token);
                 foreach (S3Object s3Object in s3Response.S3Objects)
                 {

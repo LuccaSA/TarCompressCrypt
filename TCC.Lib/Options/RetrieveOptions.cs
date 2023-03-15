@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Globalization;
 using System.IO;
 using TCC.Lib.Database;
 
@@ -27,4 +26,10 @@ public class RetrieveOptions : DecompressOption, INetworkStorageOptions
     public string S3Host { get; set; }
     public string S3BucketName { get; set; }
     public string S3Region { get; set; }
+    public string SearchPrefix {
+        get
+        {
+            return string.IsNullOrWhiteSpace(SourceArchive) ? SourceMachine : $"{SourceMachine}/{SourceArchive}";
+        }
+    }
 }
